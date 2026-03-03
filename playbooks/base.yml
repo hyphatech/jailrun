@@ -1,0 +1,35 @@
+- name: Minimal VM setup
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  tasks:
+    - name: Install base packages
+      ansible.builtin.command: pkg install -y bastille btop fping
+
+    - name: Load pf module
+      command: kldload pf
+      register: kldload_pf
+      failed_when: >
+        kldload_pf.rc != 0 and 'already loaded' not in (kldload_pf.stderr | default(''))
+      changed_when: kldload_pf.rc == 0
+
+    - name: Setup bastille
+      ansible.builtin.command: bastille setup
+
+    - name: Load PF rules
+      command: pfctl -f /etc/pf.conf
+
+    - name: Enable PF
+      command: pfctl -e
+      async: 1
+      poll: 0
+
+    - name: Wait for SSH to return
+      wait_for_connection:
+        delay: 5
+        timeout: 60
+
+    - name: Bootstrap release (might take some time)
+      command: bastille bootstrap {{ bsd_version }}-{{ bsd_release_tag }}

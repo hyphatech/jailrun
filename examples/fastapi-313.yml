@@ -1,0 +1,27 @@
+- name: Install app requirements
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    python_ver: "3.13"
+    python_bin: "/usr/local/bin/python{{ python_ver }}"
+
+  tasks:
+    - name: Install build dependencies
+      ansible.builtin.command: >
+        pkg install -y rust uv
+      changed_when: true
+
+    - name: Export requirements 
+      ansible.builtin.command: >
+        uv export --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt -o /tmp/reqs.txt
+      args:
+        chdir: /srv/app
+
+    - name: Install pip
+      ansible.builtin.shell: >
+        {{ python_bin }} -m ensurepip --upgrade
+
+    - name: Install requirements
+      ansible.builtin.shell: >
+        {{ python_bin }} -m pip install -r /tmp/reqs.txt

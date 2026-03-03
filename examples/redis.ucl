@@ -1,0 +1,8 @@
+jail "hypha-redis" {
+  setup {
+    redis { type = "ansible"; file = "examples/redis.yml"; }
+  }
+  forward {
+    redis { host = 7379; jail = 6379; }
+  }
+}

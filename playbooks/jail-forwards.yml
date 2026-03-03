@@ -1,0 +1,21 @@
+- name: Reconcile jail port forwarding
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  tasks:
+    - name: Clear rdr rules for each jail
+      ansible.builtin.command: "bastille rdr {{ item.name }} reset"
+      loop: "{{ jails | default([]) }}"
+      failed_when: false
+      changed_when: true
+
+    - name: Add rdr rules
+      ansible.builtin.command: >
+        bastille rdr {{ item.jail }}
+        {{ item.proto }} {{ item.target_port }} {{ item.jail_port }}
+      loop: "{{ jail_rdrs | default([]) }}"
+      register: rdr_result
+      failed_when: rdr_result.rc != 0
+      changed_when: true

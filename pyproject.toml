@@ -1,0 +1,74 @@
+[project]
+name = "jailrun"
+version = "0.1.0"
+description = "Run fully isolated environments on your machine, powered by FreeBSD"
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "lark>=1.3.1",
+    "orjson>=3.11.7",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
+    "tenacity>=9.1.4",
+    "typer>=0.24.1",
+]
+
+[dependency-groups]
+dev = [
+    "ipdb>=0.13.13",
+    "mypy>=1.19.1",
+    "psycopg>=3.3.3",
+    "pytest>=9.0.2",
+    "redis>=7.2.1",
+    "ruff>=0.15.4",
+]
+
+[build-system]
+requires = ["uv_build>=0.10.5,<0.11.0"]
+build-backend = "uv_build"
+
+[project.scripts]
+jrun = "jrun.cli:main"
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_return_any = true
+ignore_missing_imports = true
+show_error_codes = true
+files = ["src", "tests"]
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+extend-select = [
+    "I",  # isort (import sorting)
+    "F401",  # Unused imports
+    "F841",  # Unused variables
+    "E", "W",  # General errors and warnings
+    "B",  # bugbear (security and performance issues)
+    "UP",  # pyupgrade (modern Python syntax)
+    "C4",  # comprehensions (simplify list/set/dict comprehensions)
+    "SIM",  # simplify (redundant expressions)
+    "T20",  # print statements (helps catch debug prints)
+    "Q",  # avoid bad quotes and unnecessary escapes
+]
+ignore = ["SIM102", "B008"]
+unfixable = ["F401"]

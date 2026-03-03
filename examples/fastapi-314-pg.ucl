@@ -1,0 +1,42 @@
+jail "hypha-python-314" {
+  setup {
+    python { type = "ansible"; file = "examples/python-314.yml"; }
+  }
+}
+
+jail "hypha-postgres" {
+  setup {
+    python { type = "ansible"; file = "examples/postgres.yml"; }
+  }
+  forward {
+    http { host = 6432; jail = 5432; }
+  }
+}
+
+jail "fastapi-314" {
+  base { type = "jail"; name = "hypha-python-314"; }
+
+  depends ["hypha-postgres"]
+
+  setup {
+    fastapi { type = "ansible"; file = "examples/fastapi-314.yml"; }
+  }
+  forward {
+    http { host = 8080; jail = 8000; }
+  }
+  mount {
+    src { host = "."; jail = "/srv/app"; }
+  }
+  exec {
+    httpserver {
+      cmd = "python3.14 -m uvicorn app:app --reload";
+      dir = "/srv/app";
+      healthcheck {
+        test = "fetch -qo /dev/null http://127.0.0.1:8000";
+        interval = "30s";
+        timeout = "10s";
+        retries = 5;
+      }
+    }
+  }
+}

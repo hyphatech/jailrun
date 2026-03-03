@@ -1,0 +1,11 @@
+[project]
+name = "jrun-examples"
+version = "0.1.0"
+description = "Simple jrun examples to start with"
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.135.1",
+    "uvicorn>=0.41.0",
+]

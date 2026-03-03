@@ -1,0 +1,8 @@
+jail "hypha-postgres" {
+  setup {
+    pg { type = "ansible"; file = "examples/postgres.yml"; }
+  }
+  forward {
+    pg { host = 6432; jail = 5432; }
+  }
+}

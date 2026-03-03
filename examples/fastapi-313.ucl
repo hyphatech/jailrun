@@ -1,0 +1,17 @@
+jail "fastapi-313" {
+  setup {
+    fastapi { type = "ansible"; file = "examples/fastapi-313.yml"; }
+  }
+  forward {
+    http { host = 8088; jail = 8000; }
+  }
+  mount {
+    src { host = "."; jail = "/srv/app"; }
+  }
+  exec {
+    server {
+      cmd = "python3.13 -m uvicorn app:app --reload";
+      dir = "/srv/app";
+    }
+  }
+}

@@ -1,0 +1,22 @@
+check process {{ item.jail }}-{{ item.name }} with pidfile /var/run/{{ item.jail }}-{{ item.name }}.pid
+  group jrun
+  start program = "/bin/sh -c 'PATH=/usr/local/bin:/usr/bin:/bin; \
+    cd {{ item.dir }} && \
+    /usr/sbin/daemon \
+      -p /var/run/{{ item.jail }}-{{ item.name }}.pid \
+      -o /var/log/{{ item.jail }}-{{ item.name }}.log \
+      -T {{ item.jail }}-{{ item.name }} \
+      -- \
+      {{ item.cmd }}'" with timeout 60 seconds
+  stop program = "/bin/pkill -F /var/run/{{ item.jail }}-{{ item.name }}.pid"
+  if does not exist for 1 cycles then restart
+  if cpu > 80% for 3 cycles then alert
+  if memory usage > 80% then alert
+  if 5 restarts within 5 cycles then unmonitor
+
+{% if item.healthcheck is defined and item.healthcheck %}
+check program {{ item.jail }}-{{ item.name }}-health with path "/bin/sh -c 'PATH=/usr/local/bin:/usr/bin:/bin; {{ item.healthcheck.test }}'" with timeout {{ item.healthcheck.timeout_seconds }} seconds
+  depends on {{ item.jail }}-{{ item.name }}
+  every {{ item.healthcheck.interval_cycles }} cycles
+  if status != 0 for {{ item.healthcheck.retries }} cycles then exec "/usr/local/bin/monit restart {{ item.jail }}-{{ item.name }}"
+{% endif %}

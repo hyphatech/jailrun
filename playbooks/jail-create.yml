@@ -1,0 +1,88 @@
+- name: Create and prepare jails
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  vars:
+    bastille_jails_root: /usr/local/bastille/jails
+    jail_base_packages: "python313 monit"
+
+  tasks:
+    - name: Collect existing jail names from bastille
+      ansible.builtin.command: bastille list -j
+      register: bastille_list_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Parse existing jail names
+      ansible.builtin.set_fact:
+        existing_jail_names: >-
+          {{ (bastille_list_raw.stdout | default('[]') | from_json)
+            | map(attribute='Name') | list }}
+      when: bastille_list_raw.rc == 0 and bastille_list_raw.stdout | trim | length > 2
+
+    - name: Fallback to empty list if bastille list failed
+      ansible.builtin.set_fact:
+        existing_jail_names: []
+      when: existing_jail_names is not defined
+
+    - name: Create missing jails
+      ansible.builtin.command: >
+        bastille create {{ item.name }} {{ item.release }} {{ item.ip }}
+      loop: "{{ jails | default([]) }}"
+      when:
+        - item.name not in existing_jail_names
+        - item.base is not defined or item.base is none
+      register: create_result
+      failed_when: create_result.rc != 0 and 'already exists' not in (create_result.stderr | default(''))
+      changed_when: create_result.rc == 0
+
+    - name: Stop base jail before clone
+      ansible.builtin.command: "bastille stop {{ item.base.name }}"
+      loop: "{{ jails | default([]) }}"
+      when:
+        - item.name not in existing_jail_names
+        - item.base is defined and item.base is not none
+        - item.base.type == "jail"
+      failed_when: false
+
+    - name: Clone jails from base
+      ansible.builtin.command: >
+        bastille clone {{ item.base.name }} {{ item.name }} {{ item.ip }}
+      loop: "{{ jails | default([]) }}"
+      when:
+        - item.name not in existing_jail_names
+        - item.base is defined and item.base is not none
+        - item.base.type == "jail"
+      register: clone_result
+      failed_when: clone_result.rc != 0 and 'already exists' not in (clone_result.stderr | default(''))
+      changed_when: clone_result.rc == 0
+
+    - name: Restart base jail after clone
+      ansible.builtin.command: "bastille start {{ item.base.name }}"
+      loop: "{{ jails | default([]) }}"
+      when:
+        - item.name not in existing_jail_names
+        - item.base is defined and item.base is not none
+        - item.base.type == "jail"
+      failed_when: false
+
+    - name: Check sysvipc for all jails
+      ansible.builtin.command: "bastille config {{ item.name }} get allow.sysvipc"
+      loop: "{{ jails | default([]) }}"
+      register: sysvipc_check
+      changed_when: false
+      failed_when: false
+
+    - name: Build list of jails needing sysvipc
+      ansible.builtin.set_fact:
+        sysvipc_needed: >-
+          {{ sysvipc_check.results | default([])
+             | selectattr('stdout', 'defined')
+             | rejectattr('stdout', 'match', '^\s*1\s*$')
+             | map(attribute='item.name') | list }}
+
+    - name: Enable sysvipc where needed
+      ansible.builtin.command: "bastille config {{ item }} set allow.sysvipc 1"
+      loop: "{{ sysvipc_needed | default([]) }}"

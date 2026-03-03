@@ -1,0 +1,15 @@
+jail "simple-server" {
+  forward {
+    http { host = 7777; jail = 8080; }
+  }
+  mount {
+    src { host = "."; jail = "/srv/project"; }
+  }
+  exec {
+    server {
+      cmd = "python3.13 -m http.server 8080";
+      dir = "/srv/project";
+    }
+  }
+}
+

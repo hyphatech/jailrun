@@ -1,0 +1,27 @@
+disable_root: true
+ssh_pwauth: false
+
+users:
+  - name: admin
+    groups: wheel
+    shell: /bin/sh
+    ssh_authorized_keys:
+      - {{ ssh_key }}
+
+packages:
+  - doas
+  - python313
+
+runcmd:
+  - echo 'PrintMotd no' >> /etc/ssh/sshd_config
+  - echo 'PrintLastLog no' >> /etc/ssh/sshd_config
+
+  - truncate -s 0 /etc/motd
+  - truncate -s 0 /etc/motd.template
+
+  - touch /home/admin/.hushlogin
+  - chown admin:admin /home/admin/.hushlogin
+
+  - echo 'permit nopass :wheel' > /usr/local/etc/doas.conf
+  - chmod 400 /usr/local/etc/doas.conf
+  - chown root:wheel /usr/local/etc/doas.conf
