@@ -1,46 +1,20 @@
 <p align="center">
-  <img src="logo.png" alt="jrun" width="100%" />
+  <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/logo.png" alt="jrun" width="100%" />
 </p>
 
 # jrun
 
 Run fully isolated environments on your machine, powered by FreeBSD.
 
-jrun boots a [FreeBSD](https://www.freebsd.org/) VM on your machine and runs lightweight, isolated environments called jails inside it — each with its own filesystem, network, and processes. Describe your apps and jrun handles the rest.
+jrun boots a [FreeBSD](https://www.freebsd.org/) VM on your machine and runs lightweight, isolated environments called jails inside it — each with its own filesystem, network, and processes. Define your apps and jrun handles the rest.
 
-```
-     ██╗██████╗ ██╗   ██╗███╗   ██╗
-     ██║██╔══██╗██║   ██║████╗  ██║
-     ██║██████╔╝██║   ██║██╔██╗ ██║
-██   ██║██╔══██╗██║   ██║██║╚██╗██║
-╚█████╔╝██║  ██║╚██████╔╝██║ ╚████║
- ╚════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
-
-
- Usage: jrun [OPTIONS] COMMAND [ARGS]...
-
-╭─ Options ──────────────────────────────────────────────────────────────────────────╮
-│ --version             -v      Current version.                                     │
-│ --install-completion          Install completion for the current shell.            │
-│ --show-completion             Show completion for the current shell, to copy it    │
-│                               or customize the installation.                       │
-│ --help                        Show this message and exit.                          │
-╰────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Commands ─────────────────────────────────────────────────────────────────────────╮
-│ start    Boot the VM, applying base config if provided.                            │
-│ stop     Gracefully shut down the VM.                                              │
-│ console  Attach an interactive serial console to the VM.                           │
-│ ssh      Open an interactive SSH session to the VM.                                │
-│ up       Create or update jails from a config file.                                │
-│ down     Destroy jails. All from config, or specific ones by name.                 │
-│ purge    Stop the VM and delete all local state.                                   │
-│ status   Show VM and jail status.                                                  │
-╰────────────────────────────────────────────────────────────────────────────────────╯
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/screenshot.png" alt="screenshot" width="100%" />
+</p>
 
 ## What is a jail?
 
-A jail is a lightweight, self-contained environment running inside FreeBSD. It has its own files, its own network address, and its own running programs. Nothing inside a jail can see or touch anything outside of it — and nothing outside can interfere with what's inside.
+A jail is a self-contained environment running inside FreeBSD. Nothing inside a jail can see or touch anything outside of it — and nothing outside can interfere with what's inside.
 
 Jails are a native FreeBSD feature. They're fast to create, cheap to run, and trivial to throw away and recreate. FreeBSD jails are one of the most proven isolation technologies in computing — and jrun makes them accessible from macOS and Linux.
 

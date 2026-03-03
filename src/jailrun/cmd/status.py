@@ -126,7 +126,7 @@ def status(settings: Settings) -> None:
     for name in sorted(managed_names - bastille_names):
         jail = state.jails[name]
         ports = "\n".join(f"{f.proto}/{f.host}→{f.jail}" for f in jail.forwards.values())
-        mounts = "\n".join(f"{m.host} → {m.jail}" for m in jail.mounts.values())
+        mounts = "\n".join(f"{_short_path(m.host)} → {m.jail}" for m in jail.mounts.values())
         jail_table.add_row(
             f"{name} [yellow](stale state)[/yellow]",
             "[yellow]Missing[/yellow]",
