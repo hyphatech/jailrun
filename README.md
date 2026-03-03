@@ -20,23 +20,28 @@ Jails are a native FreeBSD feature. They're fast to create, cheap to run, and tr
 
 ## Install
 
-Requires Python 3.13+, [QEMU](https://www.qemu.org/), [Ansible](https://docs.ansible.com/), and mkisofs.
-
-**macOS:**
-
+**macOS (Homebrew):**
 ```bash
-brew install qemu ansible cdrtools
+brew tap hyphatech/jailrun
+brew install jailrun
 ```
 
-**Linux (Debian/Ubuntu):**
+This installs jrun and all its dependencies (Python, QEMU, Ansible, mkisofs).
 
+**Linux:**
+
+Install the system dependencies, then jrun itself:
 ```bash
+# Debian/Ubuntu
 sudo apt install qemu-system mkisofs ansible
-```
 
-**Then install jrun:**
+# Fedora
+sudo dnf install qemu-system-x86 genisoimage ansible
 
-```bash
+# Arch
+sudo pacman -S qemu-full cdrtools ansible
+
+# Then install jrun
 pipx install jailrun
 # or
 uv tool install jailrun
