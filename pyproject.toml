@@ -1,6 +1,6 @@
 [project]
 name = "jailrun"
-version = "0.1.1"
+version = "0.1.2"
 description = "Run fully isolated environments on your machine, powered by FreeBSD"
 readme = "README.md"
 license = "BSD-3-Clause"
@@ -31,7 +31,7 @@ requires = ["uv_build>=0.10.5,<0.11.0"]
 build-backend = "uv_build"
 
 [project.scripts]
-jrun = "jrun.cli:main"
+jrun = "jailrun.cli:main"
 
 [tool.mypy]
 python_version = "3.13"
