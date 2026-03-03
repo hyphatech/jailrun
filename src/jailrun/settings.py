@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     log_dir: Path = STATE_DIR / "logs"
     disk_dir: Path = STATE_DIR / "disks"
     cloud_dir: Path = STATE_DIR / "cloud-init"
+    playbook_cache_dir: Path = STATE_DIR / "playbooks"
     pid_file: Path = STATE_DIR / "vm.pid"
 
     ssh_port: int = 2222
@@ -59,5 +60,5 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
-for d in (settings.ssh_dir, settings.log_dir, settings.disk_dir, settings.cloud_dir):
+for d in (settings.ssh_dir, settings.log_dir, settings.disk_dir, settings.cloud_dir, settings.playbook_cache_dir):
     d.mkdir(parents=True, exist_ok=True)

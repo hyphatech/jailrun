@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 
 class HealthcheckConfig(BaseModel):
@@ -33,9 +33,33 @@ class ExecConfig(BaseModel):
     healthcheck: HealthcheckConfig | None = None
 
 
-class SetupStep(BaseModel):
+class LocalSetupStep(BaseModel):
     type: Literal["ansible"] = "ansible"
     file: str
+    vars: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("file")
+    @classmethod
+    def file_must_not_be_url(cls, v: str) -> str:
+        if v.startswith(("https://", "http://")):
+            raise ValueError(f"'{v}' looks like a URL — use 'url' instead of 'file'")
+        return v
+
+
+class RemoteSetupStep(BaseModel):
+    type: Literal["ansible"] = "ansible"
+    url: str
+    vars: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("url")
+    @classmethod
+    def url_must_be_url(cls, v: str) -> str:
+        if not v.startswith(("https://", "http://")):
+            raise ValueError(f"'{v}' looks like a path — use 'file' instead of 'url'")
+        return v
+
+
+SetupStep = LocalSetupStep | RemoteSetupStep
 
 
 class BaseForwardConfig(BaseModel):

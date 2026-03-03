@@ -201,6 +201,41 @@ $ jrun status
 └──────────────────┴───────┴─────────────┴───────────────┴────────────────────────────────┘
 ```
 
+## Using shared playbooks
+
+Not every playbook needs to be written from scratch. [jailrun-hub](https://github.com/hyphatech/jailrun-hub) is a curated collection of ready-to-use playbooks for common services — Redis, Nginx, PostgreSQL, and more.
+
+Point a setup step at a hub playbook with `url` instead of `file`:
+
+```
+jail "hypha-nginx" {
+  setup {
+    nginx {
+      type = "ansible";
+      url  = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/nginx/latest/playbook.yml";
+      vars { NGINX_LISTEN_PORT = "88"; }
+    }
+  }
+  forward {
+    http { host = 8888; jail = 88; }
+  }
+}
+```
+
+Pin to a tag for reproducible builds:
+
+```
+url = "https://github.com/hyphatech/jailrun-hub/blob/v1.0.0/playbooks/nginx/latest/playbook.yml";
+```
+
+`vars` passes variables into the playbook — each playbook documents what it accepts. Works the same way with local playbooks:
+
+```
+setup {
+  core { type = "ansible"; file = "setup.yml"; vars { APP_ENV = "production"; } }
+}
+```
+
 ## Updating and tearing down
 
 To redeploy a single jail after changing its config:
@@ -346,7 +381,12 @@ jail "myapp" {
   # Ansible playbooks for provisioning, run in order
   setup {
     core { type = "ansible"; file = "install-deps.yml"; }
-    extras { type = "ansible"; file = "install-more-deps.yml"; }
+    extras { type = "ansible"; file = "install-more-deps.yml"; vars { DEBUG = "true"; } }
+    nginx {
+      type = "ansible";
+      url  = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/nginx/latest/playbook.yml";
+      vars { NGINX_LISTEN_PORT = "80"; }
+    }
   }
 }
 ```

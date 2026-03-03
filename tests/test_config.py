@@ -247,7 +247,7 @@ def test_resolve_base_normalizes_mounts(tmp_path: Path) -> None:
 
 def test_resolve_base_preserves_setup_and_forwards(tmp_path: Path) -> None:
     bc = schemas.BaseConfig(
-        setup={"s": schemas.SetupStep(file="play.yml")},
+        setup={"s": schemas.LocalSetupStep(file="play.yml")},
         forward={"f": schemas.BaseForwardConfig(host=8080, target=80)},
     )
     st = config.resolve_base(bc, tmp_path)

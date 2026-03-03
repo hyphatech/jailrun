@@ -17,7 +17,8 @@ from jailrun.config import (
     sort_jails,
 )
 from jailrun.qemu import launch_vm, vm_is_running
-from jailrun.schemas import JailPlan, Plan
+from jailrun.remote import fetch_remote_playbook
+from jailrun.schemas import JailPlan, LocalSetupStep, Plan, RemoteSetupStep
 from jailrun.settings import Settings
 from jailrun.ssh import resolve_jail_ips, wait_for_ssh
 
@@ -122,12 +123,26 @@ def up(
 
         for step in jail_cfg.setup.values():
             if step.type == "ansible":
-                run_playbook(
-                    step.file,
-                    jail_name=name,
-                    jail_ip=jail_cfg.ip or jail_state.ip,
-                    settings=settings,
-                )
+                if isinstance(step, RemoteSetupStep):
+                    playbook_path = fetch_remote_playbook(
+                        step.url,
+                        cache_dir=settings.playbook_cache_dir,
+                    )
+                    run_playbook(
+                        str(playbook_path),
+                        jail_name=name,
+                        jail_ip=jail_cfg.ip or jail_state.ip,
+                        extra_vars=step.vars or None,
+                        settings=settings,
+                    )
+                if isinstance(step, LocalSetupStep):
+                    run_playbook(
+                        step.file,
+                        jail_name=name,
+                        jail_ip=jail_cfg.ip or jail_state.ip,
+                        extra_vars=step.vars or None,
+                        settings=settings,
+                    )
 
         if provision_plan.jail_rdrs:
             run_playbook("jail-forwards.yml", plan=provision_plan, settings=settings)

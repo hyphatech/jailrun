@@ -11,6 +11,8 @@ from jailrun.config import (
     snapshot_qemu_wiring,
 )
 from jailrun.qemu import launch_vm, prepare_disk, vm_is_running
+from jailrun.remote import fetch_remote_playbook
+from jailrun.schemas import LocalSetupStep, RemoteSetupStep
 from jailrun.settings import Settings
 from jailrun.ssh import wait_for_ssh
 
@@ -47,7 +49,22 @@ def start_vm(
 
     for step in new_state.base.setup.values():
         if step.type == "ansible":
-            run_playbook(step.file, settings=settings)
+            if isinstance(step, RemoteSetupStep):
+                playbook_path = fetch_remote_playbook(
+                    step.url,
+                    cache_dir=settings.playbook_cache_dir,
+                )
+                run_playbook(
+                    str(playbook_path),
+                    extra_vars=step.vars or None,
+                    settings=settings,
+                )
+            if isinstance(step, LocalSetupStep):
+                run_playbook(
+                    step.file,
+                    extra_vars=step.vars or None,
+                    settings=settings,
+                )
 
     if new_state.base.mounts or new_state.base.forwards:
         plan = derive_plan(old_state, new_state)

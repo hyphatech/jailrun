@@ -1,6 +1,6 @@
 [project]
 name = "jailrun"
-version = "0.1.2"
+version = "0.2.0"
 description = "Run fully isolated environments on your machine, powered by FreeBSD"
 readme = "README.md"
 license = "BSD-3-Clause"
@@ -23,6 +23,7 @@ dev = [
     "psycopg>=3.3.3",
     "pytest>=9.0.2",
     "redis>=7.2.1",
+    "respx>=0.22.0",
     "ruff>=0.15.4",
 ]
 
