@@ -253,7 +253,7 @@ from pathlib import Path
 import psycopg
 import pytest
 
-from jrun.testing.postgres import PostgresJail
+from jailrun.testing.postgres import PostgresJail
 
 
 @pytest.fixture
@@ -284,7 +284,7 @@ from pathlib import Path
 import pytest
 import redis
 
-from jrun.testing.redis import RedisJail
+from jailrun.testing.redis import RedisJail
 
 
 @pytest.fixture
