@@ -1,6 +1,6 @@
 [project]
 name = "jailrun"
-version = "0.1.0"
+version = "0.1.1"
 description = "Run fully isolated environments on your machine, powered by FreeBSD"
 readme = "README.md"
 license = "BSD-3-Clause"
