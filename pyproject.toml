@@ -1,6 +1,6 @@
 [project]
 name = "jailrun"
-version = "0.2.1"
+version = "0.2.2"
 description = "Run fully isolated environments on your machine, powered by FreeBSD"
 readme = "README.md"
 license = "BSD-3-Clause"
@@ -32,7 +32,10 @@ requires = ["uv_build>=0.10.5,<0.11.0"]
 build-backend = "uv_build"
 
 [tool.uv_build]
-include = ["src/jailrun/files/**"]
+include = [
+  "src/jailrun/files/**",
+  "src/jailrun/playbooks/**",
+]
 
 [project.scripts]
 jrun = "jailrun.cli:main"

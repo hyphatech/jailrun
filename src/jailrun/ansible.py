@@ -6,7 +6,7 @@ from typing import Any
 
 import typer
 
-from jailrun import ROOT_DIR
+from jailrun import PACKAGE_DIR
 from jailrun.schemas import Plan
 from jailrun.serializers import dumps
 from jailrun.settings import Settings
@@ -17,7 +17,7 @@ def resolve_playbook_path(playbook: str | Path) -> Path:
     if p.is_absolute():
         return p.resolve()
 
-    builtins_dir = (ROOT_DIR / "playbooks").resolve()
+    builtins_dir = (PACKAGE_DIR / "playbooks").resolve()
 
     candidate_user = (Path.cwd() / p).resolve()
     if candidate_user.exists():
