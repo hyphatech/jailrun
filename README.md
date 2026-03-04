@@ -21,16 +21,16 @@ Jails are a native FreeBSD feature. They're fast to create, cheap to run, and tr
 ## Install
 
 **macOS (Homebrew):**
+
 ```bash
 brew tap hyphatech/jailrun
 brew install jailrun
 ```
 
-This installs jrun and all its dependencies (Python, QEMU, Ansible, mkisofs).
-
 **Linux:**
 
-Install the system dependencies, then jrun itself:
+Install the system-level dependencies first:
+
 ```bash
 # Debian/Ubuntu
 sudo apt install qemu-system mkisofs ansible
@@ -40,11 +40,22 @@ sudo dnf install qemu-system-x86 genisoimage ansible
 
 # Arch
 sudo pacman -S qemu-full cdrtools ansible
+```
 
-# Then install jrun
+Then `jrun` itself:
+
+```bash
 pipx install jailrun
 # or
 uv tool install jailrun
+```
+
+To install `jrun` directly from the latest source on `master`:
+
+```bash
+pipx install "git+https://github.com/hyphatech/jailrun.git@master"
+# or
+uv tool install "git+https://github.com/hyphatech/jailrun.git@master"
 ```
 
 ## Quick start
@@ -68,6 +79,8 @@ Or boot the VM in the foreground with your terminal as the console — useful fo
 ```bash
 jrun console
 ```
+
+Log in as `root` (no password). When you're done, shut down cleanly with `shutdown -p now`.
 
 ## Your first jail
 
