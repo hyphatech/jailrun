@@ -1,6 +1,8 @@
 from jailrun.cmd.console import console as console
 from jailrun.cmd.down import down as down
+from jailrun.cmd.pause import pause as pause
 from jailrun.cmd.purge import purge as purge
+from jailrun.cmd.restart import restart as restart
 from jailrun.cmd.ssh import ssh as ssh
 from jailrun.cmd.start import start_vm as start_vm
 from jailrun.cmd.status import status as status

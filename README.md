@@ -263,6 +263,26 @@ To redeploy a single jail after changing its config:
 jrun up stack.ucl fastapi-314
 ```
 
+To stop jails without destroying them:
+
+```bash
+jrun pause stack.ucl
+```
+
+This stops the jail and its supervised processes but leaves the state, mounts, and port forwards intact. To stop specific jails:
+
+```bash
+jrun pause stack.ucl hypha-postgres
+```
+
+To stop and redeploy in one go:
+
+```bash
+jrun restart stack.ucl fastapi-314
+```
+
+This is equivalent to `jrun pause` followed by `jrun up` — useful when you've changed config and want a clean restart.
+
 To tear down specific jails:
 
 ```bash
@@ -343,11 +363,15 @@ def test_set_and_get(redis_jail: RedisJail) -> None:
 | `jrun console` | Boot the VM in foreground with serial console (VM must be stopped) |
 | `jrun up <config>` | Create or update all jails in a config |
 | `jrun up <config> <name...>` | Deploy specific jails (dependencies included automatically) |
+| `jrun pause <config>` | Stop all jails without destroying them |
+| `jrun pause <config> <name...>` | Stop specific jails |
+| `jrun restart <config>` | Stop and redeploy all jails |
+| `jrun restart <config> <name...>` | Stop and redeploy specific jails |
 | `jrun down <config>` | Destroy all jails in a config |
 | `jrun down <config> <name...>` | Destroy specific jails |
 | `jrun status` | Show VM and jail status |
 | `jrun status --tree` | Show VM and jail status as a tree |
-| `jrun purge` | Stop the VM and delete all local state |
+| `jrun purge` | Stop and destroy the VM with all jails |
 
 ## Config reference
 
@@ -384,8 +408,12 @@ jail "myapp" {
   # Supervised processes (monitored, auto-restarted on failure)
   exec {
     server {
-      cmd = "python3 -m gunicorn app:main -b 0.0.0.0:8080";
+      cmd = "gunicorn app:main -b 0.0.0.0:8080";
       dir = "/srv/app";
+      env {
+        DATABASE_URL = "postgresql://hypha-postgres/mydb";
+        APP_ENV = "production";
+      }
       healthcheck {
         test = "fetch -qo /dev/null http://127.0.0.1:8080/health";
         interval = "30s";
@@ -476,7 +504,6 @@ The lifecycle goes like this: `jrun start` boots the VM and runs the base setup.
 ## Roadmap
 
 - [ ] **Resource limits.** Set per-jail CPU, memory, and I/O constraints.
-- [ ] **Log search.** Aggregate and search logs across jails from the host.
 - [ ] **Time machine.** Snapshot any jail at any point and roll back instantly using ZFS.
 - [ ] **Modular UCL.** Compose configs from reusable, shareable modules.
 - [ ] **Remote targets.** Deploy jails to remote infrastructure. Local and remote in one mesh, same config format.

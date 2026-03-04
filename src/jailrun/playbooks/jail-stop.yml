@@ -1,0 +1,23 @@
+- name: Stop jails
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  tasks:
+    - name: Stop monit services in jails
+      ansible.builtin.command: "bastille cmd {{ item.name }} monit -g jrun stop all"
+      loop: "{{ jails | default([]) }}"
+      failed_when: false
+
+    - name: Stop monit in jails
+      ansible.builtin.command: "bastille cmd {{ item.name }} service monit stop"
+      loop: "{{ jails | default([]) }}"
+      failed_when: false
+
+    - name: Stop jails
+      ansible.builtin.command: "bastille stop {{ item.name }}"
+      loop: "{{ jails | default([]) }}"
+      register: result
+      failed_when: result.rc != 0 and 'not running' not in (result.stderr | default(''))
+      changed_when: result.rc == 0

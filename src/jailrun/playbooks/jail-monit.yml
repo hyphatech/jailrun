@@ -50,17 +50,36 @@
       ansible.builtin.command: "bastille cmd {{ item.name }} monit -t"
       loop: "{{ jails | default([]) }}"
 
-    - name: Ensure monit is running in jails
-      ansible.builtin.command: "bastille cmd {{ item.name }} service monit start"
+    - name: Check monit status in jails
+      ansible.builtin.command: "bastille cmd {{ item.name }} service monit status"
+      loop: "{{ jails | default([]) }}"
+      register: monit_status
+      failed_when: false
+      changed_when: false
+
+    - name: Start monit in jails where it is not running
+      ansible.builtin.command: "bastille cmd {{ item.item.name }} service monit start"
+      loop: "{{ monit_status.results }}"
+      when: item.rc != 0
+      register: monit_start
+      failed_when: monit_start.rc != 0
+
+    - name: Reload monit config in jails where it is already running
+      ansible.builtin.command: "bastille cmd {{ item.item.name }} monit reload"
+      loop: "{{ monit_status.results }}"
+      when: item.rc == 0
+
+    - name: Wait for monit to process reload
+      ansible.builtin.pause:
+        seconds: 3
+      when: monit_status.results | selectattr('rc', 'equalto', 0) | list | length > 0
+
+    - name: Re-enable monitoring for all jrun services
+      ansible.builtin.command: "bastille cmd {{ item.name }} monit -g jrun monitor all"
       loop: "{{ jails | default([]) }}"
       failed_when: false
 
-    - name: Reload monit configuration in jails
-      ansible.builtin.command: "bastille cmd {{ item.name }} monit reload"
-      loop: "{{ jails | default([]) }}"
-      failed_when: false
-
-    - name: Restart all jrun-managed services via monit
+    - name: Start all jrun-managed services via monit
       ansible.builtin.command: "bastille cmd {{ item.name }} monit -g jrun start all"
       loop: "{{ jails | default([]) }}"
       failed_when: false

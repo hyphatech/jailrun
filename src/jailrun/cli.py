@@ -84,14 +84,35 @@ def down(
     config: Path = typer.Argument(..., help="Path to jail config (.ucl)"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all in config)"),
 ) -> None:
-    """Destroy jails. All from config, or specific ones by name."""
+    """Stop and destroy jails."""
     cmd.down(config=config, names=names, settings=settings)
 
 
 @app.command()
 @exclusive(settings.state_file)
+def pause(
+    config: Path = typer.Argument(..., help="Path to jail config (.ucl)"),
+    names: list[str] | None = typer.Argument(None, help="Jail names (default: all in config)"),
+) -> None:
+    """Stop jails without destroying them."""
+    cmd.pause(config=config, names=names, settings=settings)
+
+
+@app.command()
+@exclusive(settings.state_file)
+def restart(
+    config: Path = typer.Argument(..., help="Path to jail config (.ucl)"),
+    names: list[str] | None = typer.Argument(None, help="Jail names (default: all in config)"),
+    base: Path | None = typer.Option(None, "--base", "-b", help="Path to base.ucl"),
+) -> None:
+    """Restart and redeploy jails."""
+    cmd.restart(config=config, base=base, names=names, settings=settings)
+
+
+@app.command()
+@exclusive(settings.state_file)
 def purge() -> None:
-    """Stop the VM and delete all local state."""
+    """Stop and destroy the VM with all jails."""
     cmd.purge(settings=settings)
 
 
