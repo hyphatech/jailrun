@@ -1,0 +1,8 @@
+jail "hypha-mariadb-test" {
+  setup {
+    mariadb { type = "ansible"; url = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/mariadb/11/playbook.yml"; }
+  }
+  forward {
+    mariadb { host = 5306; jail = 3306; }
+  }
+}

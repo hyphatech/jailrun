@@ -7,26 +7,28 @@ from jailrun.ssh import jail_ssh_exec
 from jailrun.testing.commons import Jail
 
 
-class PostgresJail(Jail):
+class MariaDBJail(Jail):
     def __init__(
         self,
         config: Path,
-        jail: str = "hypha-postgres",
+        jail: str = "hypha-mariadb",
         *,
-        user: str = "postgres",
+        user: str = "test",
+        password: str = "test",
         dbname: str = "testdb",
-        port: int = 6432,
+        port: int = 5306,
         base: Path | None = None,
         settings: Settings | None = None,
     ) -> None:
         self.user = user
+        self.password = password
         self.dbname = dbname
         self.port = port
         super().__init__(config, jail=jail, base=base, settings=settings)
 
     def is_ready(self) -> bool:
         result = jail_ssh_exec(
-            f"su -m {self.user} -c 'psql -c \"SELECT 1\"'",
+            "mysqladmin -u root ping",
             jail_ip=self._jail_ip,
             private_key=self._settings.ssh_dir / self._settings.ssh_key,
             ssh_user=self._settings.ssh_user,
@@ -36,14 +38,14 @@ class PostgresJail(Jail):
 
     def __enter__(self) -> Self:
         jail_ssh_exec(
-            f"su -m {self.user} -c 'psql -c \"DROP DATABASE IF EXISTS {self.dbname}\"'",
+            f"mysql -u root -e 'DROP DATABASE IF EXISTS `{self.dbname}`'",
             jail_ip=self._jail_ip,
             private_key=self._settings.ssh_dir / self._settings.ssh_key,
             ssh_user=self._settings.ssh_user,
             ssh_port=self._settings.ssh_port,
         )
         jail_ssh_exec(
-            f"su -m {self.user} -c 'psql -c \"CREATE DATABASE {self.dbname}\"'",
+            f"mysql -u root -e 'CREATE DATABASE `{self.dbname}`'",
             jail_ip=self._jail_ip,
             private_key=self._settings.ssh_dir / self._settings.ssh_key,
             ssh_user=self._settings.ssh_user,
@@ -58,7 +60,7 @@ class PostgresJail(Jail):
         exc_tb: TracebackType | None,
     ) -> None:
         jail_ssh_exec(
-            f"su -m {self.user} -c 'psql -c \"DROP DATABASE IF EXISTS {self.dbname}\"'",
+            f"mysql -u root -e 'DROP DATABASE IF EXISTS `{self.dbname}`'",
             jail_ip=self._jail_ip,
             private_key=self._settings.ssh_dir / self._settings.ssh_key,
             ssh_user=self._settings.ssh_user,

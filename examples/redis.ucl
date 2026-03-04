@@ -1,4 +1,4 @@
-jail "hypha-redis" {
+jail "hypha-redis-test" {
   setup {
     redis {
       type = "ansible";

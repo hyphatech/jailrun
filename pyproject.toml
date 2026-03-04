@@ -21,10 +21,12 @@ dev = [
     "ipdb>=0.13.13",
     "mypy>=1.19.1",
     "psycopg>=3.3.3",
+    "pymysql[rsa]>=1.1.2",
     "pytest>=9.0.2",
     "redis>=7.2.1",
     "respx>=0.22.0",
     "ruff>=0.15.4",
+    "types-pymysql>=1.1.0.20251220",
 ]
 
 [build-system]

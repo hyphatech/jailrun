@@ -73,12 +73,31 @@ def jail_ssh_cmd(
     ]
 
 
-def ssh_exec(cmd: str, *, private_key: Path, ssh_user: str, ssh_port: int) -> str | None:
+def ssh_exec(cmd: str, *, private_key: Path, ssh_user: str, ssh_port: int, timeout: int = 30) -> str | None:
     result = subprocess.run(
         ssh_cmd(args=[f"doas {cmd}"], private_key=private_key, ssh_user=ssh_user, ssh_port=ssh_port),
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=timeout,
+    )
+    output = result.stdout.strip()
+    return output if output else None
+
+
+def jail_ssh_exec(
+    cmd: str, *, jail_ip: str, private_key: Path, ssh_user: str, ssh_port: int, timeout: int = 30
+) -> str | None:
+    result = subprocess.run(
+        jail_ssh_cmd(
+            args=[cmd],
+            jail_ip=jail_ip,
+            private_key=private_key,
+            ssh_user=ssh_user,
+            ssh_port=ssh_port,
+        ),
+        capture_output=True,
+        text=True,
+        timeout=timeout,
     )
     output = result.stdout.strip()
     return output if output else None
@@ -143,7 +162,7 @@ def resolve_jail_ips(old_state: State, new_state: State, *, private_key: Path, s
     typer.echo("⏳ Probing free IP range...")
 
     raw = ssh_exec(
-        cmd=f"fping -u -A -g -t 100 -r 1 {SWEEP_START} {SWEEP_END}",
+        cmd=f"fping -u -A -g -i 1 -t 100 -r 0 {SWEEP_START} {SWEEP_END}",
         private_key=private_key,
         ssh_user=ssh_user,
         ssh_port=ssh_port,
