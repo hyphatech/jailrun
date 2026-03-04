@@ -1,6 +1,9 @@
 check process {{ item.jail }}-{{ item.name }} with pidfile /var/run/{{ item.jail }}-{{ item.name }}.pid
   group jrun
-  start program = "/bin/sh -c 'PATH=/usr/local/bin:/usr/bin:/bin; \
+  start program = "/bin/sh -c 'export PATH=/usr/local/bin:/usr/bin:/bin; \
+{% for key, value in (item.env | default({})).items() %}
+    export {{ key }}={{ value | quote }}; \
+{% endfor %}
     cd {{ item.dir }} && \
     /usr/sbin/daemon \
       -p /var/run/{{ item.jail }}-{{ item.name }}.pid \
@@ -15,7 +18,7 @@ check process {{ item.jail }}-{{ item.name }} with pidfile /var/run/{{ item.jail
   if 5 restarts within 5 cycles then unmonitor
 
 {% if item.healthcheck is defined and item.healthcheck %}
-check program {{ item.jail }}-{{ item.name }}-health with path "/bin/sh -c 'PATH=/usr/local/bin:/usr/bin:/bin; {{ item.healthcheck.test }}'" with timeout {{ item.healthcheck.timeout_seconds }} seconds
+check program {{ item.jail }}-{{ item.name }}-health with path "/bin/sh -c 'export PATH=/usr/local/bin:/usr/bin:/bin; {{ item.healthcheck.test }}'" with timeout {{ item.healthcheck.timeout_seconds }} seconds
   depends on {{ item.jail }}-{{ item.name }}
   every {{ item.healthcheck.interval_cycles }} cycles
   if status != 0 for {{ item.healthcheck.retries }} cycles then exec "/usr/local/bin/monit restart {{ item.jail }}-{{ item.name }}"

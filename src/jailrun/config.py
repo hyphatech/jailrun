@@ -244,7 +244,7 @@ def derive_plan(old: State, new: State) -> Plan:
     mounts = sorted(new_target_mounts.values(), key=lambda m: m.mount_tag)
 
     execs = [
-        ExecPlan(name=en, jail=jn, cmd=e.cmd, dir=e.dir, healthcheck=e.healthcheck)
+        ExecPlan(name=en, jail=jn, cmd=e.cmd, dir=e.dir, env=e.env, healthcheck=e.healthcheck)
         for jn, j in new.jails.items()
         for en, e in j.execs.items()
     ]

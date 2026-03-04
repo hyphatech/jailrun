@@ -30,6 +30,7 @@ class HealthcheckConfig(BaseModel):
 class ExecConfig(BaseModel):
     cmd: str
     dir: str = "/"
+    env: dict[str, str] = Field(default_factory=dict)
     healthcheck: HealthcheckConfig | None = None
 
 
@@ -164,6 +165,7 @@ class ExecPlan(BaseModel):
     jail: str
     cmd: str
     dir: str = "/"
+    env: dict[str, str] = Field(default_factory=dict)
     healthcheck: HealthcheckConfig | None = None
 
 
