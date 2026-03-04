@@ -60,9 +60,11 @@ def console() -> None:
 
 
 @app.command()
-def ssh() -> None:
-    """Open an interactive SSH session to the VM."""
-    cmd.ssh(settings)
+def ssh(
+    jail_name: str | None = typer.Argument(None, help="Jail name to SSH into (default: host VM)"),
+) -> None:
+    """Open an interactive SSH session to the VM or a jail."""
+    cmd.ssh(settings, jail_name=jail_name)
 
 
 @app.command()
@@ -94,9 +96,11 @@ def purge() -> None:
 
 
 @app.command()
-def status() -> None:
+def status(
+    tree: bool = typer.Option(False, "--tree", "-t", help="Show status as a tree instead of a table."),
+) -> None:
     """Show VM and jail status."""
-    cmd.status(settings)
+    cmd.status(settings, tree=tree)
 
 
 def _get_version() -> str:

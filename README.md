@@ -209,9 +209,15 @@ $ jrun status
 ┃ Name             ┃ State ┃ IP          ┃ Ports         ┃ Mounts                         ┃
 ┡━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
 │ fastapi-314      │ Up    │ 10.17.89.14 │ tcp/8080→8000 │ …/jrun/examples → /srv/app     │
-│ hypha-postgres   │ Up    │ 10.17.89.13 │ tcp/6432→5432 │                                │
-│ hypha-python-314 │ Up    │ 10.17.89.12 │               │                                │
+│ hypha-postgres   │ Up    │ 10.17.89.13 │ tcp/6432→5432 │ n/a                            │
+│ hypha-python-314 │ Up    │ 10.17.89.12 │ n/a           │ n/a                            │
 └──────────────────┴───────┴─────────────┴───────────────┴────────────────────────────────┘
+```
+
+Drop into any jail to debug or inspect:
+
+```bash
+jrun ssh hypha-postgres
 ```
 
 ## Using shared playbooks
@@ -333,12 +339,14 @@ def test_set_and_get(redis_jail: RedisJail) -> None:
 | `jrun start` | Boot the VM (downloads FreeBSD on first run) |
 | `jrun stop` | Shut down the VM gracefully |
 | `jrun ssh` | SSH into the VM |
+| `jrun ssh <name>` | SSH directly into a jail |
 | `jrun console` | Boot the VM in foreground with serial console (VM must be stopped) |
 | `jrun up <config>` | Create or update all jails in a config |
 | `jrun up <config> <name...>` | Deploy specific jails (dependencies included automatically) |
 | `jrun down <config>` | Destroy all jails in a config |
 | `jrun down <config> <name...>` | Destroy specific jails |
 | `jrun status` | Show VM and jail status |
+| `jrun status --tree` | Show VM and jail status as a tree |
 | `jrun purge` | Stop the VM and delete all local state |
 
 ## Config reference
@@ -468,10 +476,9 @@ The lifecycle goes like this: `jrun start` boots the VM and runs the base setup.
 ## Roadmap
 
 - [ ] **Resource limits.** Set per-jail CPU, memory, and I/O constraints.
-- [ ] **Time machine.** Snapshot any jail at any point and roll back instantly using ZFS.
 - [ ] **Log search.** Aggregate and search logs across jails from the host.
+- [ ] **Time machine.** Snapshot any jail at any point and roll back instantly using ZFS.
 - [ ] **Modular UCL.** Compose configs from reusable, shareable modules.
-- [ ] **Execution plan.** Preview what jrun will do before it does it — show a diff of planned changes and optimize apply order.
 - [ ] **Remote targets.** Deploy jails to remote infrastructure. Local and remote in one mesh, same config format.
 
 ## Acknowledgments

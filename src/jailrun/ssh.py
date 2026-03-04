@@ -9,6 +9,15 @@ from jailrun.schemas import State
 SWEEP_START = "10.17.89.10"
 SWEEP_END = "10.17.89.250"
 
+SSH_OPTS = [
+    "-o",
+    "StrictHostKeyChecking=no",
+    "-o",
+    "UserKnownHostsFile=/dev/null",
+    "-o",
+    "LogLevel=ERROR",
+]
+
 
 def ensure_vm_key(private_key: Path, public_key: Path) -> str:
     if not public_key.exists():
@@ -27,13 +36,39 @@ def ssh_cmd(args: list[str], *, private_key: Path, ssh_user: str, ssh_port: int)
         str(private_key),
         "-p",
         str(ssh_port),
-        "-o",
-        "StrictHostKeyChecking=no",
-        "-o",
-        "UserKnownHostsFile=/dev/null",
-        "-o",
-        "LogLevel=ERROR",
+        *SSH_OPTS,
         f"{ssh_user}@localhost",
+        *args,
+    ]
+
+
+def proxy_cmd(*, private_key: Path, ssh_user: str, ssh_port: int) -> str:
+    """ProxyCommand string for jumping through the host VM to reach a jail."""
+    return (
+        f"ssh -i {private_key} -p {ssh_port} "
+        f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
+        f"-o LogLevel=ERROR "
+        f"-W %h:%p {ssh_user}@127.0.0.1"
+    )
+
+
+def jail_ssh_cmd(
+    args: list[str],
+    *,
+    jail_ip: str,
+    private_key: Path,
+    ssh_user: str,
+    ssh_port: int,
+) -> list[str]:
+    """SSH command list for connecting to a jail via the host VM."""
+    return [
+        "ssh",
+        "-i",
+        str(private_key),
+        *SSH_OPTS,
+        "-o",
+        f"ProxyCommand={proxy_cmd(private_key=private_key, ssh_user=ssh_user, ssh_port=ssh_port)}",
+        f"root@{jail_ip}",
         *args,
     ]
 
@@ -51,7 +86,7 @@ def ssh_exec(cmd: str, *, private_key: Path, ssh_user: str, ssh_port: int) -> st
 
 def wait_for_ssh(*, private_key: Path, ssh_user: str, ssh_port: int, silent: bool = False) -> None:
     if not silent:
-        typer.echo("⏳ Waiting for SSH to become available...")
+        typer.echo("⏳ Waiting for SSH...")
 
     @retry(
         stop=stop_after_attempt(60),

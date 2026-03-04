@@ -10,6 +10,7 @@ from jailrun import PACKAGE_DIR
 from jailrun.schemas import Plan
 from jailrun.serializers import dumps
 from jailrun.settings import Settings
+from jailrun.ssh import proxy_cmd
 
 
 def resolve_playbook_path(playbook: str | Path) -> Path:
@@ -58,10 +59,10 @@ def run_playbook(
     }
 
     if jail_name and jail_ip:
-        proxy = (
-            f"ssh -i {private_key} -p {settings.ssh_port} "
-            f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
-            f"-W %h:%p {settings.ssh_user}@127.0.0.1"
+        proxy = proxy_cmd(
+            private_key=private_key,
+            ssh_user=settings.ssh_user,
+            ssh_port=settings.ssh_port,
         )
         ssh_args = [
             "-o StrictHostKeyChecking=no",
