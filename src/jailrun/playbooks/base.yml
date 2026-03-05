@@ -13,14 +13,14 @@
           - fping
         state: present
 
-    - name: Load pf module
+    - name: Load PF module
       command: kldload pf
       register: kldload_pf
       failed_when: >
         kldload_pf.rc != 0 and 'already loaded' not in (kldload_pf.stderr | default(''))
       changed_when: kldload_pf.rc == 0
 
-    - name: Setup bastille
+    - name: Setup Bastille
       ansible.builtin.command: bastille setup
 
     - name: Load PF rules

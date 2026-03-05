@@ -33,10 +33,9 @@ def start_vm(
 
     needs_base = not settings.state_file.exists()
     old_state = load_state(settings.state_file)
-    new_state = old_state.model_copy(deep=True)
 
-    if base:
-        new_state = load_base_into_state(base, new_state)
+    new_state = old_state.model_copy(deep=True)
+    new_state = load_base_into_state(base, new_state)
 
     launch_vm(state=new_state, mode=QemuMode.SERVER, settings=settings)
     snapshot_qemu_wiring(state=new_state, default_ssh_port=settings.ssh_port)

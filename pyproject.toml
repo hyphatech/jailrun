@@ -18,6 +18,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "influxdb>=5.3.2",
     "ipdb>=0.13.13",
     "mypy>=1.19.1",
     "psycopg>=3.3.3",

@@ -9,16 +9,19 @@ from jailrun.testing.redis import RedisJail
 
 @pytest.fixture
 def redis_jail() -> Generator[RedisJail]:
-    with RedisJail(ROOT_DIR / "tests" / "redis.ucl", jail="hypha-redis-test") as r:
-        yield r
+    with RedisJail(ROOT_DIR / "tests" / "redis.ucl", jail="hypha-redis-test") as jail:
+        yield jail
 
 
-def test_set_and_get(redis_jail: RedisJail) -> None:
-    r = redis.Redis(host="127.0.0.1", port=redis_jail.port)
-    r.set("name", "alice")
-    assert r.get("name") == b"alice"
+@pytest.fixture
+def redis_conn(redis_jail: RedisJail) -> redis.Redis:
+    return redis.Redis(host="127.0.0.1", port=redis_jail.port)
 
 
-def test_empty_after_cleanup(redis_jail: RedisJail) -> None:
-    r = redis.Redis(host="127.0.0.1", port=redis_jail.port)
-    assert r.dbsize() == 0
+def test_set_and_get(redis_conn: redis.Redis) -> None:
+    redis_conn.set("name", "alice")
+    assert redis_conn.get("name") == b"alice"
+
+
+def test_empty_after_cleanup(redis_conn: redis.Redis) -> None:
+    assert redis_conn.dbsize() == 0

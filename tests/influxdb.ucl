@@ -1,0 +1,8 @@
+jail "hypha-influxdb-test" {
+  setup {
+    influx { type = "ansible"; url = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/influxdb/1/playbook.yml"; }
+  }
+  forward {
+    influx { host = 9086; jail = 8086; }
+  }
+}

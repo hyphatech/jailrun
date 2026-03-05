@@ -161,10 +161,12 @@ def resolve_jail_dependencies(names: set[str], jails: dict[str, JailConfig]) -> 
         name = queue.pop()
         if name in result or name not in jails:
             continue
+
         result.add(name)
         cfg = jails[name]
         if cfg.base and cfg.base.name in jails:
             queue.append(cfg.base.name)
+
         for dep in cfg.depends:
             if dep in jails:
                 queue.append(dep)
@@ -186,6 +188,7 @@ def derive_qemu_fwds(state: State, *, default_ssh_port: int) -> list[QemuFwd]:
                 fg=typer.colors.RED,
             )
             raise typer.Exit(1)
+
         seen[key] = f"base.forward.{name}"
         fwds.append(QemuFwd(proto=base_fwd.proto, host=base_fwd.host, guest=base_fwd.target))
 
@@ -198,6 +201,7 @@ def derive_qemu_fwds(state: State, *, default_ssh_port: int) -> list[QemuFwd]:
                     fg=typer.colors.RED,
                 )
                 raise typer.Exit(1)
+
             seen[key] = f"{jname}.forward.{fname}"
             fwds.append(QemuFwd(proto=jfwd.proto, host=jfwd.host, guest=jfwd.host))
 
@@ -306,6 +310,7 @@ def save_state(state: State, state_file: Path) -> None:
 
 def load_base_into_state(base_path: Path | None, state: State) -> State:
     if base_path is None:
+        state.base = BaseState()
         return state
 
     if not base_path.exists():

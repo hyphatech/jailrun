@@ -56,10 +56,9 @@ def up(
     jail_order = [n for n in sort_jails(cfg.jail) if n in targets]
 
     old_state = load_state(settings.state_file)
-    new_state = old_state.model_copy(deep=True)
 
-    if base:
-        new_state = load_base_into_state(base, new_state)
+    new_state = old_state.model_copy(deep=True)
+    new_state = load_base_into_state(base, new_state)
 
     default_release = f"{settings.bsd_version}-{settings.bsd_release_tag}"
     for name in jail_order:
