@@ -23,7 +23,7 @@
           - readline
           - uv
           - rust
-      state: present
+        state: present
 
     - name: Download Python {{ python314_ver }} source
       ansible.builtin.command: >

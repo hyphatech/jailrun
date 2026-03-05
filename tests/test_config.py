@@ -8,9 +8,10 @@ from jailrun import config, schemas
 
 def test_normalize_host_path_relative_resolves(tmp_path: Path) -> None:
     base = tmp_path / "base"
-    base.mkdir()
-    (base / "data").mkdir()
+    (base / "data").mkdir(parents=True)
+
     out = config._normalize_host_path("data", base)
+
     assert Path(out).is_absolute()
     assert Path(out) == (base / "data").resolve()
 
@@ -18,14 +19,20 @@ def test_normalize_host_path_relative_resolves(tmp_path: Path) -> None:
 def test_normalize_host_path_absolute_unchanged(tmp_path: Path) -> None:
     p = (tmp_path / "abs").resolve()
     p.mkdir()
+
     out = config._normalize_host_path(str(p), tmp_path)
     assert Path(out) == p.resolve()
 
 
-def test_normalize_host_path_tilde_expansion(tmp_path: Path) -> None:
-    out = config._normalize_host_path("~/something", tmp_path)
-    assert "~" not in out
-    assert Path(out).is_absolute()
+def test_normalize_host_path_rejects_file(tmp_path: Path) -> None:
+    base = tmp_path / "base"
+    base.mkdir()
+
+    f = base / "logo.png"
+    f.write_text("x")
+
+    with pytest.raises(typer.Exit):
+        config._normalize_host_path("logo.png", base)
 
 
 def test_tag_mount_tag_and_target_path(tmp_path: Path) -> None:
@@ -245,11 +252,13 @@ def test_resolve_jail_falls_back_to_default_release(tmp_path: Path) -> None:
 
 def test_resolve_base_normalizes_mounts(tmp_path: Path) -> None:
     config_base = tmp_path / "cfg"
-    config_base.mkdir()
+    (config_base / "rel/path").mkdir(parents=True)
+
     bc = schemas.BaseConfig(
         mount={"m": schemas.BaseMountConfig(host="rel/path", target="/target/path")},
     )
     st = config.resolve_base(bc, config_base)
+
     assert "m" in st.mounts
     assert Path(st.mounts["m"].host) == (config_base / "rel/path").resolve()
     assert st.mounts["m"].target == "/target/path"
@@ -267,12 +276,14 @@ def test_resolve_base_preserves_setup_and_forwards(tmp_path: Path) -> None:
 
 def test_resolve_jail_normalizes_mounts(tmp_path: Path) -> None:
     config_base = tmp_path / "cfg"
-    config_base.mkdir()
+    (config_base / "rel/path").mkdir(parents=True)
+
     jc = schemas.JailConfig(
         release="15.0",
         mount={"m": schemas.JailMountConfig(host="rel/path", jail="/inside")},
     )
     st = config.resolve_jail(jc, config_base, default_release="15.0-RELEASE")
+
     assert "m" in st.mounts
     assert Path(st.mounts["m"].host) == (config_base / "rel/path").resolve()
     assert st.mounts["m"].jail == "/inside"

@@ -33,6 +33,21 @@ def _normalize_host_path(p: str, base: Path) -> str:
     pp = Path(p).expanduser()
     if not pp.is_absolute():
         pp = base / pp
+
+    resolved = pp.resolve(strict=False)
+
+    if not resolved.exists():
+        typer.secho(f"Mount host path does not exist: {p} -> {resolved}", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    if resolved.is_file():
+        typer.secho(
+            f"Invalid mount host path (must be a directory for QEMU 9p shares): {p} -> {resolved}\n"
+            "Single-file mounts are not supported. Mount the parent directory and copy/symlink the file in setup.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
     return str(pp.resolve())
 
 
