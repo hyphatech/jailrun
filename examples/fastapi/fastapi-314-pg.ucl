@@ -18,6 +18,9 @@ jail "fastapi-314" {
 
   depends ["hypha-postgres"]
 
+  setup {
+    fastapi { type = "ansible"; file = "examples/fastapi/fastapi-314.yml"; }
+  }
   forward {
     http { host = 8080; jail = 8000; }
   }

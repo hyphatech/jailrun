@@ -60,7 +60,8 @@ uv tool install "git+https://github.com/hyphatech/jailrun.git@master"
 
 ## Quick start
 
-One command gives you a complete FreeBSD system:
+Bring FreeBSD to your system:
+
 
 ```bash
 jrun start
@@ -103,7 +104,7 @@ Bring it up:
 jrun up web.ucl
 ```
 
-Here's what just happened:
+Here’s what’s happening:
 
 - **A jail was created** — a fully isolated environment with its own IP address and filesystem.
 - **Your project directory was mounted** inside the jail at `/srv/project`. Changes you make on your host show up instantly inside the jail, and vice versa.
@@ -113,7 +114,7 @@ Here's what just happened:
 Test it:
 
 ```bash
-curl localhost:7777
+curl -sS localhost:7777
 ```
 
 One config file, one command and you can safely interact with your app from the host.
@@ -169,11 +170,14 @@ jail "fastapi-314" {
 }
 ```
 
+Bring all services up together:
+
+
 ```bash
 jrun up stack.ucl
 ```
 
-A few things to unpack:
+Here’s what’s happening:
 
 **Each `setup` block points to an Ansible playbook** that runs when the jail is first created. `hypha-python-314` compiles Python 3.14 from source. `hypha-postgres` installs and configures PostgreSQL.
 
@@ -429,14 +433,14 @@ Optional VM-level config for customizing the base system. Passed to `jrun start`
 # base.ucl
 
 base {
+  setup {
+    provision { type = "ansible"; file = "base-setup.yml"; }
+  }
   mount {
     data { host = "./data"; target = "/home/admin/data"; }
   }
   forward {
     custom_ssh { proto = "tcp"; host = 2200; target = 22; }
-  }
-  setup {
-    provision { type = "ansible"; file = "base-setup.yml"; }
   }
 }
 ```
@@ -479,7 +483,7 @@ The lifecycle goes like this: `jrun start` boots the VM and runs the base setup.
 |----------|--------|
 | macOS Apple Silicon | Tested (HVF acceleration) |
 | macOS Intel | Should work (HVF), untested |
-| Linux x86_64 | Should work (KVM), untested |
+| Linux x86_64 | Tested (KVM acceleration) |
 | Linux aarch64 | Should work (KVM), untested |
 
 ## Roadmap
