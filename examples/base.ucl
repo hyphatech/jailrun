@@ -1,4 +1,7 @@
 base {
+  setup {
+    xfce { type = "ansible"; url = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/xfce/latest/playbook.yml"; }
+  }
   mount {
     src { host = "."; target = "/home/admin/workspace"; }
   }

@@ -52,6 +52,16 @@ def test_sort_jails_topological() -> None:
     assert order.index("basej") < order.index("app")
 
 
+def test_sort_jails_cycle() -> None:
+    jails = {
+        "basej": schemas.JailConfig(release="15.0", depends=["app"]),
+        "app": schemas.JailConfig(release="15.0", depends=["basej"]),
+    }
+
+    with pytest.raises(typer.Exit):
+        config.sort_jails(jails)
+
+
 def test_sort_jails_respects_depends() -> None:
     jails = {
         "db": schemas.JailConfig(release="15.0"),

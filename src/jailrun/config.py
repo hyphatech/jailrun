@@ -1,5 +1,5 @@
 import hashlib
-from graphlib import TopologicalSorter
+from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
 import typer
@@ -81,7 +81,11 @@ def sort_jails(jails: dict[str, JailConfig]) -> list[str]:
                 deps.add(dep)
         graph[name] = deps
 
-    return list(TopologicalSorter(graph).static_order())
+    try:
+        return list(TopologicalSorter(graph).static_order())
+    except CycleError as exc:
+        typer.secho(f"Dependency cycle detected: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(1) from exc
 
 
 def parse_config(config: Path) -> Config:

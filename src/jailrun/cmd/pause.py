@@ -7,7 +7,7 @@ from jailrun.config import load_state, parse_config
 from jailrun.qemu import vm_is_running
 from jailrun.schemas import JailPlan, Plan
 from jailrun.settings import Settings
-from jailrun.ssh import wait_for_ssh
+from jailrun.ssh import get_ssh_kw, wait_for_ssh
 
 
 def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -> None:
@@ -39,10 +39,9 @@ def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -
         typer.secho("No matching jails found in state.", fg=typer.colors.YELLOW)
         return
 
+    ssh_kw = get_ssh_kw(settings)
     wait_for_ssh(
-        private_key=settings.ssh_dir / settings.ssh_key,
-        ssh_user=settings.ssh_user,
-        ssh_port=settings.ssh_port,
+        **ssh_kw,
         silent=True,
     )
 

@@ -20,7 +20,7 @@ from jailrun.qemu import QemuMode, launch_vm, vm_is_running
 from jailrun.remote import fetch_remote_playbook
 from jailrun.schemas import JailPlan, LocalSetupStep, Plan, RemoteSetupStep
 from jailrun.settings import Settings
-from jailrun.ssh import resolve_jail_ips, wait_for_ssh
+from jailrun.ssh import get_ssh_kw, resolve_jail_ips, wait_for_ssh
 
 
 def up(
@@ -78,20 +78,11 @@ def up(
         snapshot_qemu_wiring(state=new_state, default_ssh_port=settings.ssh_port)
         save_state(state=new_state, state_file=settings.state_file)
 
-    wait_for_ssh(
-        private_key=settings.ssh_dir / settings.ssh_key,
-        ssh_user=settings.ssh_user,
-        ssh_port=settings.ssh_port,
-    )
+    ssh_kw = get_ssh_kw(settings)
+    wait_for_ssh(**ssh_kw)
 
     try:
-        resolve_jail_ips(
-            old_state=old_state,
-            new_state=new_state,
-            private_key=settings.ssh_dir / settings.ssh_key,
-            ssh_user=settings.ssh_user,
-            ssh_port=settings.ssh_port,
-        )
+        resolve_jail_ips(old_state=old_state, new_state=new_state, **ssh_kw)
     finally:
         save_state(state=new_state, state_file=settings.state_file)
 
@@ -151,13 +142,14 @@ def up(
                         settings=settings,
                     )
 
-        if provision_plan.jail_rdrs:
-            run_playbook("jail-forwards.yml", plan=provision_plan, settings=settings)
+    if plan.jails:
+        run_playbook("jail-hosts.yml", plan=plan, settings=settings)
 
-        if provision_plan.execs:
-            run_playbook("jail-monit.yml", plan=provision_plan, settings=settings)
+    if plan.jail_rdrs:
+        run_playbook("jail-forwards.yml", plan=plan, settings=settings)
 
-    run_playbook("jail-hosts.yml", plan=plan, settings=settings)
+    if plan.execs:
+        run_playbook("jail-monit.yml", plan=plan, settings=settings)
 
     deployed = ", ".join(jail_order)
     typer.secho(f"✅ Deploy complete ({deployed}).", fg=typer.colors.GREEN)

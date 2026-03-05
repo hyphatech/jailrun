@@ -12,13 +12,19 @@ from jailrun.config import load_state
 from jailrun.qemu import vm_is_running
 from jailrun.serializers import loads
 from jailrun.settings import Settings
-from jailrun.ssh import ssh_exec, wait_for_ssh
+from jailrun.ssh import get_ssh_kw, ssh_exec, wait_for_ssh
 
 
 class SSHKwargs(TypedDict):
     private_key: Path
     ssh_user: str
     ssh_port: int
+
+
+class RawJail(TypedDict):
+    name: str
+    state: str
+    ip: str
 
 
 class JailRow(TypedDict):
@@ -41,11 +47,75 @@ class StatusInfo(TypedDict):
     jail_rows: list[JailRow]
 
 
+class DiskStats(TypedDict):
+    disk_free: str | None
+    disk_total: str | None
+
+
+class MemStats(TypedDict):
+    mem_total: float | None
+    mem_usable: float | None
+
+
 def short_path(p: str) -> str:
     parts = Path(p).parts
     if len(parts) > 2:
         return "…/" + str(Path(*parts[-2:]))
     return p
+
+
+def get_bastille_jails(private_key: Path, ssh_user: str, ssh_port: int) -> list[RawJail]:
+    raw_jails: list[dict[str, str]] = []
+    clean_jails: list[RawJail] = []
+
+    bastille_list = ssh_exec(cmd="bastille list -j", private_key=private_key, ssh_user=ssh_user, ssh_port=ssh_port)
+    if not bastille_list or bastille_list == "[]":
+        return []
+
+    with contextlib.suppress(json.JSONDecodeError, TypeError):
+        raw_jails = loads(bastille_list)
+
+    for j in sorted(raw_jails, key=lambda x: x.get("Name", "")):
+        clean_jails.append(
+            RawJail(
+                name=j.get("Name", "?"),
+                state=j.get("State", "?"),
+                ip=j.get("IP Address", "-"),
+            )
+        )
+
+    return clean_jails
+
+
+def get_disk_stats(private_key: Path, ssh_user: str, ssh_port: int) -> DiskStats:
+    disk_free: str | None = None
+    disk_total: str | None = None
+    disk = ssh_exec(cmd="df -h /", private_key=private_key, ssh_user=ssh_user, ssh_port=ssh_port)
+    if disk:
+        parts = disk.splitlines()[-1].split()
+        if len(parts) >= 4:
+            disk_free, disk_total = parts[3], parts[1]
+
+    return DiskStats(
+        disk_free=disk_free,
+        disk_total=disk_total,
+    )
+
+
+def get_mem_stats(private_key: Path, ssh_user: str, ssh_port: int) -> MemStats:
+    mem_total: float | None = None
+    mem_usable: float | None = None
+    mem = ssh_exec(cmd="sysctl -n hw.physmem hw.usermem", private_key=private_key, ssh_user=ssh_user, ssh_port=ssh_port)
+    if mem:
+        lines = mem.splitlines()
+        if len(lines) == 2:
+            mem_total = int(lines[0]) / (1024**3)
+            mem_usable = int(lines[1]) / (1024**3)
+
+    return MemStats(
+        mem_total=mem_total,
+        mem_usable=mem_usable,
+    )
 
 
 def collect_info(settings: Settings) -> StatusInfo:
@@ -60,55 +130,29 @@ def collect_info(settings: Settings) -> StatusInfo:
 
     state = load_state(settings.state_file)
 
-    private_key: Path = Path(settings.ssh_dir) / str(settings.ssh_key)
-    ssh_user: str = str(settings.ssh_user)
-    ssh_port: int = int(settings.ssh_port)
-
-    ssh_kw: SSHKwargs = {
-        "private_key": private_key,
-        "ssh_user": ssh_user,
-        "ssh_port": ssh_port,
-    }
-
+    ssh_kw = get_ssh_kw(settings)
     wait_for_ssh(**ssh_kw, silent=True)
 
     uptime = ssh_exec(cmd="uptime", **ssh_kw)
 
-    disk_free: str | None = None
-    disk_total: str | None = None
-    disk = ssh_exec(cmd="df -h /", **ssh_kw)
-    if disk:
-        parts = disk.splitlines()[-1].split()
-        if len(parts) >= 4:
-            disk_free, disk_total = parts[3], parts[1]
-
-    mem_total: float | None = None
-    mem_usable: float | None = None
-    mem = ssh_exec(cmd="sysctl -n hw.physmem hw.usermem", **ssh_kw)
-    if mem:
-        lines = mem.splitlines()
-        if len(lines) == 2:
-            mem_total = int(lines[0]) / (1024**3)
-            mem_usable = int(lines[1]) / (1024**3)
-
-    raw = ssh_exec(cmd="bastille list -j", **ssh_kw)
-    bastille_jails: list[dict[str, str]] = []
-    if raw and raw != "[]":
-        with contextlib.suppress(json.JSONDecodeError, TypeError):
-            bastille_jails = loads(raw)
+    disk_stats = get_disk_stats(**ssh_kw)
+    mem_stats = get_mem_stats(**ssh_kw)
 
     managed_names = set(state.jails.keys())
-    bastille_names = {j.get("Name") for j in bastille_jails}
+
+    bastille_jails = get_bastille_jails(**ssh_kw)
 
     jail_rows: list[JailRow] = []
-    for j in sorted(bastille_jails, key=lambda x: x.get("Name", "")):
-        name = j.get("Name", "?")
-        st = j.get("State", "?")
-        ip = j.get("IP Address", "-")
-        managed = name in managed_names
+
+    for j in bastille_jails:
+        j_name = j["name"]
+        j_state = j["state"]
+        j_ip = j["ip"]
+
+        managed = j_name in managed_names
 
         if managed:
-            jail_state = state.jails[name]
+            jail_state = state.jails[j_name]
             ports = ", ".join(f"{f.proto}/{f.host}→{f.jail}" for f in jail_state.forwards.values())
             mounts = ", ".join(f"{short_path(m.host)} → {m.jail}" for m in jail_state.mounts.values())
         else:
@@ -117,14 +161,16 @@ def collect_info(settings: Settings) -> StatusInfo:
 
         jail_rows.append(
             JailRow(
-                name=name,
-                state=st,
-                ip=ip,
+                name=j_name,
+                state=j_state,
+                ip=j_ip,
                 managed=managed,
                 ports=ports,
                 mounts=mounts,
             )
         )
+
+    bastille_names = {j["name"] for j in bastille_jails}
 
     for name in sorted(managed_names - bastille_names):
         jail = state.jails[name]
@@ -145,10 +191,10 @@ def collect_info(settings: Settings) -> StatusInfo:
     return StatusInfo(
         pid=int(pid),
         uptime=uptime,
-        disk_free=disk_free,
-        disk_total=disk_total,
-        mem_total=mem_total,
-        mem_usable=mem_usable,
+        disk_free=disk_stats["disk_free"],
+        disk_total=disk_stats["disk_total"],
+        mem_total=mem_stats["mem_total"],
+        mem_usable=mem_stats["mem_usable"],
         jail_rows=jail_rows,
     )
 

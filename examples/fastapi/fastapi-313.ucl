@@ -1,6 +1,6 @@
 jail "fastapi-313" {
   setup {
-    fastapi { type = "ansible"; file = "fastapi-313.yml"; }
+    fastapi { type = "ansible"; file = "examples/fastapi/fastapi-313.yml"; }
   }
   forward {
     http { host = 8088; jail = 8000; }

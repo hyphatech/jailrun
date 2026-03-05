@@ -15,7 +15,7 @@ from jailrun.qemu import QemuMode, launch_vm, prepare_disk, vm_is_running
 from jailrun.remote import fetch_remote_playbook
 from jailrun.schemas import LocalSetupStep, RemoteSetupStep
 from jailrun.settings import Settings
-from jailrun.ssh import wait_for_ssh
+from jailrun.ssh import get_ssh_kw, wait_for_ssh
 
 
 def start_vm(
@@ -42,11 +42,8 @@ def start_vm(
     snapshot_qemu_wiring(state=new_state, default_ssh_port=settings.ssh_port)
     save_state(state=new_state, state_file=settings.state_file)
 
-    wait_for_ssh(
-        private_key=settings.ssh_dir / settings.ssh_key,
-        ssh_user=settings.ssh_user,
-        ssh_port=settings.ssh_port,
-    )
+    ssh_kw = get_ssh_kw(settings)
+    wait_for_ssh(**ssh_kw)
 
     if needs_base:
         run_playbook("base.yml", settings=settings)

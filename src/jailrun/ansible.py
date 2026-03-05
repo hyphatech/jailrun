@@ -10,7 +10,7 @@ from jailrun import PACKAGE_DIR
 from jailrun.schemas import Plan
 from jailrun.serializers import dumps
 from jailrun.settings import Settings
-from jailrun.ssh import proxy_cmd
+from jailrun.ssh import get_ssh_kw, proxy_cmd
 
 
 def resolve_playbook_path(playbook: str | Path) -> Path:
@@ -48,21 +48,19 @@ def run_playbook(
     env = os.environ.copy()
     env["ANSIBLE_HOST_KEY_CHECKING"] = "False"
 
+    ssh_kw = get_ssh_kw(settings)
+
     ev = {
         "ansible_host": "127.0.0.1",
-        "ansible_port": settings.ssh_port,
-        "ansible_user": settings.ssh_user,
+        "ansible_port": ssh_kw["ssh_port"],
+        "ansible_user": ssh_kw["ssh_user"],
         "ansible_python_interpreter": "/usr/local/bin/python3.13",
         "bsd_version": settings.bsd_version,
         "bsd_release_tag": settings.bsd_release_tag,
     }
 
     if jail_name and jail_ip:
-        proxy = proxy_cmd(
-            private_key=settings.ssh_dir / settings.ssh_key,
-            ssh_user=settings.ssh_user,
-            ssh_port=settings.ssh_port,
-        )
+        proxy = proxy_cmd(private_key=ssh_kw["private_key"], ssh_user=ssh_kw["ssh_user"], ssh_port=ssh_kw["ssh_port"])
         ssh_args = [
             "-o StrictHostKeyChecking=no",
             "-o UserKnownHostsFile=/dev/null",
@@ -88,7 +86,7 @@ def run_playbook(
         "ssh",
         str(playbook),
         "--private-key",
-        str(settings.ssh_dir / settings.ssh_key),
+        str(ssh_kw["private_key"]),
     ]
     cmd += ["-e", dumps(ev)]
 

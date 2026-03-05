@@ -1,10 +1,12 @@
 import subprocess
 from pathlib import Path
+from typing import TypedDict
 
 import typer
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_fixed
 
 from jailrun.schemas import State
+from jailrun.settings import Settings
 
 SWEEP_START = "10.17.89.10"
 SWEEP_END = "10.17.89.250"
@@ -17,6 +19,24 @@ SSH_OPTS = [
     "-o",
     "LogLevel=ERROR",
 ]
+
+
+class SSHKwargs(TypedDict):
+    private_key: Path
+    ssh_user: str
+    ssh_port: int
+
+
+def get_ssh_kw(settings: Settings) -> SSHKwargs:
+    private_key: Path = Path(settings.ssh_dir) / str(settings.ssh_key)
+    ssh_user: str = str(settings.ssh_user)
+    ssh_port: int = int(settings.ssh_port)
+
+    return {
+        "private_key": private_key,
+        "ssh_user": ssh_user,
+        "ssh_port": ssh_port,
+    }
 
 
 def ensure_vm_key(private_key: Path, public_key: Path) -> str:

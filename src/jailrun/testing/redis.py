@@ -5,7 +5,7 @@ from typing import Self
 import redis
 
 from jailrun.settings import Settings
-from jailrun.ssh import jail_ssh_exec
+from jailrun.ssh import get_ssh_kw, jail_ssh_exec
 from jailrun.testing.commons import Jail
 
 
@@ -26,9 +26,7 @@ class RedisJail(Jail):
         result = jail_ssh_exec(
             "redis-cli ping",
             jail_ip=self._jail_ip,
-            private_key=self._settings.ssh_dir / self._settings.ssh_key,
-            ssh_user=self._settings.ssh_user,
-            ssh_port=self._settings.ssh_port,
+            **get_ssh_kw(self._settings),
         )
         return result is not None and "PONG" in result
 

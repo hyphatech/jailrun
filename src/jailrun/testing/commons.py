@@ -5,10 +5,12 @@ from typing import Self
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_fixed
 
 from jailrun.cmd import up
+from jailrun.cmd.status import get_bastille_jails
 from jailrun.config import load_state
 from jailrun.qemu import vm_is_running
 from jailrun.settings import Settings
 from jailrun.settings import settings as default_settings
+from jailrun.ssh import get_ssh_kw, wait_for_ssh
 
 
 class Jail:
@@ -40,8 +42,19 @@ class Jail:
         if not alive:
             raise RuntimeError("VM is not running. Run 'jrun start' first.")
 
-        up(config=self._config, base=self._base, settings=self._settings, names=[jail])
         state = load_state(self._settings.state_file)
+
+        ssh_kw = get_ssh_kw(self._settings)
+        wait_for_ssh(**ssh_kw, silent=True)
+
+        bastille_jails = get_bastille_jails(**ssh_kw)
+
+        grouped_bastille_jails = {j["name"]: j for j in bastille_jails}
+        bastille_jail = grouped_bastille_jails.get(jail)
+
+        if (jail not in state.jails) or (bastille_jail is None) or (bastille_jail["state"].upper() != "UP"):
+            up(config=self._config, base=self._base, settings=self._settings, names=[jail])
+            state = load_state(self._settings.state_file)
 
         ip = state.jails[jail].ip
         if not ip:

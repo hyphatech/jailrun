@@ -3,7 +3,7 @@ from types import TracebackType
 from typing import Self
 
 from jailrun.settings import Settings
-from jailrun.ssh import jail_ssh_exec
+from jailrun.ssh import get_ssh_kw, jail_ssh_exec
 from jailrun.testing.commons import Jail
 
 
@@ -28,9 +28,7 @@ class PostgresJail(Jail):
         result = jail_ssh_exec(
             f"su -m {self.user} -c 'psql -c \"SELECT 1\"'",
             jail_ip=self._jail_ip,
-            private_key=self._settings.ssh_dir / self._settings.ssh_key,
-            ssh_user=self._settings.ssh_user,
-            ssh_port=self._settings.ssh_port,
+            **get_ssh_kw(self._settings),
         )
         return result is not None
 
@@ -38,16 +36,12 @@ class PostgresJail(Jail):
         jail_ssh_exec(
             f"su -m {self.user} -c 'psql -c \"DROP DATABASE IF EXISTS {self.dbname}\"'",
             jail_ip=self._jail_ip,
-            private_key=self._settings.ssh_dir / self._settings.ssh_key,
-            ssh_user=self._settings.ssh_user,
-            ssh_port=self._settings.ssh_port,
+            **get_ssh_kw(self._settings),
         )
         jail_ssh_exec(
             f"su -m {self.user} -c 'psql -c \"CREATE DATABASE {self.dbname}\"'",
             jail_ip=self._jail_ip,
-            private_key=self._settings.ssh_dir / self._settings.ssh_key,
-            ssh_user=self._settings.ssh_user,
-            ssh_port=self._settings.ssh_port,
+            **get_ssh_kw(self._settings),
         )
         return self
 
@@ -60,7 +54,5 @@ class PostgresJail(Jail):
         jail_ssh_exec(
             f"su -m {self.user} -c 'psql -c \"DROP DATABASE IF EXISTS {self.dbname}\"'",
             jail_ip=self._jail_ip,
-            private_key=self._settings.ssh_dir / self._settings.ssh_key,
-            ssh_user=self._settings.ssh_user,
-            ssh_port=self._settings.ssh_port,
+            **get_ssh_kw(self._settings),
         )

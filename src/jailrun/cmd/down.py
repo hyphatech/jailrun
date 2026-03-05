@@ -11,7 +11,7 @@ from jailrun.config import (
 )
 from jailrun.qemu import vm_is_running
 from jailrun.settings import Settings
-from jailrun.ssh import wait_for_ssh
+from jailrun.ssh import get_ssh_kw, wait_for_ssh
 
 
 def down(config: Path, *, settings: Settings, names: list[str] | None = None) -> None:
@@ -30,6 +30,8 @@ def down(config: Path, *, settings: Settings, names: list[str] | None = None) ->
         typer.secho("VM is not running. Run 'jrun start' first.", fg=typer.colors.YELLOW)
         raise typer.Exit(1)
 
+    typer.confirm(f"This will delete {', '.join(targets)}. Continue?", abort=True)
+
     old_state = load_state(settings.state_file)
     new_state = old_state.model_copy(deep=True)
 
@@ -47,10 +49,9 @@ def down(config: Path, *, settings: Settings, names: list[str] | None = None) ->
 
     plan = derive_plan(old_state, new_state)
 
+    ssh_kw = get_ssh_kw(settings)
     wait_for_ssh(
-        private_key=settings.ssh_dir / settings.ssh_key,
-        ssh_user=settings.ssh_user,
-        ssh_port=settings.ssh_port,
+        **ssh_kw,
         silent=True,
     )
 

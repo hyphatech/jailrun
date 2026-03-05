@@ -9,7 +9,7 @@
       ansible.builtin.command: "bastille rdr {{ item.name }} reset"
       loop: "{{ jails | default([]) }}"
       failed_when: false
-      changed_when: true
+      changed_when: false
 
     - name: Add rdr rules
       ansible.builtin.command: >
