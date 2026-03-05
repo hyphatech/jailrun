@@ -64,7 +64,7 @@ def test_build_share_args_two_shares(tmp_path: Path) -> None:
 def test_build_qemu_cmd_minimal_state_no_shares_or_fwds(settings: Settings) -> None:
     state = State()
 
-    cmd = qemu.build_qemu_cmd(state, settings=settings, foreground=False)
+    cmd = qemu.build_qemu_cmd(state, mode=qemu.QemuMode.SERVER, settings=settings)
     features = qemu.detect_qemu_features()
 
     assert cmd[0] == f"qemu-system-{features.arch}"
@@ -79,7 +79,7 @@ def test_build_qemu_cmd_minimal_state_no_shares_or_fwds(settings: Settings) -> N
 def test_build_qemu_cmd_foreground_adds_serial_and_nographic(settings: Settings) -> None:
     state = State()
 
-    cmd = qemu.build_qemu_cmd(state, settings=settings, foreground=True)
+    cmd = qemu.build_qemu_cmd(state, mode=qemu.QemuMode.TTY, settings=settings)
 
     assert "-nographic" in cmd
     assert "-serial" in cmd

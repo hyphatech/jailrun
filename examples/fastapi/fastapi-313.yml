@@ -8,9 +8,11 @@
 
   tasks:
     - name: Install build dependencies
-      ansible.builtin.command: >
-        pkg install -y rust uv
-      changed_when: true
+      ansible.builtin.package:
+        name:
+          - rust
+          - uv
+        state: present
 
     - name: Export requirements 
       ansible.builtin.command: >

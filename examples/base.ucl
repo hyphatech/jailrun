@@ -1,5 +1,4 @@
 base {
-  target = "qemu";
   mount {
     src { host = "."; target = "/home/admin/workspace"; }
   }

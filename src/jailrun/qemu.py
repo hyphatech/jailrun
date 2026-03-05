@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 
 import typer
@@ -24,6 +25,13 @@ class QemuFeatures:
     accel: str
     bios: str
     virtio_suffix: str
+    display: str
+
+
+class QemuMode(StrEnum):
+    SERVER = "server"
+    TTY = "tty"
+    GRAPHIC = "graphic"
 
 
 def detect_qemu_features() -> QemuFeatures:
@@ -38,6 +46,7 @@ def detect_qemu_features() -> QemuFeatures:
                 accel="hvf",
                 bios="edk2-aarch64-code.fd",
                 virtio_suffix="device",
+                display="cocoa",
             )
         return QemuFeatures(
             arch="x86_64",
@@ -45,6 +54,7 @@ def detect_qemu_features() -> QemuFeatures:
             accel="hvf",
             bios="/usr/local/share/qemu/edk2-x86_64-code.fd",
             virtio_suffix="pci",
+            display="cocoa",
         )
 
     if machine == "aarch64":
@@ -54,6 +64,7 @@ def detect_qemu_features() -> QemuFeatures:
             accel="kvm",
             bios="/usr/share/AAVMF/AAVMF_CODE.fd",
             virtio_suffix="device",
+            display="gtk",
         )
 
     return QemuFeatures(
@@ -62,6 +73,7 @@ def detect_qemu_features() -> QemuFeatures:
         accel="kvm",
         bios="/usr/share/OVMF/OVMF_CODE.fd",
         virtio_suffix="pci",
+        display="gtk",
     )
 
 
@@ -102,7 +114,7 @@ def disk_size_bytes(path: Path) -> int:
     return int(loads(out.stdout)["virtual-size"])
 
 
-def build_qemu_cmd(state: State, *, settings: Settings, foreground: bool = False) -> list[str]:
+def build_qemu_cmd(state: State, *, settings: Settings, mode: QemuMode) -> list[str]:
     image_xz = Path(str(settings.bsd_image_url)).name
     disk_path = settings.disk_dir / Path(image_xz).with_suffix("")
     cloud_iso = settings.cloud_dir / "cloud-init.iso"
@@ -136,18 +148,38 @@ def build_qemu_cmd(state: State, *, settings: Settings, foreground: bool = False
         *share_args,
     ]
 
-    if foreground:
-        cmd += ["-nographic", "-serial", "mon:stdio"]
-    else:
-        cmd += ["-display", "none"]
+    if mode == QemuMode.SERVER:
+        cmd.extend(["-display", "none"])
+    if mode == QemuMode.TTY:
+        cmd.extend(["-nographic", "-serial", "mon:stdio"])
+    if mode == QemuMode.GRAPHIC:
+        cmd.extend(
+            [
+                "-display",
+                features.display,
+                "-device",
+                "ramfb",
+                "-device",
+                "qemu-xhci",
+                "-device",
+                "usb-kbd",
+                "-device",
+                "usb-tablet",
+            ]
+        )
 
     return cmd
 
 
-def launch_vm(state: State, *, settings: Settings) -> int:
-    cmd = build_qemu_cmd(state=state, settings=settings)
-    log_file = settings.log_dir / "qemu.log"
+def launch_vm(state: State, *, mode: QemuMode, settings: Settings) -> int | None:
+    cmd = build_qemu_cmd(state=state, mode=mode, settings=settings)
+    if mode in {QemuMode.TTY, QemuMode.GRAPHIC}:
+        typer.echo("🖥️ Starting VM")
+        settings.pid_file.unlink(missing_ok=True)
+        subprocess.run(cmd, check=False)
+        return None
 
+    log_file = settings.log_dir / "qemu.log"
     typer.echo("🚀 Starting VM in background...")
 
     with open(log_file, "ab") as log:
@@ -160,6 +192,7 @@ def launch_vm(state: State, *, settings: Settings) -> int:
 
     settings.pid_file.write_text(str(proc.pid))
     typer.secho(f"⚡️ VM started (pid {proc.pid})", fg=typer.colors.GREEN)
+
     return proc.pid
 
 

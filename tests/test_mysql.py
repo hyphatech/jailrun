@@ -9,7 +9,7 @@ from jailrun.testing.mysql import MySQLJail
 
 @pytest.fixture
 def mysql() -> Generator[MySQLJail]:
-    with MySQLJail(ROOT_DIR / "examples" / "mysql.ucl", jail="hypha-mysql-test") as my:
+    with MySQLJail(ROOT_DIR / "tests" / "mysql.ucl", jail="hypha-mysql-test") as my:
         yield my
 
 

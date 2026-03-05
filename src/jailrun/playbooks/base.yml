@@ -6,7 +6,12 @@
 
   tasks:
     - name: Install base packages
-      ansible.builtin.command: pkg install -y bastille btop fping
+      ansible.builtin.package:
+        name:
+          - bastille
+          - btop
+          - fping
+        state: present
 
     - name: Load pf module
       command: kldload pf

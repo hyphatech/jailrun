@@ -40,11 +40,8 @@ class Jail:
         if not alive:
             raise RuntimeError("VM is not running. Run 'jrun start' first.")
 
+        up(config=self._config, base=self._base, settings=self._settings, names=[jail])
         state = load_state(self._settings.state_file)
-
-        if jail not in state.jails:
-            up(config=self._config, base=self._base, settings=self._settings)
-            state = load_state(self._settings.state_file)
 
         ip = state.jails[jail].ip
         if not ip:

@@ -3,6 +3,7 @@ from pathlib import Path
 import typer
 
 from jailrun.ansible import run_playbook
+from jailrun.cmd.stop import stop_vm
 from jailrun.config import (
     derive_plan,
     load_base_into_state,
@@ -10,7 +11,7 @@ from jailrun.config import (
     save_state,
     snapshot_qemu_wiring,
 )
-from jailrun.qemu import launch_vm, prepare_disk, vm_is_running
+from jailrun.qemu import QemuMode, launch_vm, prepare_disk, vm_is_running
 from jailrun.remote import fetch_remote_playbook
 from jailrun.schemas import LocalSetupStep, RemoteSetupStep
 from jailrun.settings import Settings
@@ -20,6 +21,7 @@ from jailrun.ssh import wait_for_ssh
 def start_vm(
     base: Path | None,
     *,
+    mode: QemuMode = QemuMode.SERVER,
     settings: Settings,
 ) -> None:
     alive, pid = vm_is_running(settings.pid_file)
@@ -36,8 +38,10 @@ def start_vm(
     if base:
         new_state = load_base_into_state(base, new_state)
 
-    launch_vm(state=new_state, settings=settings)
+    launch_vm(state=new_state, mode=QemuMode.SERVER, settings=settings)
     snapshot_qemu_wiring(state=new_state, default_ssh_port=settings.ssh_port)
+    save_state(state=new_state, state_file=settings.state_file)
+
     wait_for_ssh(
         private_key=settings.ssh_dir / settings.ssh_key,
         ssh_user=settings.ssh_user,
@@ -71,3 +75,8 @@ def start_vm(
         run_playbook("vm-mounts.yml", plan=plan, settings=settings)
 
     save_state(state=new_state, state_file=settings.state_file)
+
+    if mode in {QemuMode.TTY, QemuMode.GRAPHIC}:
+        typer.secho(f"🖥️ Restarting VM in {mode} mode.", fg=typer.colors.YELLOW)
+        stop_vm(settings)
+        launch_vm(state=new_state, mode=mode, settings=settings)

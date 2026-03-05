@@ -45,7 +45,6 @@ def run_playbook(
         typer.secho(f"Missing playbook: {playbook}", fg=typer.colors.RED)
         raise typer.Exit(1)
 
-    private_key = settings.ssh_dir / settings.ssh_key
     env = os.environ.copy()
     env["ANSIBLE_HOST_KEY_CHECKING"] = "False"
 
@@ -60,7 +59,7 @@ def run_playbook(
 
     if jail_name and jail_ip:
         proxy = proxy_cmd(
-            private_key=private_key,
+            private_key=settings.ssh_dir / settings.ssh_key,
             ssh_user=settings.ssh_user,
             ssh_port=settings.ssh_port,
         )
@@ -89,7 +88,7 @@ def run_playbook(
         "ssh",
         str(playbook),
         "--private-key",
-        str(private_key),
+        str(settings.ssh_dir / settings.ssh_key),
     ]
     cmd += ["-e", dumps(ev)]
 

@@ -9,7 +9,7 @@ from jailrun.testing.mariadb import MariaDBJail
 
 @pytest.fixture
 def mariadb() -> Generator[MariaDBJail]:
-    with MariaDBJail(ROOT_DIR / "examples" / "mariadb.ucl", jail="hypha-mariadb-test") as db:
+    with MariaDBJail(ROOT_DIR / "tests" / "mariadb.ucl", jail="hypha-mariadb-test") as db:
         yield db
 
 

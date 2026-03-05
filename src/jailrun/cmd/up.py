@@ -16,7 +16,7 @@ from jailrun.config import (
     snapshot_qemu_wiring,
     sort_jails,
 )
-from jailrun.qemu import launch_vm, vm_is_running
+from jailrun.qemu import QemuMode, launch_vm, vm_is_running
 from jailrun.remote import fetch_remote_playbook
 from jailrun.schemas import JailPlan, LocalSetupStep, Plan, RemoteSetupStep
 from jailrun.settings import Settings
@@ -27,6 +27,7 @@ def up(
     config: Path,
     *,
     base: Path | None,
+    mode: QemuMode = QemuMode.SERVER,
     settings: Settings,
     names: list[str] | None = None,
 ) -> None:
@@ -70,9 +71,12 @@ def up(
 
     if needs_qemu_restart(old_state=old_state, new_state=new_state, default_ssh_port=settings.ssh_port):
         typer.secho("👉 QEMU wiring changed: restarting VM...", fg=typer.colors.YELLOW)
+
         stop_vm(settings)
-        launch_vm(state=new_state, settings=settings)
+
+        launch_vm(state=new_state, mode=QemuMode.SERVER, settings=settings)
         snapshot_qemu_wiring(state=new_state, default_ssh_port=settings.ssh_port)
+        save_state(state=new_state, state_file=settings.state_file)
 
     wait_for_ssh(
         private_key=settings.ssh_dir / settings.ssh_key,
@@ -80,13 +84,16 @@ def up(
         ssh_port=settings.ssh_port,
     )
 
-    resolve_jail_ips(
-        old_state=old_state,
-        new_state=new_state,
-        private_key=settings.ssh_dir / settings.ssh_key,
-        ssh_user=settings.ssh_user,
-        ssh_port=settings.ssh_port,
-    )
+    try:
+        resolve_jail_ips(
+            old_state=old_state,
+            new_state=new_state,
+            private_key=settings.ssh_dir / settings.ssh_key,
+            ssh_user=settings.ssh_user,
+            ssh_port=settings.ssh_port,
+        )
+    finally:
+        save_state(state=new_state, state_file=settings.state_file)
 
     plan = derive_plan(old_state, new_state)
 
@@ -152,7 +159,10 @@ def up(
 
     run_playbook("jail-hosts.yml", plan=plan, settings=settings)
 
-    save_state(state=new_state, state_file=settings.state_file)
-
     deployed = ", ".join(jail_order)
     typer.secho(f"✅ Deploy complete ({deployed}).", fg=typer.colors.GREEN)
+
+    if mode in {QemuMode.TTY, QemuMode.GRAPHIC}:
+        typer.secho(f"🖥️ Restarting VM in {mode} mode.", fg=typer.colors.YELLOW)
+        stop_vm(settings)
+        launch_vm(state=new_state, mode=mode, settings=settings)

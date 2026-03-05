@@ -66,21 +66,13 @@ One command gives you a complete FreeBSD system:
 jrun start
 ```
 
-That's it. jrun downloads a FreeBSD image (only on first run), boots the VM, and sets up SSH access.
+That's it. On first run, jrun downloads a FreeBSD image, boots the VM, and sets up SSH.
 
-Drop into it:
+After provisioning, connect:
 
 ```bash
 jrun ssh
 ```
-
-Or boot the VM in the foreground with your terminal as the console — useful for debugging and exploring:
-
-```bash
-jrun console
-```
-
-Log in as `root` (no password). When you're done, shut down cleanly with `shutdown -p now`.
 
 ## Your first jail
 
@@ -275,14 +267,6 @@ This stops the jail and its supervised processes but leaves the state, mounts, a
 jrun pause stack.ucl hypha-postgres
 ```
 
-To stop and redeploy in one go:
-
-```bash
-jrun restart stack.ucl fastapi-314
-```
-
-This is equivalent to `jrun pause` followed by `jrun up` — useful when you've changed config and want a clean restart.
-
 To tear down specific jails:
 
 ```bash
@@ -360,13 +344,10 @@ def test_set_and_get(redis_jail: RedisJail) -> None:
 | `jrun stop` | Shut down the VM gracefully |
 | `jrun ssh` | SSH into the VM |
 | `jrun ssh <name>` | SSH directly into a jail |
-| `jrun console` | Boot the VM in foreground with serial console (VM must be stopped) |
 | `jrun up <config>` | Create or update all jails in a config |
 | `jrun up <config> <name...>` | Deploy specific jails (dependencies included automatically) |
 | `jrun pause <config>` | Stop all jails without destroying them |
 | `jrun pause <config> <name...>` | Stop specific jails |
-| `jrun restart <config>` | Stop and redeploy all jails |
-| `jrun restart <config> <name...>` | Stop and redeploy specific jails |
 | `jrun down <config>` | Destroy all jails in a config |
 | `jrun down <config> <name...>` | Destroy specific jails |
 | `jrun status` | Show VM and jail status |

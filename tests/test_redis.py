@@ -9,7 +9,7 @@ from jailrun.testing.redis import RedisJail
 
 @pytest.fixture
 def redis_jail() -> Generator[RedisJail]:
-    with RedisJail(ROOT_DIR / "examples" / "redis.ucl", jail="hypha-redis-test") as r:
+    with RedisJail(ROOT_DIR / "tests" / "redis.ucl", jail="hypha-redis-test") as r:
         yield r
 
 

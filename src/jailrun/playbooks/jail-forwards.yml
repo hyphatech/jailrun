@@ -6,8 +6,8 @@
 
   tasks:
     - name: Clear rdr rules
-      ansible.builtin.command: "bastille rdr {{ item.jail }} reset"
-      loop: "{{ jail_rdrs | default([]) }}"
+      ansible.builtin.command: "bastille rdr {{ item.name }} reset"
+      loop: "{{ jails | default([]) }}"
       failed_when: false
       changed_when: true
 

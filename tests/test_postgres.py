@@ -9,7 +9,7 @@ from jailrun.testing.postgres import PostgresJail
 
 @pytest.fixture
 def postgres() -> Generator[PostgresJail]:
-    with PostgresJail(ROOT_DIR / "examples" / "postgres.ucl", jail="hypha-postgres-test") as pg:
+    with PostgresJail(ROOT_DIR / "tests" / "postgres.ucl", jail="hypha-postgres-test") as pg:
         yield pg
 
 

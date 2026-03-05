@@ -1,6 +1,6 @@
 jail "hypha-python-314" {
   setup {
-    python { type = "ansible"; file = "examples/python-314.yml"; }
+    python { type = "ansible"; file = "python-314.yml"; }
   }
 }
 
@@ -19,7 +19,7 @@ jail "fastapi-314" {
   depends ["hypha-postgres"]
 
   setup {
-    fastapi { type = "ansible"; file = "examples/fastapi-314.yml"; }
+    fastapi { type = "ansible"; file = "fastapi-314.yml"; }
   }
   forward {
     http { host = 8080; jail = 8000; }

@@ -8,6 +8,7 @@ from typer.core import TyperGroup
 
 from jailrun import cmd
 from jailrun.misc import exclusive
+from jailrun.qemu import QemuMode
 from jailrun.settings import settings
 
 ASCII_BANNER = r"""
@@ -37,9 +38,10 @@ app = typer.Typer(
 @exclusive(settings.state_file)
 def start(
     base: Path | None = typer.Option(None, "--base", "-b", help="Path to base.ucl"),
+    mode: QemuMode = typer.Option(QemuMode.SERVER, "--mode", "-m", help="VM mode"),
 ) -> None:
     """Boot the VM, applying base config if provided."""
-    cmd.start_vm(base=base, settings=settings)
+    cmd.start_vm(base=base, settings=settings, mode=mode)
 
 
 @app.command()
@@ -47,16 +49,6 @@ def start(
 def stop() -> None:
     """Gracefully shut down the VM."""
     cmd.stop_vm(settings)
-
-
-@app.command()
-def console() -> None:
-    """Attach an interactive serial console to the VM.
-
-    The VM must be stopped first — this boots it in the foreground with
-    output wired to your terminal. Useful for debugging boot issues.
-    """
-    cmd.console(settings)
 
 
 @app.command()
@@ -73,9 +65,10 @@ def up(
     config: Path = typer.Argument(..., help="Path to jail config (.ucl)"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all in config)"),
     base: Path | None = typer.Option(None, "--base", "-b", help="Path to base.ucl"),
+    mode: QemuMode = typer.Option(QemuMode.SERVER, "--mode", "-m", help="VM mode"),
 ) -> None:
     """Create or update jails from a config file."""
-    cmd.up(config=config, base=base, names=names, settings=settings)
+    cmd.up(config=config, base=base, mode=mode, names=names, settings=settings)
 
 
 @app.command()
@@ -96,17 +89,6 @@ def pause(
 ) -> None:
     """Stop jails without destroying them."""
     cmd.pause(config=config, names=names, settings=settings)
-
-
-@app.command()
-@exclusive(settings.state_file)
-def restart(
-    config: Path = typer.Argument(..., help="Path to jail config (.ucl)"),
-    names: list[str] | None = typer.Argument(None, help="Jail names (default: all in config)"),
-    base: Path | None = typer.Option(None, "--base", "-b", help="Path to base.ucl"),
-) -> None:
-    """Restart and redeploy jails."""
-    cmd.restart(config=config, base=base, names=names, settings=settings)
 
 
 @app.command()
