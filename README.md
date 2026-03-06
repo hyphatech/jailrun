@@ -73,6 +73,11 @@ After provisioning, connect:
 jrun ssh
 ```
 
+Prefer an interactive experience? Run `jrun` with no arguments to enter the shell — guided wizards, autocomplete, and command history all included.
+```bash
+jrun
+```
+
 ## Your first jail
 
 Jails are defined in config files using [UCL](https://github.com/vstakhov/libucl) — a clean, human-friendly format similar to JSON.
@@ -194,18 +199,16 @@ Check on everything:
 ```bash
 $ jrun status
 
-  VM        running (pid 61518)
-  Uptime    5:51PM  up 16 mins, 0 users, load averages: 0.96, 1.01, 0.93
-  Disk      7.5G free of 10G
-  Memory    4.0G total, 1.6G usable
+  ● VM  running  pid 15604
 
-┏━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Name             ┃ State ┃ IP          ┃ Ports         ┃ Mounts                         ┃
-┡━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ fastapi-314      │ Up    │ 10.17.89.14 │ tcp/8080→8000 │ …/jrun/examples → /srv/app     │
-│ hypha-postgres   │ Up    │ 10.17.89.13 │ tcp/6432→5432 │ n/a                            │
-│ hypha-python-314 │ Up    │ 10.17.89.12 │ n/a           │ n/a                            │
-└──────────────────┴───────┴─────────────┴───────────────┴────────────────────────────────┘
+  uptime     7:10PM  up 15 mins, 0 users, load averages: 1.04, 0.91, 0.85
+  disk       9.9G free of 13G
+  memory     2.0 GB usable / 4.0 GB total
+
+  name                  state   ip            ports           mounts
+  fastapi-314           up      10.17.89.15   tcp/8080→8000   …/examples/fastapi → /srv/app
+  hypha-postgres        up      10.17.89.14   tcp/6432→5432   —
+  hypha-python-314      up      10.17.89.13   —               —
 ```
 
 Drop into any jail to debug or inspect:
