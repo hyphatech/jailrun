@@ -4,8 +4,6 @@
 
 # jrun
 
-Run fully isolated environments on your machine, powered by FreeBSD.
-
 jrun boots a [FreeBSD](https://www.freebsd.org/) VM on your machine and runs lightweight, isolated environments called jails inside it — each with its own filesystem, network, and processes. Define your apps and jrun handles the rest.
 
 <p align="center">

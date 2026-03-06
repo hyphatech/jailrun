@@ -11,6 +11,7 @@ from jailrun.schemas import Plan
 from jailrun.serializers import dumps
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw, proxy_cmd
+from jailrun.ui import err, info, ok
 
 
 def resolve_playbook_path(playbook: str | Path) -> Path:
@@ -42,7 +43,7 @@ def run_playbook(
 ) -> None:
     playbook = resolve_playbook_path(name)
     if not playbook.exists():
-        typer.secho(f"Missing playbook: {playbook}", fg=typer.colors.RED)
+        err(f"Missing playbook: {playbook}")
         raise typer.Exit(1)
 
     env = os.environ.copy()
@@ -95,10 +96,10 @@ def run_playbook(
             f.write(plan.model_dump_json(indent=2))
             f.flush()
             cmd += ["-e", f"@{f.name}"]
-            typer.echo(f"🧩 Running playbook {name}...")
+            info(f"Running playbook {name}...")
             subprocess.run(cmd, check=True, env=env)
     else:
-        typer.echo(f"🧩 Running playbook {name}...")
+        info(f"Running playbook {name}...")
         subprocess.run(cmd, check=True, env=env)
 
-    typer.secho(f"✅ Playbook {name} complete.", fg=typer.colors.GREEN)
+    ok(f"Playbook {name} complete.")

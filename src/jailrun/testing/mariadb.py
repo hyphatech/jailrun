@@ -11,7 +11,7 @@ class MariaDBJail(Jail):
     def __init__(
         self,
         config: Path,
-        jail: str = "hypha-mariadb",
+        jail: str = "hypha-mariadb-test",
         *,
         user: str = "test",
         password: str = "test",

@@ -13,7 +13,7 @@ class InfluxJail(Jail):
     def __init__(
         self,
         config: Path,
-        jail: str = "hypha-influx",
+        jail: str = "hypha-influx-test",
         *,
         port: int = 9086,
         base: Path | None = None,

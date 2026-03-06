@@ -13,9 +13,9 @@ class RedisJail(Jail):
     def __init__(
         self,
         config: Path,
-        jail: str = "hypha-redis",
+        jail: str = "hypha-redis-test",
         *,
-        port: int = 6379,
+        port: int = 7379,
         base: Path | None = None,
         settings: Settings | None = None,
     ) -> None:

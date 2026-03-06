@@ -11,7 +11,7 @@ class PostgresJail(Jail):
     def __init__(
         self,
         config: Path,
-        jail: str = "hypha-postgres",
+        jail: str = "hypha-postgres-test",
         *,
         user: str = "postgres",
         dbname: str = "testdb",

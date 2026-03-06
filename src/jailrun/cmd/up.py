@@ -21,6 +21,7 @@ from jailrun.remote import fetch_remote_playbook
 from jailrun.schemas import JailPlan, LocalSetupStep, Plan, RemoteSetupStep
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw, resolve_jail_ips, wait_for_ssh
+from jailrun.ui import err, info, ok, warn
 
 
 def up(
@@ -33,23 +34,20 @@ def up(
 ) -> None:
     alive, _ = vm_is_running(settings.pid_file)
     if not alive:
-        typer.secho("VM is not running. Run 'jrun start' first.", fg=typer.colors.RED)
+        err("VM is not running. Run 'jrun start' first.")
         raise typer.Exit(1)
 
     cfg = parse_config(config)
 
     if not cfg.jail:
-        typer.secho("No jails defined in config.", fg=typer.colors.YELLOW)
+        warn("No jails defined in config.")
         raise typer.Exit(1)
 
     targets = set(names) if names else set(cfg.jail.keys())
     unknown = targets - set(cfg.jail.keys())
 
     if unknown:
-        typer.secho(
-            f"Not in config: {', '.join(sorted(unknown))}",
-            fg=typer.colors.RED,
-        )
+        err(f"Not in config: {', '.join(sorted(unknown))}")
         raise typer.Exit(1)
 
     targets = resolve_jail_dependencies(targets, cfg.jail)
@@ -69,10 +67,8 @@ def up(
         )
 
     if needs_qemu_restart(old_state=old_state, new_state=new_state, default_ssh_port=settings.ssh_port):
-        typer.secho("👉 QEMU wiring changed: restarting VM...", fg=typer.colors.YELLOW)
-
+        warn("QEMU wiring changed — restarting VM…")
         stop_vm(settings)
-
         launch_vm(state=new_state, mode=QemuMode.SERVER, settings=settings)
         snapshot_qemu_wiring(state=new_state, default_ssh_port=settings.ssh_port)
         save_state(state=new_state, state_file=settings.state_file)
@@ -150,10 +146,9 @@ def up(
     if plan.execs:
         run_playbook("jail-monit.yml", plan=plan, settings=settings)
 
-    deployed = ", ".join(jail_order)
-    typer.secho(f"✅ Deploy complete ({deployed}).", fg=typer.colors.GREEN)
+    ok(f"Deploy complete ({', '.join(jail_order)}).")
 
     if mode in {QemuMode.TTY, QemuMode.GRAPHIC}:
-        typer.secho(f"🖥️ Restarting VM in {mode} mode.", fg=typer.colors.YELLOW)
+        info(f"Restarting VM in {mode} mode.")
         stop_vm(settings)
         launch_vm(state=new_state, mode=mode, settings=settings)

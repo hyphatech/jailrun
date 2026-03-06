@@ -16,6 +16,7 @@ from jailrun.remote import fetch_remote_playbook
 from jailrun.schemas import LocalSetupStep, RemoteSetupStep
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw, wait_for_ssh
+from jailrun.ui import info, warn
 
 
 def start_vm(
@@ -26,7 +27,7 @@ def start_vm(
 ) -> None:
     alive, pid = vm_is_running(settings.pid_file)
     if alive:
-        typer.secho(f"VM is already running (pid {pid})", fg=typer.colors.YELLOW)
+        warn(f"VM is already running (pid {pid}).")
         raise typer.Exit(0)
 
     prepare_disk(settings)
@@ -73,6 +74,6 @@ def start_vm(
     save_state(state=new_state, state_file=settings.state_file)
 
     if mode in {QemuMode.TTY, QemuMode.GRAPHIC}:
-        typer.secho(f"🖥️ Restarting VM in {mode} mode.", fg=typer.colors.YELLOW)
+        info(f"Restarting VM in {mode} mode.")
         stop_vm(settings)
         launch_vm(state=new_state, mode=mode, settings=settings)

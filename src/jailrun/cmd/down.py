@@ -12,6 +12,7 @@ from jailrun.config import (
 from jailrun.qemu import vm_is_running
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw, wait_for_ssh
+from jailrun.ui import err, ok, warn
 
 
 def down(config: Path, *, settings: Settings, names: list[str] | None = None) -> None:
@@ -20,17 +21,12 @@ def down(config: Path, *, settings: Settings, names: list[str] | None = None) ->
 
     unknown = targets - set(cfg.jail.keys())
     if unknown:
-        typer.secho(
-            f"Not in config: {', '.join(sorted(unknown))}",
-            fg=typer.colors.YELLOW,
-        )
+        warn(f"Not in config: {', '.join(sorted(unknown))}")
 
     alive, _ = vm_is_running(settings.pid_file)
     if not alive:
-        typer.secho("VM is not running. Run 'jrun start' first.", fg=typer.colors.YELLOW)
+        err("VM is not running. Run 'jrun start' first.")
         raise typer.Exit(1)
-
-    typer.confirm(f"This will delete {', '.join(targets)}. Continue?", abort=True)
 
     old_state = load_state(settings.state_file)
     new_state = old_state.model_copy(deep=True)
@@ -41,19 +37,16 @@ def down(config: Path, *, settings: Settings, names: list[str] | None = None) ->
             del new_state.jails[name]
             removed.append(name)
         else:
-            typer.secho(f"Jail '{name}' not in state, skipping.", fg=typer.colors.YELLOW)
+            warn(f"Jail '{name}' not in state — skipping.")
 
     if not removed:
-        typer.secho("No matching jails found in state.", fg=typer.colors.YELLOW)
+        warn("No matching jails found in state.")
         return
 
     plan = derive_plan(old_state, new_state)
 
     ssh_kw = get_ssh_kw(settings)
-    wait_for_ssh(
-        **ssh_kw,
-        silent=True,
-    )
+    wait_for_ssh(**ssh_kw, silent=True)
 
     run_playbook("jail-teardown.yml", plan=plan, settings=settings)
     run_playbook("vm-mounts.yml", plan=plan, settings=settings)
@@ -61,7 +54,4 @@ def down(config: Path, *, settings: Settings, names: list[str] | None = None) ->
 
     save_state(state=new_state, state_file=settings.state_file)
 
-    typer.secho(
-        f"✅ Removed: {', '.join(removed)}.",
-        fg=typer.colors.GREEN,
-    )
+    ok(f"Removed: {', '.join(removed)}.")

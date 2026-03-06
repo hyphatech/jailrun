@@ -27,6 +27,7 @@ from jailrun.schemas import (
     State,
 )
 from jailrun.serializers import loads
+from jailrun.ui import err, info
 
 
 def _normalize_host_path(p: str, base: Path) -> str:
@@ -37,15 +38,11 @@ def _normalize_host_path(p: str, base: Path) -> str:
     resolved = pp.resolve(strict=False)
 
     if not resolved.exists():
-        typer.secho(f"Mount host path does not exist: {p} -> {resolved}", fg=typer.colors.RED)
+        err(f"Mount host path does not exist: {p} → {resolved}")
         raise typer.Exit(1)
 
     if resolved.is_file():
-        typer.secho(
-            f"Invalid mount host path (must be a directory for QEMU 9p shares): {p} -> {resolved}\n"
-            "Single-file mounts are not supported. Mount the parent directory and copy/symlink the file in setup.",
-            fg=typer.colors.RED,
-        )
+        err(f"Invalid mount path (must be a directory): {p} → {resolved}")
         raise typer.Exit(1)
 
     return str(pp.resolve())
@@ -99,13 +96,13 @@ def sort_jails(jails: dict[str, JailConfig]) -> list[str]:
     try:
         return list(TopologicalSorter(graph).static_order())
     except CycleError as exc:
-        typer.secho(f"Dependency cycle detected: {exc}", fg=typer.colors.RED)
+        err(f"Dependency cycle detected: {exc}")
         raise typer.Exit(1) from exc
 
 
 def parse_config(config: Path) -> Config:
     if not config.exists():
-        typer.secho(f"Config not found: {config}", fg=typer.colors.RED)
+        err(f"Config not found: {config}")
         raise typer.Exit(1)
 
     raw = ucl.load_file(str(config))
@@ -113,25 +110,19 @@ def parse_config(config: Path) -> Config:
     try:
         cfg = Config.model_validate(raw)
     except ValidationError as exc:
-        typer.secho(f"Invalid config: {exc}", fg=typer.colors.RED)
+        err(f"Invalid config: {exc}")
         raise typer.Exit(1) from exc
 
     jail_names = set(cfg.jail.keys())
 
     for name, jail_cfg in cfg.jail.items():
         if jail_cfg.base and jail_cfg.base.name not in jail_names:
-            typer.secho(
-                f"Jail '{name}' clones from unknown jail '{jail_cfg.base.name}'",
-                fg=typer.colors.RED,
-            )
+            err(f"Jail '{name}' clones from unknown jail '{jail_cfg.base.name}'")
             raise typer.Exit(1)
 
         unknown_deps = [d for d in jail_cfg.depends if d not in jail_names]
         if unknown_deps:
-            typer.secho(
-                f"Jail '{name}' depends on unknown jails: {', '.join(unknown_deps)}",
-                fg=typer.colors.RED,
-            )
+            err(f"Jail '{name}' depends on unknown jails: {', '.join(unknown_deps)}")
             raise typer.Exit(1)
 
     return cfg
@@ -198,10 +189,7 @@ def derive_qemu_fwds(state: State, *, default_ssh_port: int) -> list[QemuFwd]:
     for name, base_fwd in state.base.forwards.items():
         key = (base_fwd.proto, base_fwd.host)
         if key in seen:
-            typer.secho(
-                f"Port conflict: {base_fwd.proto}/{base_fwd.host} claimed by '{seen[key]}' and 'base.forward.{name}'",
-                fg=typer.colors.RED,
-            )
+            err(f"Port conflict: {base_fwd.proto}/{base_fwd.host} claimed by '{seen[key]}' and 'base.forward.{name}'")
             raise typer.Exit(1)
 
         seen[key] = f"base.forward.{name}"
@@ -211,10 +199,7 @@ def derive_qemu_fwds(state: State, *, default_ssh_port: int) -> list[QemuFwd]:
         for fname, jfwd in jail.forwards.items():
             key = (jfwd.proto, jfwd.host)
             if key in seen:
-                typer.secho(
-                    f"Port conflict: {jfwd.proto}/{jfwd.host} claimed by '{seen[key]}' and '{jname}.forward.{fname}'",
-                    fg=typer.colors.RED,
-                )
+                err(f"Port conflict: {jfwd.proto}/{jfwd.host} claimed by '{seen[key]}' and '{jname}.forward.{fname}'")
                 raise typer.Exit(1)
 
             seen[key] = f"{jname}.forward.{fname}"
@@ -329,12 +314,12 @@ def load_base_into_state(base_path: Path | None, state: State) -> State:
         return state
 
     if not base_path.exists():
-        typer.secho(f"Base config not found: {base_path}", fg=typer.colors.RED)
+        err(f"Base config not found: {base_path}")
         raise typer.Exit(1)
 
     parsed = parse_config(base_path)
     if parsed.base:
-        typer.echo(f"📦 Loaded base config from {base_path.name}")
+        info(f"Loaded base config from {base_path.name}")
         config_base = base_path.parent.resolve()
         state.base = resolve_base(parsed.base, config_base)
 

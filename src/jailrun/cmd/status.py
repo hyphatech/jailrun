@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import NotRequired, TypedDict
 
 import typer
-from rich import print as rprint
+from rich.padding import Padding
 from rich.table import Table
+from rich.text import Text
 from rich.tree import Tree
 
 from jailrun.config import load_state
@@ -13,6 +14,7 @@ from jailrun.qemu import vm_is_running
 from jailrun.serializers import loads
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw, ssh_exec, wait_for_ssh
+from jailrun.ui import con
 
 
 class SSHKwargs(TypedDict):
@@ -68,7 +70,12 @@ def get_bastille_jails(private_key: Path, ssh_user: str, ssh_port: int) -> list[
     raw_jails: list[dict[str, str]] = []
     clean_jails: list[RawJail] = []
 
-    bastille_list = ssh_exec(cmd="bastille list -j", private_key=private_key, ssh_user=ssh_user, ssh_port=ssh_port)
+    bastille_list = ssh_exec(
+        cmd="bastille list -j",
+        private_key=private_key,
+        ssh_user=ssh_user,
+        ssh_port=ssh_port,
+    )
     if not bastille_list or bastille_list == "[]":
         return []
 
@@ -83,7 +90,6 @@ def get_bastille_jails(private_key: Path, ssh_user: str, ssh_port: int) -> list[
                 ip=j.get("IP Address", "-"),
             )
         )
-
     return clean_jails
 
 
@@ -96,61 +102,63 @@ def get_disk_stats(private_key: Path, ssh_user: str, ssh_port: int) -> DiskStats
         if len(parts) >= 4:
             disk_free, disk_total = parts[3], parts[1]
 
-    return DiskStats(
-        disk_free=disk_free,
-        disk_total=disk_total,
-    )
+    return DiskStats(disk_free=disk_free, disk_total=disk_total)
 
 
 def get_mem_stats(private_key: Path, ssh_user: str, ssh_port: int) -> MemStats:
     mem_total: float | None = None
     mem_usable: float | None = None
-    mem = ssh_exec(cmd="sysctl -n hw.physmem hw.usermem", private_key=private_key, ssh_user=ssh_user, ssh_port=ssh_port)
+    mem = ssh_exec(
+        cmd="sysctl -n hw.physmem hw.usermem",
+        private_key=private_key,
+        ssh_user=ssh_user,
+        ssh_port=ssh_port,
+    )
     if mem:
         lines = mem.splitlines()
         if len(lines) == 2:
             mem_total = int(lines[0]) / (1024**3)
             mem_usable = int(lines[1]) / (1024**3)
-
-    return MemStats(
-        mem_total=mem_total,
-        mem_usable=mem_usable,
-    )
+    return MemStats(mem_total=mem_total, mem_usable=mem_usable)
 
 
 def collect_info(settings: Settings) -> StatusInfo:
     alive, pid = vm_is_running(settings.pid_file)
 
     if not alive:
-        typer.secho("VM is not running. Run 'jrun start' first.", fg=typer.colors.YELLOW)
+        c = con()
+        c.print()
+        c.print(
+            Text.assemble(
+                ("● ", "bold yellow"),
+                ("VM", "bold white"),
+                ("  not running", "yellow"),
+            )
+        )
+        c.print()
+        c.print(Text("  Run jrun start to boot it.", style="dim white"))
+        c.print()
         raise typer.Exit(0)
 
     if pid is None:
         raise RuntimeError("VM reported running but PID is missing")
 
     state = load_state(settings.state_file)
-
     ssh_kw = get_ssh_kw(settings)
-    wait_for_ssh(**ssh_kw, silent=True)
 
-    uptime = ssh_exec(cmd="uptime", **ssh_kw)
-
-    disk_stats = get_disk_stats(**ssh_kw)
-    mem_stats = get_mem_stats(**ssh_kw)
+    with con().status("[dim]Connecting to VM…[/dim]", spinner="dots"):
+        wait_for_ssh(**ssh_kw, silent=True)
+        uptime = ssh_exec(cmd="uptime", **ssh_kw)
+        disk_stats = get_disk_stats(**ssh_kw)
+        mem_stats = get_mem_stats(**ssh_kw)
+        bastille_jails = get_bastille_jails(**ssh_kw)
 
     managed_names = set(state.jails.keys())
-
-    bastille_jails = get_bastille_jails(**ssh_kw)
-
     jail_rows: list[JailRow] = []
 
     for j in bastille_jails:
         j_name = j["name"]
-        j_state = j["state"]
-        j_ip = j["ip"]
-
         managed = j_name in managed_names
-
         if managed:
             jail_state = state.jails[j_name]
             ports = ", ".join(f"{f.proto}/{f.host}→{f.jail}" for f in jail_state.forwards.values())
@@ -162,8 +170,8 @@ def collect_info(settings: Settings) -> StatusInfo:
         jail_rows.append(
             JailRow(
                 name=j_name,
-                state=j_state,
-                ip=j_ip,
+                state=j["state"],
+                ip=j["ip"],
                 managed=managed,
                 ports=ports,
                 mounts=mounts,
@@ -171,7 +179,6 @@ def collect_info(settings: Settings) -> StatusInfo:
         )
 
     bastille_names = {j["name"] for j in bastille_jails}
-
     for name in sorted(managed_names - bastille_names):
         jail = state.jails[name]
         ports = ", ".join(f"{f.proto}/{f.host}→{f.jail}" for f in jail.forwards.values())
@@ -199,94 +206,138 @@ def collect_info(settings: Settings) -> StatusInfo:
     )
 
 
+def _jail_labels(j: JailRow) -> tuple[Text, Text]:
+    name, st = j["name"], j["state"]
+    if j.get("stale"):
+        return (
+            Text.assemble((name, "bold"), ("  stale", "yellow")),
+            Text("missing", style="yellow"),
+        )
+    state_style = "green" if st.lower() == "up" else "red"
+    if not j["managed"]:
+        return (
+            Text.assemble((name, "bold"), ("  unmanaged", "dim white")),
+            Text(st.lower(), style=state_style),
+        )
+    return Text(name, style="bold"), Text(st.lower(), style=state_style)
+
+
 def render_table(data: StatusInfo) -> None:
-    vm_table = Table(show_header=False, box=None, padding=(0, 2))
-    vm_table.add_column(style="bold")
-    vm_table.add_column()
+    c = con()
+    c.print()
 
-    vm_table.add_row("VM", f"[green]running[/green] (pid {data['pid']})")
+    c.print(
+        Text.assemble(
+            ("  ● ", "bold green"),
+            ("VM", "bold white"),
+            ("  running", "green"),
+            (f"  pid {data['pid']}", "dim white"),
+        )
+    )
+    c.print()
+
+    vitals = Table.grid(padding=(0, 3, 0, 0))
+    vitals.add_column(style="dim cyan", no_wrap=True, min_width=8)
+    vitals.add_column()
+
     if data["uptime"]:
-        vm_table.add_row("Uptime", data["uptime"].strip())
-    if data["disk_free"]:
-        vm_table.add_row("Disk", f"{data['disk_free']} free of {data['disk_total']}")
+        vitals.add_row("uptime", data["uptime"].strip())
+    if data["disk_free"] and data["disk_total"]:
+        vitals.add_row(
+            "disk",
+            Text.assemble((data["disk_free"], "bold green"), (f" free of {data['disk_total']}", "dim white")),
+        )
     if data["mem_total"] is not None and data["mem_usable"] is not None:
-        vm_table.add_row("Memory", f"{data['mem_total']:.1f}G total, {data['mem_usable']:.1f}G usable")
+        vitals.add_row(
+            "memory",
+            Text.assemble(
+                (f"{data['mem_usable']:.1f} GB", "bold green"),
+                (f" usable / {data['mem_total']:.1f} GB total", "dim white"),
+            ),
+        )
+    c.print(Padding(vitals, pad=(0, 0, 0, 2)))
+    c.print()
 
-    rprint(vm_table)
-    rprint()
+    if not data["jail_rows"]:
+        c.print("  [dim]no jails[/dim]")
+        c.print()
+        return
 
-    jail_table = Table(expand=False)
-    jail_table.add_column("Name", style="bold")
-    jail_table.add_column("State")
-    jail_table.add_column("IP")
-    jail_table.add_column("Ports")
-    jail_table.add_column("Mounts")
+    tbl = Table(
+        show_header=True,
+        header_style="dim",
+        box=None,
+        show_edge=False,
+        padding=(0, 3, 0, 0),
+        expand=False,
+        pad_edge=False,
+    )
+    tbl.add_column("name", no_wrap=True)
+    tbl.add_column("state", no_wrap=True)
+    tbl.add_column("ip", style="dim white", no_wrap=True)
+    tbl.add_column("ports", style="dim white")
+    tbl.add_column("mounts", style="dim white")
 
     for j in data["jail_rows"]:
-        name = j["name"]
-        st = j["state"]
-        ip = j["ip"]
-
-        if j.get("stale"):
-            name_label = f"{name} [yellow](stale state)[/yellow]"
-            state_label = "[yellow]Missing[/yellow]"
-        elif not j["managed"]:
-            name_label = f"{name} [dim](unmanaged)[/dim]"
-            state_style = "green" if st == "Up" else "red"
-            state_label = f"[{state_style}]{st}[/{state_style}]"
-        else:
-            name_label = name
-            state_style = "green" if st == "Up" else "red"
-            state_label = f"[{state_style}]{st}[/{state_style}]"
-
-        jail_table.add_row(
-            name_label,
-            state_label,
-            ip,
-            j["ports"] or "[dim]n/a[/dim]",
-            j["mounts"] or "[dim]n/a[/dim]",
+        name_t, state_t = _jail_labels(j)
+        tbl.add_row(
+            name_t,
+            state_t,
+            j["ip"],
+            j["ports"] or Text("—", style="dim white"),
+            j["mounts"] or Text("—", style="dim white"),
         )
 
-    if jail_table.row_count == 0:
-        typer.echo("No jails.")
-    else:
-        rprint(jail_table)
+    c.print(Padding(tbl, pad=(0, 0, 0, 2)))
+    c.print()
 
 
 def render_tree(data: StatusInfo) -> None:
-    root = Tree(f"[bold]VM[/bold]  [green]running[/green] (pid {data['pid']})")
+    c = con()
+    c.print()
+
+    root = Tree(
+        Text.assemble(
+            ("● ", "bold green"),
+            ("VM", "bold white"),
+            ("  running", "green"),
+            (f"  pid {data['pid']}", "dim white"),
+        )
+    )
 
     if data["uptime"]:
-        root.add(f"[dim]Uptime[/dim]  {data['uptime'].strip()}")
-    if data["disk_free"]:
-        root.add(f"[dim]Disk[/dim]    {data['disk_free']} free of {data['disk_total']}")
+        root.add(Text.assemble(("uptime  ", "dim cyan"), data["uptime"].strip()))
+    if data["disk_free"] and data["disk_total"]:
+        root.add(
+            Text.assemble(
+                ("disk    ", "dim cyan"),
+                (data["disk_free"], "bold green"),
+                (f" free of {data['disk_total']}", "dim white"),
+            )
+        )
     if data["mem_total"] is not None and data["mem_usable"] is not None:
-        root.add(f"[dim]Memory[/dim]  {data['mem_total']:.1f}G total, {data['mem_usable']:.1f}G usable")
+        root.add(
+            Text.assemble(
+                ("memory  ", "dim cyan"),
+                (f"{data['mem_usable']:.1f} GB", "bold green"),
+                (f" usable / {data['mem_total']:.1f} GB total", "dim white"),
+            )
+        )
 
-    jails_branch = root.add("[bold]Jails[/bold]")
-
-    for j in data["jail_rows"]:
-        name = j["name"]
-        st = j["state"]
-        ip = j["ip"]
-
-        if j.get("stale"):
-            label = f"[bold]{name}[/bold] [yellow](stale state)[/yellow]  [yellow]Missing[/yellow]  {ip}"
-        elif not j["managed"]:
-            state_style = "green" if st == "Up" else "red"
-            label = f"[bold]{name}[/bold] [dim](unmanaged)[/dim]  [{state_style}]{st}[/{state_style}]  {ip}"
-        else:
-            state_style = "green" if st == "Up" else "red"
-            label = f"[bold]{name}[/bold]  [{state_style}]{st}[/{state_style}]  {ip}"
-
-        jail_node = jails_branch.add(label)
-        jail_node.add(f"[dim]Ports[/dim]   {j['ports'] or '[dim]n/a[/dim]'}")
-        jail_node.add(f"[dim]Mounts[/dim]  {j['mounts'] or '[dim]n/a[/dim]'}")
+    jails_node = root.add(Text("jails", style="bold"))
 
     if not data["jail_rows"]:
-        jails_branch.add("[dim]No jails[/dim]")
+        jails_node.add(Text("no jails", style="dim white"))
+    else:
+        for j in data["jail_rows"]:
+            name_t, state_t = _jail_labels(j)
+            label = name_t + Text("  ") + state_t + Text(f"  {j['ip']}", style="dim white")
+            node = jails_node.add(label)
+            node.add(Text.assemble(("ports   ", "dim cyan"), j["ports"] or Text("—", style="dim white")))
+            node.add(Text.assemble(("mounts  ", "dim cyan"), j["mounts"] or Text("—", style="dim white")))
 
-    rprint(root)
+    c.print(Padding(root, pad=(0, 0, 0, 2)))
+    c.print()
 
 
 def status(settings: Settings, tree: bool = False) -> None:

@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-import typer
-
 from jailrun.config import derive_qemu_fwds, derive_qemu_shares
 from jailrun.http import download
 from jailrun.schemas import QemuFwd, QemuShare, State
@@ -16,6 +14,7 @@ from jailrun.serializers import loads
 from jailrun.settings import Settings
 from jailrun.ssh import ensure_vm_key
 from jailrun.templates import build_jinja_env
+from jailrun.ui import info, ok
 
 
 @dataclass(frozen=True)
@@ -173,25 +172,21 @@ def build_qemu_cmd(state: State, *, settings: Settings, mode: QemuMode) -> list[
 
 def launch_vm(state: State, *, mode: QemuMode, settings: Settings) -> int | None:
     cmd = build_qemu_cmd(state=state, mode=mode, settings=settings)
+
     if mode in {QemuMode.TTY, QemuMode.GRAPHIC}:
-        typer.echo("🖥️ Starting VM")
+        info(f"Starting VM in {mode} mode.")
         settings.pid_file.unlink(missing_ok=True)
         subprocess.run(cmd, check=False)
         return None
 
     log_file = settings.log_dir / "qemu.log"
-    typer.echo("🚀 Starting VM in background...")
+    info("Starting VM in background…")
 
     with open(log_file, "ab") as log:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=log,
-            stderr=log,
-            start_new_session=True,
-        )
+        proc = subprocess.Popen(cmd, stdout=log, stderr=log, start_new_session=True)
 
     settings.pid_file.write_text(str(proc.pid))
-    typer.secho(f"⚡️ VM started (pid {proc.pid})", fg=typer.colors.GREEN)
+    ok(f"VM started (pid {proc.pid}).")
 
     return proc.pid
 
@@ -208,7 +203,7 @@ def prepare_disk(settings: Settings) -> None:
     xz_path = settings.disk_dir / image_xz
 
     if not disk_path.exists():
-        typer.echo("Decompressing image...")
+        info("Decompressing image…")
         subprocess.run(["xz", "-dk", str(xz_path)], check=True)
 
     target = parse_size(settings.qemu_disk_size)
@@ -218,16 +213,9 @@ def prepare_disk(settings: Settings) -> None:
     build_cloud_iso(settings)
 
     if current < target:
-        typer.echo(f"Resizing disk to {settings.qemu_disk_size}...")
+        info(f"Resizing disk to {settings.qemu_disk_size}…")
         subprocess.run(
-            [
-                "qemu-img",
-                "resize",
-                "-f",
-                "raw",
-                str(disk_path),
-                settings.qemu_disk_size,
-            ],
+            ["qemu-img", "resize", "-f", "raw", str(disk_path), settings.qemu_disk_size],
             check=True,
         )
 
@@ -267,31 +255,19 @@ def prepare_cloud_init(settings: Settings) -> None:
         public_key=settings.ssh_dir / f"{settings.ssh_key}.pub",
     )
     env = build_jinja_env()
-
     user_data = env.get_template("cloud_user_data.j2").render(ssh_key=ssh_key)
     meta_data = env.get_template("cloud_meta_data.j2").render()
-
     (settings.cloud_dir / "user-data").write_text(f"#cloud-config\n{user_data}")
     (settings.cloud_dir / "meta-data").write_text(meta_data)
 
 
 def build_cloud_iso(settings: Settings) -> None:
     iso = settings.cloud_dir / "cloud-init.iso"
-
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         shutil.copy(settings.cloud_dir / "user-data", tmp_path)
         shutil.copy(settings.cloud_dir / "meta-data", tmp_path)
         subprocess.run(
-            [
-                "mkisofs",
-                "-output",
-                str(iso),
-                "-volid",
-                "cidata",
-                "-joliet",
-                "-rock",
-                str(tmp_path),
-            ],
+            ["mkisofs", "-output", str(iso), "-volid", "cidata", "-joliet", "-rock", str(tmp_path)],
             check=True,
         )

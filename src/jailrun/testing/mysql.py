@@ -11,7 +11,7 @@ class MySQLJail(Jail):
     def __init__(
         self,
         config: Path,
-        jail: str = "hypha-mysql",
+        jail: str = "hypha-mysql-test",
         *,
         user: str = "test",
         password: str = "test",

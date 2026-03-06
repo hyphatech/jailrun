@@ -7,25 +7,26 @@ import typer
 
 from jailrun.qemu import vm_is_running
 from jailrun.settings import Settings
+from jailrun.ui import err, info, ok, warn
 
 
 def stop_vm(settings: Settings) -> None:
     alive, pid = vm_is_running(settings.pid_file)
 
     if not alive or not pid:
-        typer.secho("VM is not running.", fg=typer.colors.YELLOW)
+        warn("VM is not running.")
         return
 
-    typer.secho(f"Stopping VM (pid {pid})...", fg=typer.colors.YELLOW)
+    info(f"Stopping VM (pid {pid})…")
 
     try:
         os.kill(pid, signal.SIGTERM)
     except ProcessLookupError:
-        typer.secho("VM already exited.", fg=typer.colors.YELLOW)
+        warn("VM already exited.")
         settings.pid_file.unlink(missing_ok=True)
         return
     except PermissionError as exc:
-        typer.secho("Permission denied.", fg=typer.colors.RED)
+        err("Permission denied.")
         raise typer.Exit(1) from exc
 
     try:
@@ -38,9 +39,9 @@ def stop_vm(settings: Settings) -> None:
                 break
             time.sleep(0.5)
         else:
-            typer.echo("⚡️ VM didn't stop gracefully, sending SIGKILL...")
+            warn("VM didn't stop gracefully — sending SIGKILL…")
             with contextlib.suppress(ProcessLookupError):
                 os.kill(pid, signal.SIGKILL)
 
     settings.pid_file.unlink(missing_ok=True)
-    typer.secho("VM stopped.", fg=typer.colors.GREEN)
+    ok("VM stopped.")

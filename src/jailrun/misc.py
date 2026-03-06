@@ -8,6 +8,8 @@ from typing import Any, Literal, TypeVar
 
 import typer
 
+from jailrun.ui import err
+
 
 def current_arch() -> Literal["aarch64", "amd64"]:
     return "aarch64" if platform.machine() in {"aarch64", "arm64"} else "amd64"
@@ -22,9 +24,8 @@ def _lock(state_file: Path) -> Generator[None]:
         fcntl.flock(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError as exc:
         fp.close()
-        typer.secho(
+        err(
             f"Another jrun process is already running. If this is wrong, remove {lock_path}",
-            fg=typer.colors.RED,
         )
         raise typer.Exit(1) from exc
     try:

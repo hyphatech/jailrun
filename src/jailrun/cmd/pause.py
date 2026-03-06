@@ -8,6 +8,7 @@ from jailrun.qemu import vm_is_running
 from jailrun.schemas import JailPlan, Plan
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw, wait_for_ssh
+from jailrun.ui import err, ok, warn
 
 
 def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -> None:
@@ -16,14 +17,11 @@ def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -
 
     unknown = targets - set(cfg.jail.keys())
     if unknown:
-        typer.secho(
-            f"Not in config: {', '.join(sorted(unknown))}",
-            fg=typer.colors.YELLOW,
-        )
+        warn(f"Not in config: {', '.join(sorted(unknown))}")
 
     alive, _ = vm_is_running(settings.pid_file)
     if not alive:
-        typer.secho("VM is not running. Run 'jrun start' first.", fg=typer.colors.YELLOW)
+        err("VM is not running. Run 'jrun start' first.")
         raise typer.Exit(1)
 
     state = load_state(settings.state_file)
@@ -33,17 +31,14 @@ def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -
         if name in state.jails:
             to_stop.append(name)
         else:
-            typer.secho(f"Jail '{name}' not in state, skipping.", fg=typer.colors.YELLOW)
+            warn(f"Jail '{name}' not in state — skipping.")
 
     if not to_stop:
-        typer.secho("No matching jails found in state.", fg=typer.colors.YELLOW)
+        warn("No matching jails found in state.")
         return
 
     ssh_kw = get_ssh_kw(settings)
-    wait_for_ssh(
-        **ssh_kw,
-        silent=True,
-    )
+    wait_for_ssh(**ssh_kw, silent=True)
 
     stop_plan = Plan(
         jails=[
@@ -58,7 +53,4 @@ def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -
 
     run_playbook("jail-stop.yml", plan=stop_plan, settings=settings)
 
-    typer.secho(
-        f"✅ Paused: {', '.join(to_stop)}.",
-        fg=typer.colors.GREEN,
-    )
+    ok(f"Paused: {', '.join(to_stop)}.")

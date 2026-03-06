@@ -6,6 +6,8 @@ from pathlib import Path, PurePosixPath
 import httpx
 import typer
 
+from jailrun.ui import err, info
+
 GITHUB_BLOB_RE = re.compile(
     r"^https://github\.com/"
     r"(?P<owner>[^/]+)/(?P<repo>[^/]+)"
@@ -41,7 +43,7 @@ def parse_github_url(url: str) -> RemotePlaybook:
     """
     m = GITHUB_BLOB_RE.match(url)
     if not m:
-        typer.secho(f"Not a valid GitHub blob URL: {url}", fg=typer.colors.RED)
+        err(f"Not a valid GitHub blob URL: {url}")
         raise typer.Exit(1)
 
     parts = PurePosixPath(m.group("path"))
@@ -75,10 +77,10 @@ def fetch(url: str) -> bytes:
         r = httpx.get(url, follow_redirects=True, timeout=30)
         r.raise_for_status()
     except httpx.HTTPStatusError as exc:
-        typer.secho(f"HTTP {exc.response.status_code} fetching {url}", fg=typer.colors.RED)
+        err(f"Failed to fetch {url}: {exc.response.status_code}")
         raise typer.Exit(1) from exc
     except httpx.RequestError as exc:
-        typer.secho(f"Failed to fetch {url}: {exc}", fg=typer.colors.RED)
+        err(f"Failed to fetch {url}: {exc}")
         raise typer.Exit(1) from exc
     return r.content
 
@@ -96,7 +98,7 @@ def parse_manifest(content: str) -> dict[str, str]:
             continue
         parts = line.split(None, 1)
         if len(parts) != 2:
-            typer.secho(f"Malformed manifest line {lineno}: {line}", fg=typer.colors.RED)
+            err(f"Malformed manifest line {lineno}: {line}")
             raise typer.Exit(1)
         sha256_hex, rel_path = parts
         entries[rel_path] = sha256_hex
@@ -108,33 +110,28 @@ def fetch_remote_playbook(url: str, *, cache_dir: Path) -> Path:
     dest = cache_dir / cache_key(pb)
 
     manifest_url = raw_url(pb, "jrun.manifest")
-    typer.echo(f"📋 Fetching manifest from {pb.owner}/{pb.repo}@{pb.ref}")
+    info(f"Fetching manifest from {pb.owner}/{pb.repo}@{pb.ref}")
     manifest_bytes = fetch(manifest_url)
     manifest_entries = parse_manifest(manifest_bytes.decode())
 
     if pb.entry not in manifest_entries:
-        typer.secho(
-            f"Entrypoint '{pb.entry}' not listed in jrun.manifest",
-            fg=typer.colors.RED,
-        )
+        err(f"Entrypoint '{pb.entry}' not listed in jrun.manifest")
         raise typer.Exit(1)
 
     if cache_is_valid(dest, manifest_entries):
-        typer.echo(f"Using cached playbook at {dest}")
+        info(f"Using cached playbook at {dest}")
         return dest / pb.entry
 
     dest.mkdir(parents=True, exist_ok=True)
 
     for rel_path, expected_hash in manifest_entries.items():
         file_url = raw_url(pb, rel_path)
-        typer.echo(f"...{rel_path}")
         data = fetch(file_url)
 
         actual_hash = sha256_bytes(data)
         if actual_hash != expected_hash:
-            typer.secho(
+            err(
                 f"Checksum mismatch for {rel_path}:\n  expected: {expected_hash}\n  got:      {actual_hash}",
-                fg=typer.colors.RED,
             )
             raise typer.Exit(1)
 
@@ -144,9 +141,8 @@ def fetch_remote_playbook(url: str, *, cache_dir: Path) -> Path:
 
     (dest / "jrun.manifest").write_bytes(manifest_bytes)
 
-    typer.secho(
+    info(
         f"Playbook fetched and verified ({len(manifest_entries)} files)",
-        fg=typer.colors.GREEN,
     )
     return dest / pb.entry
 

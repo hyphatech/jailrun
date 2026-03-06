@@ -1,12 +1,13 @@
 import subprocess
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import typer
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_fixed
 
 from jailrun.schemas import State
 from jailrun.settings import Settings
+from jailrun.ui import con, err, info, ok
 
 SWEEP_START = "10.17.89.10"
 SWEEP_END = "10.17.89.250"
@@ -28,20 +29,16 @@ class SSHKwargs(TypedDict):
 
 
 def get_ssh_kw(settings: Settings) -> SSHKwargs:
-    private_key: Path = Path(settings.ssh_dir) / str(settings.ssh_key)
-    ssh_user: str = str(settings.ssh_user)
-    ssh_port: int = int(settings.ssh_port)
-
     return {
-        "private_key": private_key,
-        "ssh_user": ssh_user,
-        "ssh_port": ssh_port,
+        "private_key": Path(settings.ssh_dir) / str(settings.ssh_key),
+        "ssh_user": str(settings.ssh_user),
+        "ssh_port": int(settings.ssh_port),
     }
 
 
 def ensure_vm_key(private_key: Path, public_key: Path) -> str:
     if not public_key.exists():
-        typer.echo("🔐 Generating VM SSH key...")
+        info("Generating VM SSH key…")
         subprocess.run(
             ["ssh-keygen", "-t", "ed25519", "-f", str(private_key), "-N", ""],
             check=True,
@@ -124,20 +121,19 @@ def jail_ssh_exec(
 
 
 def wait_for_ssh(*, private_key: Path, ssh_user: str, ssh_port: int, silent: bool = False) -> None:
-    if not silent:
-        typer.echo("⏳ Waiting for SSH...")
+    status_ctx = con().status("[dim]Waiting for SSH…[/dim]", spinner="dots") if not silent else None
+
+    def _before_sleep(s: Any) -> None:
+        if status_ctx is not None:
+            status_ctx.update(f"[dim]Waiting for SSH… (attempt {s.attempt_number}/60)[/dim]")
 
     @retry(
         stop=stop_after_attempt(60),
         wait=wait_fixed(5),
         retry=retry_if_result(lambda rc: rc != 0),
-        before_sleep=lambda state: (
-            typer.echo(f"SSH not ready yet (attempt {state.attempt_number}/60), retrying in 5s...")
-            if not silent
-            else None
-        ),
+        before_sleep=_before_sleep,
     )
-    def _probe_ssh() -> int:
+    def _probe() -> int:
         return subprocess.run(
             ssh_cmd(args=["true"], private_key=private_key, ssh_user=ssh_user, ssh_port=ssh_port),
             stdout=subprocess.DEVNULL,
@@ -145,22 +141,21 @@ def wait_for_ssh(*, private_key: Path, ssh_user: str, ssh_port: int, silent: boo
         ).returncode
 
     try:
-        _probe_ssh()
+        if status_ctx is not None:
+            with status_ctx:
+                _probe()
+        else:
+            _probe()
     except Exception as exc:
-        if not silent:
-            typer.secho(
-                "🚫 SSH did not become available after 60 attempts.",
-                fg=typer.colors.RED,
-            )
+        err("SSH did not become available after 60 attempts.")
         raise typer.Exit(1) from exc
 
     if not silent:
-        typer.secho("✅ SSH is ready", fg=typer.colors.GREEN)
+        ok("SSH ready.")
 
 
 def resolve_jail_ips(old_state: State, new_state: State, *, private_key: Path, ssh_user: str, ssh_port: int) -> None:
     taken: set[str] = set()
-
     for jail in new_state.jails.values():
         if jail.ip:
             taken.add(jail.ip)
@@ -179,29 +174,22 @@ def resolve_jail_ips(old_state: State, new_state: State, *, private_key: Path, s
     if not needs_sweep:
         return
 
-    typer.echo("⏳ Probing free IP range...")
-
-    raw = ssh_exec(
-        cmd=f"fping -u -A -g -i 1 -t 100 -r 0 {SWEEP_START} {SWEEP_END}",
-        private_key=private_key,
-        ssh_user=ssh_user,
-        ssh_port=ssh_port,
-    )
+    with con().status("[dim]Probing free IP range…[/dim]", spinner="dots"):
+        raw = ssh_exec(
+            cmd=f"fping -u -A -g -i 1 -t 100 -r 0 {SWEEP_START} {SWEEP_END}",
+            private_key=private_key,
+            ssh_user=ssh_user,
+            ssh_port=ssh_port,
+        )
 
     if not raw:
-        typer.secho(
-            f"No free IPs found in {SWEEP_START}–{SWEEP_END}.",
-            fg=typer.colors.RED,
-        )
+        err(f"No free IPs found in {SWEEP_START}–{SWEEP_END}.")
         raise typer.Exit(1)
 
     free = [ip for ip in raw.splitlines() if ip.strip() and ip.strip() not in taken]
 
     if len(free) < len(needs_sweep):
-        typer.secho(
-            f"Need {len(needs_sweep)} IPs, only {len(free)} available.",
-            fg=typer.colors.RED,
-        )
+        err(f"Need {len(needs_sweep)} IPs, only {len(free)} available.")
         raise typer.Exit(1)
 
     for name, ip in zip(needs_sweep, free, strict=False):
@@ -211,4 +199,5 @@ def resolve_jail_ips(old_state: State, new_state: State, *, private_key: Path, s
 
         new_state.jails[name].ip = ip
         taken.add(ip)
-        typer.echo(f"👉 {name}: assigned {new_state.jails[name].ip}")
+
+        info(f"{name}: assigned {ip}")
