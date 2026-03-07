@@ -2,7 +2,7 @@ from jailrun.cmd.down import down as down
 from jailrun.cmd.pause import pause as pause
 from jailrun.cmd.purge import purge as purge
 from jailrun.cmd.ssh import ssh as ssh
-from jailrun.cmd.start import start_vm as start_vm
+from jailrun.cmd.start import start as start
 from jailrun.cmd.status import status as status
-from jailrun.cmd.stop import stop_vm as stop_vm
+from jailrun.cmd.stop import stop as stop
 from jailrun.cmd.up import up as up

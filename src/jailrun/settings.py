@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     pid_file: Path = STATE_DIR / "vm.pid"
 
     vm_host: str = "127.0.0.1"
+    vm_python_interpreter: str = "python3.13"
 
     ssh_port: int = 2222
     ssh_user: str = "admin"

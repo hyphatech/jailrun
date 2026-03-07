@@ -4,20 +4,21 @@ import pymysql
 import pytest
 
 from jailrun import ROOT_DIR
+from jailrun.settings import Settings
 from jailrun.testing.mariadb import MariaDBJail
 
 
 @pytest.fixture
 def mariadb_jail() -> Generator[MariaDBJail]:
-    with MariaDBJail(ROOT_DIR / "tests" / "mariadb.ucl", jail="hypha-mariadb-test") as jail:
+    with MariaDBJail("hypha-mariadb-test", jail_config=ROOT_DIR / "tests" / "mariadb.ucl") as jail:
         yield jail
 
 
 @pytest.fixture
-def mariadb_conn(mariadb_jail: MariaDBJail) -> Generator[pymysql.Connection]:
+def mariadb_conn(settings: Settings, mariadb_jail: MariaDBJail) -> Generator[pymysql.Connection]:
     with (
         pymysql.connect(
-            host="127.0.0.1",
+            host=settings.vm_host,
             port=mariadb_jail.port,
             user=mariadb_jail.user,
             password=mariadb_jail.password,

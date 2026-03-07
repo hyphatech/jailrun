@@ -6,13 +6,14 @@ from influxdb import InfluxDBClient
 from influxdb.resultset import ResultSet
 
 from jailrun import ROOT_DIR
+from jailrun.settings import Settings
 from jailrun.testing.influx import InfluxJail
 
 
 @pytest.fixture
-def influx_client() -> Generator[InfluxDBClient]:
-    with InfluxJail(ROOT_DIR / "tests" / "influxdb.ucl", jail="hypha-influxdb-test") as jail:
-        client = InfluxDBClient(host="127.0.0.1", port=jail.port)
+def influx_client(settings: Settings) -> Generator[InfluxDBClient]:
+    with InfluxJail("hypha-influxdb-test", jail_config=ROOT_DIR / "tests" / "influxdb.ucl") as jail:
+        client = InfluxDBClient(host=settings.vm_host, port=jail.port)
         client.switch_database("test")
         yield client
 

@@ -180,10 +180,13 @@ def resolve_jail_dependencies(names: set[str], jails: dict[str, JailConfig]) -> 
     return result
 
 
-def derive_qemu_fwds(state: State, *, default_ssh_port: int) -> list[QemuFwd]:
+def derive_qemu_fwds(state: State) -> list[QemuFwd]:
+    if state.ssh_port is None:
+        raise RuntimeError("state.ssh_port is not set")
+
     fwds: list[QemuFwd] = []
     seen: dict[tuple[str, int], str] = {
-        ("tcp", default_ssh_port): "SSH (reserved)",
+        ("tcp", state.ssh_port): "SSH (reserved)",
     }
 
     for name, base_fwd in state.base.forwards.items():
@@ -228,16 +231,17 @@ def derive_qemu_shares(state: State) -> list[QemuShare]:
     return sorted(by_host.values(), key=lambda s: s.host)
 
 
-def snapshot_qemu_wiring(state: State, *, default_ssh_port: int) -> None:
-    state.launched_fwds = derive_qemu_fwds(state, default_ssh_port=default_ssh_port)
+def snapshot_qemu_wiring(state: State) -> None:
+    state.launched_fwds = derive_qemu_fwds(state)
     state.launched_shares = derive_qemu_shares(state)
 
 
-def needs_qemu_restart(old_state: State, new_state: State, *, default_ssh_port: int) -> bool:
+def needs_qemu_restart(old_state: State, new_state: State) -> bool:
+    if new_state.ssh_port is None:
+        raise RuntimeError("state.ssh_port is not set")
+
     launched_fwds = {(f.proto, f.host, f.guest) for f in old_state.launched_fwds}
-    desired_fwds = {
-        (f.proto, f.host, f.guest) for f in derive_qemu_fwds(state=new_state, default_ssh_port=default_ssh_port)
-    }
+    desired_fwds = {(f.proto, f.host, f.guest) for f in derive_qemu_fwds(state=new_state)}
 
     launched_hosts = {s.host for s in old_state.launched_shares}
     desired_hosts = {s.host for s in derive_qemu_shares(new_state)}
@@ -245,37 +249,37 @@ def needs_qemu_restart(old_state: State, new_state: State, *, default_ssh_port: 
     return not (desired_fwds <= launched_fwds and desired_hosts <= launched_hosts)
 
 
-def derive_plan(old: State, new: State) -> Plan:
-    jails = [JailPlan(name=n, release=j.release, ip=j.ip, base=j.base) for n, j in new.jails.items()]
+def derive_plan(old_state: State, new_state: State) -> Plan:
+    jails = [JailPlan(name=n, release=j.release, ip=j.ip, base=j.base) for n, j in new_state.jails.items()]
 
-    new_target_mounts = _all_target_mounts(new)
+    new_target_mounts = _all_target_mounts(new_state)
     mounts = sorted(new_target_mounts.values(), key=lambda m: m.mount_tag)
 
     execs = [
         ExecPlan(name=en, jail=jn, cmd=e.cmd, dir=e.dir, env=e.env, healthcheck=e.healthcheck)
-        for jn, j in new.jails.items()
+        for jn, j in new_state.jails.items()
         for en, e in j.execs.items()
     ]
 
     jail_rdrs = [
         RdrPlan(jail=jn, proto=f.proto, target_port=f.host, jail_port=f.jail)
-        for jn, j in new.jails.items()
+        for jn, j in new_state.jails.items()
         for f in j.forwards.values()
     ]
 
-    new_nullfs = _all_nullfs(new)
+    new_nullfs = _all_nullfs(new_state)
     jail_mounts = sorted(new_nullfs.values(), key=lambda m: (m.jail, m.target_path))
 
-    stale_jails = sorted(set(old.jails) - set(new.jails))
+    stale_jails = sorted(set(old_state.jails) - set(new_state.jails))
 
-    old_target_mounts = _all_target_mounts(old)
+    old_target_mounts = _all_target_mounts(old_state)
     stale_mounts = [
         StaleMountPlan(mount_tag=tag, target=m.target)
         for tag, m in old_target_mounts.items()
         if tag not in new_target_mounts
     ]
 
-    old_nullfs = _all_nullfs(old)
+    old_nullfs = _all_nullfs(old_state)
     stale_jail_mounts = [
         StaleNullfsPlan(jail=jail, target_path=vp) for (jail, vp) in sorted(set(old_nullfs) - set(new_nullfs))
     ]

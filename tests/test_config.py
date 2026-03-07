@@ -299,44 +299,40 @@ def test_resolve_jail_preserves_execs(tmp_path: Path) -> None:
     assert st.execs["srv"].cmd == "python3 -m http.server"
 
 
-def test_derive_qemu_fwds_detects_conflict_with_reserved() -> None:
-    st = schemas.State()
-    st.base.forwards = {"ssh": schemas.BaseForwardConfig(proto="tcp", host=2222, target=22)}
+def test_derive_qemu_fwds_detects_conflict_with_reserved(state: schemas.State) -> None:
+    state.base.forwards = {"ssh": schemas.BaseForwardConfig(proto="tcp", host=2222, target=22)}
     with pytest.raises(typer.Exit):
-        config.derive_qemu_fwds(st, default_ssh_port=2222)
+        config.derive_qemu_fwds(state)
 
 
-def test_derive_qemu_fwds_detects_conflict_between_base_and_jail() -> None:
-    st = schemas.State()
-    st.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=8080)}
-    st.jails = {
+def test_derive_qemu_fwds_detects_conflict_between_base_and_jail(state: schemas.State) -> None:
+    state.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=8080)}
+    state.jails = {
         "j1": schemas.JailState(
             release="15.0",
             forwards={"web": schemas.JailForwardConfig(proto="tcp", host=8080, jail=80)},
         )
     }
     with pytest.raises(typer.Exit):
-        config.derive_qemu_fwds(st, default_ssh_port=2222)
+        config.derive_qemu_fwds(state)
 
 
-def test_derive_qemu_fwds_no_conflict() -> None:
-    st = schemas.State()
-    st.base.forwards = {"web": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
-    st.jails = {
+def test_derive_qemu_fwds_no_conflict(state: schemas.State) -> None:
+    state.base.forwards = {"web": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
+    state.jails = {
         "j1": schemas.JailState(
             release="15.0",
             forwards={"api": schemas.JailForwardConfig(proto="tcp", host=9090, jail=9090)},
         )
     }
-    fwds = config.derive_qemu_fwds(st, default_ssh_port=2222)
+    fwds = config.derive_qemu_fwds(state)
     ports = {(f.proto, f.host) for f in fwds}
     assert ("tcp", 8080) in ports
     assert ("tcp", 9090) in ports
 
 
-def test_derive_qemu_fwds_sorted() -> None:
-    st = schemas.State()
-    st.jails = {
+def test_derive_qemu_fwds_sorted(state: schemas.State) -> None:
+    state.jails = {
         "j1": schemas.JailState(
             release="15.0",
             forwards={
@@ -345,14 +341,13 @@ def test_derive_qemu_fwds_sorted() -> None:
             },
         )
     }
-    fwds = config.derive_qemu_fwds(st, default_ssh_port=2222)
+    fwds = config.derive_qemu_fwds(state)
     hosts = [f.host for f in fwds]
     assert hosts == sorted(hosts)
 
 
-def test_derive_qemu_fwds_same_port_different_proto() -> None:
-    st = schemas.State()
-    st.jails = {
+def test_derive_qemu_fwds_same_port_different_proto(state: schemas.State) -> None:
+    state.jails = {
         "j1": schemas.JailState(
             release="15.0",
             forwards={
@@ -361,99 +356,88 @@ def test_derive_qemu_fwds_same_port_different_proto() -> None:
             },
         )
     }
-    fwds = config.derive_qemu_fwds(st, default_ssh_port=2222)
+    fwds = config.derive_qemu_fwds(state)
     assert len(fwds) == 2
 
 
-def test_derive_qemu_shares_dedup_by_host(tmp_path: Path) -> None:
+def test_derive_qemu_shares_dedup_by_host(state: schemas.State, tmp_path: Path) -> None:
     host = str((tmp_path / "same").resolve())
-    st = schemas.State()
-    st.base.mounts = {"m": schemas.BaseMountConfig(host=host, target="/target")}
-    st.jails = {
+    state.base.mounts = {"m": schemas.BaseMountConfig(host=host, target="/target")}
+    state.jails = {
         "j1": schemas.JailState(
             release="15.0",
             mounts={"m": schemas.JailMountConfig(host=host, jail="/inside")},
         )
     }
-    shares = config.derive_qemu_shares(st)
+    shares = config.derive_qemu_shares(state)
     assert len(shares) == 1
     assert shares[0].host == host
 
 
-def test_derive_qemu_shares_different_hosts(tmp_path: Path) -> None:
+def test_derive_qemu_shares_different_hosts(state: schemas.State, tmp_path: Path) -> None:
     h1 = str((tmp_path / "a").resolve())
     h2 = str((tmp_path / "b").resolve())
-    st = schemas.State()
-    st.base.mounts = {"m1": schemas.BaseMountConfig(host=h1, target="/t1")}
-    st.jails = {
+    state.base.mounts = {"m1": schemas.BaseMountConfig(host=h1, target="/t1")}
+    state.jails = {
         "j1": schemas.JailState(
             release="15.0",
             mounts={"m2": schemas.JailMountConfig(host=h2, jail="/t2")},
         )
     }
-    shares = config.derive_qemu_shares(st)
+    shares = config.derive_qemu_shares(state)
     assert len(shares) == 2
 
 
-def test_snapshot_qemu_wiring_populates_state() -> None:
-    st = schemas.State()
-    st.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
-    st.base.mounts = {"m": schemas.BaseMountConfig(host="/tmp/x", target="/mnt/x")}
-    config.snapshot_qemu_wiring(st, default_ssh_port=2222)
-    assert len(st.launched_fwds) == 1
-    assert len(st.launched_shares) == 1
+def test_snapshot_qemu_wiring_populates_state(state: schemas.State) -> None:
+    state.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
+    state.base.mounts = {"m": schemas.BaseMountConfig(host="/tmp/x", target="/mnt/x")}
+    config.snapshot_qemu_wiring(state)
+    assert len(state.launched_fwds) == 1
+    assert len(state.launched_shares) == 1
 
 
-def test_needs_qemu_restart_no_change() -> None:
-    st = schemas.State()
-    st.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
-    config.snapshot_qemu_wiring(st, default_ssh_port=2222)
-    new_st = st.model_copy(deep=True)
-    assert not config.needs_qemu_restart(st, new_st, default_ssh_port=2222)
+def test_needs_qemu_restart_no_change(state: schemas.State) -> None:
+    state.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
+    config.snapshot_qemu_wiring(state)
+    new_st = state.model_copy(deep=True)
+    assert not config.needs_qemu_restart(state, new_st)
 
 
-def test_needs_qemu_restart_new_forward() -> None:
-    old = schemas.State()
-    config.snapshot_qemu_wiring(old, default_ssh_port=2222)
-
-    new = old.model_copy(deep=True)
+def test_needs_qemu_restart_new_forward(state: schemas.State) -> None:
+    config.snapshot_qemu_wiring(state)
+    new = state.model_copy(deep=True)
     new.jails = {
         "j1": schemas.JailState(
             release="15.0",
             forwards={"web": schemas.JailForwardConfig(proto="tcp", host=9090, jail=80)},
         )
     }
-    assert config.needs_qemu_restart(old, new, default_ssh_port=2222)
+    assert config.needs_qemu_restart(state, new)
 
 
-def test_needs_qemu_restart_new_mount() -> None:
-    old = schemas.State()
-    config.snapshot_qemu_wiring(old, default_ssh_port=2222)
-
-    new = old.model_copy(deep=True)
+def test_needs_qemu_restart_new_mount(state: schemas.State) -> None:
+    config.snapshot_qemu_wiring(state)
+    new = state.model_copy(deep=True)
     new.jails = {
         "j1": schemas.JailState(
             release="15.0",
             mounts={"m": schemas.JailMountConfig(host="/tmp/new", jail="/mnt/new")},
         )
     }
-    assert config.needs_qemu_restart(old, new, default_ssh_port=2222)
+    assert config.needs_qemu_restart(state, new)
 
 
-def test_needs_qemu_restart_removed_forward_no_restart() -> None:
-    old = schemas.State()
-    old.jails = {
+def test_needs_qemu_restart_removed_forward_no_restart(state: schemas.State) -> None:
+    state.jails = {
         "j1": schemas.JailState(
             release="15.0",
             forwards={"web": schemas.JailForwardConfig(proto="tcp", host=9090, jail=80)},
         )
     }
-    config.snapshot_qemu_wiring(old, default_ssh_port=2222)
-
-    new = old.model_copy(deep=True)
+    config.snapshot_qemu_wiring(state)
+    new = state.model_copy(deep=True)
     new.jails = {}
-
-    assert not config.needs_qemu_restart(old, new, default_ssh_port=2222)
+    assert not config.needs_qemu_restart(state, new)
 
 
 def test_derive_plan_empty_to_empty() -> None:
@@ -583,12 +567,11 @@ def test_save_state_atomic(tmp_path: Path) -> None:
     assert f.exists()
 
 
-def test_save_state_full_roundtrip(tmp_path: Path) -> None:
+def test_save_state_full_roundtrip(state: schemas.State, tmp_path: Path) -> None:
     f = tmp_path / "state.json"
-    s = schemas.State()
-    s.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
-    s.base.mounts = {"m": schemas.BaseMountConfig(host="/tmp/x", target="/mnt/x")}
-    s.jails = {
+    state.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
+    state.base.mounts = {"m": schemas.BaseMountConfig(host="/tmp/x", target="/mnt/x")}
+    state.jails = {
         "j1": schemas.JailState(
             release="15.0",
             ip="10.0.0.1",
@@ -597,8 +580,8 @@ def test_save_state_full_roundtrip(tmp_path: Path) -> None:
             execs={"srv": schemas.ExecConfig(cmd="echo hi", dir="/")},
         )
     }
-    config.snapshot_qemu_wiring(s, default_ssh_port=2222)
-    config.save_state(s, f)
+    config.snapshot_qemu_wiring(state)
+    config.save_state(state, f)
 
     out = config.load_state(f)
     assert out.jails["j1"].ip == "10.0.0.1"

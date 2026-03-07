@@ -5,9 +5,15 @@ import time
 
 import typer
 
+from jailrun.misc import lock
 from jailrun.qemu import vm_is_running
 from jailrun.settings import Settings
 from jailrun.ui import err, info, ok, warn
+
+
+def stop(settings: Settings) -> None:
+    with lock(settings.state_file):
+        stop_vm(settings)
 
 
 def stop_vm(settings: Settings) -> None:

@@ -4,19 +4,20 @@ import psycopg
 import pytest
 
 from jailrun import ROOT_DIR
+from jailrun.settings import Settings
 from jailrun.testing.postgres import PostgresJail
 
 
 @pytest.fixture
 def postgres_jail() -> Generator[PostgresJail]:
-    with PostgresJail(ROOT_DIR / "tests" / "postgres.ucl", jail="hypha-postgres-test") as jail:
+    with PostgresJail("hypha-postgres-test", jail_config=ROOT_DIR / "tests" / "postgres.ucl") as jail:
         yield jail
 
 
 @pytest.fixture
-def postgres_conn(postgres_jail: PostgresJail) -> Generator[psycopg.Connection]:
+def postgres_conn(settings: Settings, postgres_jail: PostgresJail) -> Generator[psycopg.Connection]:
     with psycopg.connect(
-        host="127.0.0.1", port=postgres_jail.port, dbname=postgres_jail.dbname, user=postgres_jail.user
+        host=settings.vm_host, port=postgres_jail.port, dbname=postgres_jail.dbname, user=postgres_jail.user
     ) as conn:
         yield conn
 
