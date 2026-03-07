@@ -4,18 +4,19 @@ import pytest
 import redis
 
 from jailrun import ROOT_DIR
+from jailrun.settings import Settings
 from jailrun.testing.redis import RedisJail
 
 
 @pytest.fixture
 def redis_jail() -> Generator[RedisJail]:
-    with RedisJail(ROOT_DIR / "tests" / "redis.ucl", jail="hypha-redis-test") as jail:
+    with RedisJail("hypha-redis-test", jail_config=ROOT_DIR / "tests" / "redis.ucl") as jail:
         yield jail
 
 
 @pytest.fixture
-def redis_conn(redis_jail: RedisJail) -> redis.Redis:
-    return redis.Redis(host="127.0.0.1", port=redis_jail.port)
+def redis_conn(settings: Settings, redis_jail: RedisJail) -> redis.Redis:
+    return redis.Redis(host=settings.vm_host, port=redis_jail.port)
 
 
 def test_set_and_get(redis_conn: redis.Redis) -> None:

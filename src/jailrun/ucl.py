@@ -431,7 +431,7 @@ _UCL_GRAMMAR = r"""
     pair: key_parts "=" value
         | key_parts ":" value
 
-    // ── Section: key [names…] { block }  (implicit object) ───────
+    // ── Section: key [names...] { block }  (implicit object) ───────
     section: key_parts "{" _block "}"
 
     // Key path — one or more segments for dotted/named hierarchy
@@ -454,7 +454,7 @@ _UCL_GRAMMAR = r"""
     // Statement terminators
     _sep: ";" | ","
 
-    // ── Macros (.include, .priority, …) ──────────────────────────
+    // ── Macros (.include, .priority, ...) ──────────────────────────
     macro: MACRO_NAME (DQ_STRING | SQ_STRING | WORD)*
 
     // ═════════════════════════════════════════════════════════════

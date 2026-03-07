@@ -16,6 +16,7 @@ from rich.text import Text
 from jailrun import cmd
 from jailrun.cmd.status import RawJail, get_bastille_jails
 from jailrun.qemu import QemuMode, vm_is_running
+from jailrun.schemas import State
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw
 from jailrun.ui import COMMANDS, Q_STYLE, con, pick_config, pick_jails_from_config, warn
@@ -103,17 +104,17 @@ def _confirm_destructive(action: str) -> bool:
     return bool(answer)
 
 
-def _fetch_live_jails(settings: Settings) -> list[RawJail]:
+def _fetch_live_jails(state: State, settings: Settings) -> list[RawJail]:
     try:
-        ssh_kw = get_ssh_kw(settings)
+        ssh_kw = get_ssh_kw(state=state, settings=settings)
         return get_bastille_jails(**ssh_kw)
     except Exception:
         return []
 
 
-def _pick_jail_interactively(settings: Settings) -> str | None:
+def _pick_jail_interactively(state: State, settings: Settings) -> str | None:
     with con().status("[dim]Fetching jail list…[/dim]", spinner="dots"):
-        jails = _fetch_live_jails(settings)
+        jails = _fetch_live_jails(state=state, settings=settings)
 
     _nl()
 
@@ -156,7 +157,7 @@ def _is_vm_running(settings: Settings) -> bool:
     return alive
 
 
-def _offer_start_vm(settings: Settings) -> bool:
+def _offer_start_vm(state: State, settings: Settings) -> bool:
     _nl()
     answer = questionary.confirm(
         "VM is not running. Boot it now?",
@@ -168,12 +169,11 @@ def _offer_start_vm(settings: Settings) -> bool:
     if not answer:
         return False
 
-    cmd.start_vm(base=None, settings=settings, mode=QemuMode.SERVER)
-
+    cmd.start(base_config=None, state=state, settings=settings, mode=QemuMode.SERVER)
     return True
 
 
-def _dispatch(token: str, inline_args: list[str], settings: Settings) -> bool:
+def _dispatch(state: State, settings: Settings, *, token: str, inline_args: list[str]) -> bool:
     c = token.strip().lower()
     c = _ALIASES.get(c, c)
 
@@ -186,7 +186,7 @@ def _dispatch(token: str, inline_args: list[str], settings: Settings) -> bool:
 
     if c == "status":
         tree = "--tree" in inline_args or "-t" in inline_args
-        cmd.status(settings, tree=tree)
+        cmd.status(state=state, settings=settings, tree=tree)
         return True
 
     if c == "start":
@@ -203,8 +203,7 @@ def _dispatch(token: str, inline_args: list[str], settings: Settings) -> bool:
                 base = Path(raw) if raw else None
             _nl()
 
-        cmd.start_vm(base=base, settings=settings, mode=QemuMode.SERVER)
-
+        cmd.start(base_config=base, state=state, settings=settings, mode=QemuMode.SERVER)
         return True
 
     if c == "stop":
@@ -212,20 +211,19 @@ def _dispatch(token: str, inline_args: list[str], settings: Settings) -> bool:
             _aborted()
             return True
 
-        cmd.stop_vm(settings)
-
+        cmd.stop(settings)
         return True
 
     if c == "ssh":
         if inline_args:
-            cmd.ssh(settings, jail_name=inline_args[0])
+            cmd.ssh(state=state, settings=settings, jail_name=inline_args[0])
         else:
             if not _is_vm_running(settings):
-                _offer_start_vm(settings)
+                _offer_start_vm(state=state, settings=settings)
                 return True
 
-            jail_name = _pick_jail_interactively(settings)
-            cmd.ssh(settings, jail_name=jail_name)
+            jail_name = _pick_jail_interactively(state=state, settings=settings)
+            cmd.ssh(state=state, settings=settings, jail_name=jail_name)
 
         return True
 
@@ -237,8 +235,7 @@ def _dispatch(token: str, inline_args: list[str], settings: Settings) -> bool:
 
         names = pick_jails_from_config(config)
         _nl()
-        cmd.up(config=config, base=None, mode=QemuMode.SERVER, names=names, settings=settings)
-
+        cmd.up(config=config, state=state, base_config=None, mode=QemuMode.SERVER, names=names, settings=settings)
         return True
 
     if c == "down":
@@ -255,8 +252,7 @@ def _dispatch(token: str, inline_args: list[str], settings: Settings) -> bool:
             _aborted()
             return True
 
-        cmd.down(config=config, names=names, settings=settings)
-
+        cmd.down(config=config, state=state, names=names, settings=settings)
         return True
 
     if c == "pause":
@@ -267,8 +263,7 @@ def _dispatch(token: str, inline_args: list[str], settings: Settings) -> bool:
 
         names = pick_jails_from_config(config)
         _nl()
-        cmd.pause(config=config, names=names, settings=settings)
-
+        cmd.pause(config=config, state=state, names=names, settings=settings)
         return True
 
     if c == "purge":
@@ -277,7 +272,6 @@ def _dispatch(token: str, inline_args: list[str], settings: Settings) -> bool:
             return True
 
         cmd.purge(settings=settings)
-
         return True
 
     con().print(
@@ -287,7 +281,7 @@ def _dispatch(token: str, inline_args: list[str], settings: Settings) -> bool:
     return True
 
 
-def run(settings: Settings, version: str = "dev") -> None:
+def run(state: State, settings: Settings, version: str = "dev") -> None:
     """Start the interactive shell."""
     _print_welcome(version)
 
@@ -349,7 +343,7 @@ def run(settings: Settings, version: str = "dev") -> None:
             parts[0] = "help"
 
         try:
-            keep_going = _dispatch(parts[0], parts[1:], settings)
+            keep_going = _dispatch(state=state, settings=settings, token=parts[0], inline_args=parts[1:])
         except (typer.Exit, typer.Abort):
             keep_going = True
         except Exception as exc:  # noqa: BLE001

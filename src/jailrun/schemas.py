@@ -146,6 +146,7 @@ class State(BaseModel):
     jails: dict[str, JailState] = Field(default_factory=dict)
     launched_fwds: list[QemuFwd] = Field(default_factory=list)
     launched_shares: list[QemuShare] = Field(default_factory=list)
+    ssh_port: int | None = None
 
 
 class JailPlan(BaseModel):

@@ -10,7 +10,7 @@ from rich.text import Text
 from typer.core import TyperGroup
 
 from jailrun import cmd, shell
-from jailrun.misc import exclusive
+from jailrun.config import load_state
 from jailrun.qemu import QemuMode
 from jailrun.settings import settings
 from jailrun.ui import COMMANDS, Q_STYLE, con, pick_config, pick_jails_from_config, warn
@@ -96,23 +96,23 @@ def _confirm_destructive(action: str, target: str, *, yes: bool) -> None:
 
 
 @app.command()
-@exclusive(settings.state_file)
 def start(
     base: Path | None = typer.Option(None, "--base", "-b", help="Path to base.ucl"),
     mode: QemuMode = typer.Option(QemuMode.SERVER, "--mode", "-m", help="VM mode"),
+    provision: bool = typer.Option(False, "--provision", help="Run base provision"),
 ) -> None:
     """Boot the VM, applying base config if provided."""
-    cmd.start_vm(base=base, settings=settings, mode=mode)
+    state = load_state(settings.state_file)
+    cmd.start(base_config=base, state=state, settings=settings, provision=provision, mode=mode)
 
 
 @app.command()
-@exclusive(settings.state_file)
 def stop(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
 ) -> None:
     """Gracefully shut down the VM."""
     _confirm_destructive("stop", "the VM", yes=yes)
-    cmd.stop_vm(settings)
+    cmd.stop(settings)
 
 
 @app.command()
@@ -121,11 +121,11 @@ def ssh(
     cmd_args: list[str] | None = typer.Argument(None, help="Command to run (default: interactive shell)"),
 ) -> None:
     """Open an interactive SSH session to the VM or a jail."""
-    cmd.ssh(settings, jail_name=jail_name, cmd=cmd_args)
+    state = load_state(settings.state_file)
+    cmd.ssh(state=state, settings=settings, jail_name=jail_name, cmd=cmd_args)
 
 
 @app.command()
-@exclusive(settings.state_file)
 def up(
     config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)  [interactive if omitted]"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
@@ -141,11 +141,11 @@ def up(
         if names is None:
             names = pick_jails_from_config(config)
 
-    cmd.up(config=config, base=base, mode=mode, names=names, settings=settings)
+    state = load_state(settings.state_file)
+    cmd.up(config=config, state=state, settings=settings, base_config=base, mode=mode, names=names)
 
 
 @app.command()
-@exclusive(settings.state_file)
 def down(
     config: Path = typer.Argument(..., help="Path to jail config (.ucl)"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
@@ -154,21 +154,21 @@ def down(
     """Stop and destroy jails."""
     target = f"jails in {config}" if not names else ", ".join(names)
     _confirm_destructive("destroy", target, yes=yes)
-    cmd.down(config=config, names=names, settings=settings)
+    state = load_state(settings.state_file)
+    cmd.down(config=config, state=state, settings=settings, names=names)
 
 
 @app.command()
-@exclusive(settings.state_file)
 def pause(
     config: Path = typer.Argument(..., help="Path to jail config (.ucl)"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
 ) -> None:
     """Stop jails without destroying them."""
-    cmd.pause(config=config, names=names, settings=settings)
+    state = load_state(settings.state_file)
+    cmd.pause(config=config, state=state, settings=settings, names=names)
 
 
 @app.command()
-@exclusive(settings.state_file)
 def purge(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
 ) -> None:
@@ -182,7 +182,8 @@ def status(
     tree: bool = typer.Option(False, "--tree", "-t", help="Show as tree instead of table."),
 ) -> None:
     """Show VM and jail status."""
-    cmd.status(settings, tree=tree)
+    state = load_state(settings.state_file)
+    cmd.status(state=state, settings=settings, tree=tree)
 
 
 def _version_callback(value: bool) -> None:
@@ -207,7 +208,8 @@ def root(
 ) -> None:
     """Run without arguments for the interactive shell."""
     if ctx.invoked_subcommand is None:
-        shell.run(settings, version=_get_version())
+        state = load_state(settings.state_file)
+        shell.run(state=state, settings=settings, version=_get_version())
 
 
 def main() -> None:

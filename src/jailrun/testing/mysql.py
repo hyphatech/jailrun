@@ -10,27 +10,27 @@ from jailrun.testing.commons import Jail
 class MySQLJail(Jail):
     def __init__(
         self,
-        config: Path,
         jail: str = "hypha-mysql-test",
         *,
+        jail_config: Path,
+        base_config: Path | None = None,
+        settings: Settings | None = None,
         user: str = "test",
         password: str = "test",
         dbname: str = "testdb",
         port: int = 4306,
-        base: Path | None = None,
-        settings: Settings | None = None,
     ) -> None:
         self.user = user
         self.password = password
         self.dbname = dbname
         self.port = port
-        super().__init__(config, jail=jail, base=base, settings=settings)
+        super().__init__(jail=jail, jail_config=jail_config, base_config=base_config, settings=settings)
 
     def is_ready(self) -> bool:
         result = jail_ssh_exec(
             "mysqladmin -u root ping",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings),
+            **get_ssh_kw(self._settings, self._state),
         )
         return result is not None
 
@@ -38,12 +38,12 @@ class MySQLJail(Jail):
         jail_ssh_exec(
             f"mysql -u root -e 'DROP DATABASE IF EXISTS `{self.dbname}`'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings),
+            **get_ssh_kw(self._settings, self._state),
         )
         jail_ssh_exec(
             f"mysql -u root -e 'CREATE DATABASE `{self.dbname}`'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings),
+            **get_ssh_kw(self._settings, self._state),
         )
         return self
 
@@ -56,5 +56,5 @@ class MySQLJail(Jail):
         jail_ssh_exec(
             f"mysql -u root -e 'DROP DATABASE IF EXISTS `{self.dbname}`'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings),
+            **get_ssh_kw(self._settings, self._state),
         )

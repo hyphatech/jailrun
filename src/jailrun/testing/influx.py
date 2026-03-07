@@ -12,27 +12,27 @@ from jailrun.testing.commons import Jail
 class InfluxJail(Jail):
     def __init__(
         self,
-        config: Path,
         jail: str = "hypha-influx-test",
         *,
-        port: int = 9086,
-        base: Path | None = None,
+        jail_config: Path,
+        base_config: Path | None = None,
         settings: Settings | None = None,
+        port: int = 9086,
     ) -> None:
         self.port = port
-        super().__init__(config, jail=jail, base=base, settings=settings)
+        super().__init__(jail=jail, jail_config=jail_config, base_config=base_config, settings=settings)
 
     def is_ready(self) -> bool:
         result = jail_ssh_exec(
             "influx -execute 'SHOW DATABASES'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings),
+            **get_ssh_kw(self._settings, self._state),
         )
         return result is not None
 
     def __enter__(self) -> Self:
-        client = InfluxDBClient(host="127.0.0.1", port=self.port)
-        client.query("DROP DATABASE test")
+        client = InfluxDBClient(host=self._settings.vm_host, port=self.port)
+        client.drop_database("test")
         client.create_database("test")
         return self
 
@@ -42,6 +42,6 @@ class InfluxJail(Jail):
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        client = InfluxDBClient(host="127.0.0.1", port=self.port)
-        client.query("DROP DATABASE test")
+        client = InfluxDBClient(host=self._settings.vm_host, port=self.port)
+        client.drop_database("test")
         client.create_database("test")

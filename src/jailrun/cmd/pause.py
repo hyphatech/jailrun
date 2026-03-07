@@ -3,15 +3,21 @@ from pathlib import Path
 import typer
 
 from jailrun.ansible import run_playbook
-from jailrun.config import load_state, parse_config
+from jailrun.config import parse_config
+from jailrun.misc import lock
 from jailrun.qemu import vm_is_running
-from jailrun.schemas import JailPlan, Plan
+from jailrun.schemas import JailPlan, Plan, State
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw, wait_for_ssh
 from jailrun.ui import err, ok, warn
 
 
-def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -> None:
+def pause(config: Path, state: State, settings: Settings, *, names: list[str] | None = None) -> None:
+    with lock(settings.state_file):
+        _pause(config=config, state=state, settings=settings, names=names)
+
+
+def _pause(config: Path, state: State, settings: Settings, *, names: list[str] | None = None) -> None:
     cfg = parse_config(config)
     targets = set(names) if names else set(cfg.jail.keys())
 
@@ -24,8 +30,6 @@ def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -
         err("VM is not running. Run 'jrun start' first.")
         raise typer.Exit(1)
 
-    state = load_state(settings.state_file)
-
     to_stop: list[str] = []
     for name in sorted(targets):
         if name in state.jails:
@@ -37,7 +41,7 @@ def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -
         warn("No matching jails found in state.")
         return
 
-    ssh_kw = get_ssh_kw(settings)
+    ssh_kw = get_ssh_kw(settings, state)
     wait_for_ssh(**ssh_kw, silent=True)
 
     stop_plan = Plan(
@@ -51,6 +55,6 @@ def pause(config: Path, *, settings: Settings, names: list[str] | None = None) -
         ],
     )
 
-    run_playbook("jail-stop.yml", plan=stop_plan, settings=settings)
+    run_playbook("jail-stop.yml", plan=stop_plan, settings=settings, state=state)
 
     ok(f"Paused: {', '.join(to_stop)}.")

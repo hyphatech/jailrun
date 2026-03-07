@@ -29,19 +29,18 @@ def test_parse_size_bytes_and_units() -> None:
     assert qemu.parse_size("1.5G") == int(1.5 * 1024**3)
 
 
-def test_build_netdev_arg_includes_default_ssh_and_rules() -> None:
+def test_build_netdev_arg_includes_ssh_and_rules(settings: Settings) -> None:
     rules = [
         QemuFwd(proto="tcp", host=8080, guest=80),
         QemuFwd(proto="udp", host=5353, guest=5353),
     ]
-    out = qemu.build_netdev_arg(hostfwd=rules, default_ssh_port=2222)
+    out = qemu.build_netdev_arg(hostfwd=rules, ssh_host=settings.vm_host, ssh_port=settings.ssh_port)
 
     assert "user" in out
     assert "id=net0" in out
-    assert "hostfwd=tcp:127.0.0.1:2222-:22" in out
-
-    assert "hostfwd=tcp:127.0.0.1:8080-:80" in out
-    assert "hostfwd=udp:127.0.0.1:5353-:5353" in out
+    assert f"hostfwd=tcp:{settings.vm_host}:{settings.ssh_port}-:22" in out
+    assert f"hostfwd=tcp:{settings.vm_host}:8080-:80" in out
+    assert f"hostfwd=udp:{settings.vm_host}:5353-:5353" in out
 
 
 def test_build_share_args_two_shares(tmp_path: Path) -> None:
@@ -64,13 +63,16 @@ def test_build_share_args_two_shares(tmp_path: Path) -> None:
 def test_build_qemu_cmd_minimal_state_no_shares_or_fwds(settings: Settings) -> None:
     state = State()
 
+    ssh_port = qemu.resolve_ssh_port(state=state, settings=settings)
+    assert ssh_port
+
     cmd = qemu.build_qemu_cmd(state, mode=qemu.QemuMode.SERVER, settings=settings)
     features = qemu.detect_qemu_features()
 
     assert cmd[0] == f"qemu-system-{features.arch}"
 
     netdev_idx = cmd.index("-netdev") + 1
-    assert f"hostfwd=tcp:127.0.0.1:{settings.ssh_port}-:22" in cmd[netdev_idx]
+    assert f"hostfwd=tcp:{settings.vm_host}:{ssh_port}-:22" in cmd[netdev_idx]
 
     assert "-display" in cmd
     assert "none" in cmd
@@ -78,6 +80,9 @@ def test_build_qemu_cmd_minimal_state_no_shares_or_fwds(settings: Settings) -> N
 
 def test_build_qemu_cmd_foreground_adds_serial_and_nographic(settings: Settings) -> None:
     state = State()
+
+    ssh_port = qemu.resolve_ssh_port(state=state, settings=settings)
+    assert ssh_port
 
     cmd = qemu.build_qemu_cmd(state, mode=qemu.QemuMode.TTY, settings=settings)
 

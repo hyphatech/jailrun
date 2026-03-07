@@ -12,9 +12,9 @@ from jailrun.http import download
 from jailrun.schemas import QemuFwd, QemuShare, State
 from jailrun.serializers import loads
 from jailrun.settings import Settings
-from jailrun.ssh import ensure_vm_key
+from jailrun.ssh import ensure_vm_key, find_free_port, is_port_free
 from jailrun.templates import build_jinja_env
-from jailrun.ui import info, ok
+from jailrun.ui import info, ok, warn
 
 
 @dataclass(frozen=True)
@@ -81,13 +81,15 @@ def parse_size(value: str) -> int:
     v = value.strip().upper()
     if v[-1].isdigit():
         return int(v)
+
     return int(float(v[:-1]) * units[v[-1]])
 
 
-def build_netdev_arg(hostfwd: list[QemuFwd], *, default_ssh_port: int) -> str:
-    parts = ["user", "id=net0", f"hostfwd=tcp:127.0.0.1:{default_ssh_port}-:22"]
+def build_netdev_arg(hostfwd: list[QemuFwd], *, ssh_host: str, ssh_port: int) -> str:
+    parts = ["user", "id=net0", f"hostfwd=tcp:{ssh_host}:{ssh_port}-:22"]
     for rule in hostfwd:
-        parts.append(f"hostfwd={rule.proto}:127.0.0.1:{rule.host}-:{rule.guest}")
+        parts.append(f"hostfwd={rule.proto}:{ssh_host}:{rule.host}-:{rule.guest}")
+
     return ",".join(parts)
 
 
@@ -114,16 +116,19 @@ def disk_size_bytes(path: Path) -> int:
 
 
 def build_qemu_cmd(state: State, *, settings: Settings, mode: QemuMode) -> list[str]:
+    if state.ssh_port is None:
+        raise RuntimeError("state.ssh_port is not set")
+
     image_xz = Path(str(settings.bsd_image_url)).name
     disk_path = settings.disk_dir / Path(image_xz).with_suffix("")
     cloud_iso = settings.cloud_dir / "cloud-init.iso"
 
     features = detect_qemu_features()
 
-    hostfwd = derive_qemu_fwds(state=state, default_ssh_port=settings.ssh_port)
+    hostfwd = derive_qemu_fwds(state=state)
     shares = derive_qemu_shares(state)
 
-    netdev = build_netdev_arg(hostfwd=hostfwd, default_ssh_port=settings.ssh_port)
+    netdev = build_netdev_arg(hostfwd=hostfwd, ssh_host=settings.vm_host, ssh_port=state.ssh_port)
     share_args = build_share_args(shares, features=features)
 
     cmd = [
@@ -170,11 +175,25 @@ def build_qemu_cmd(state: State, *, settings: Settings, mode: QemuMode) -> list[
     return cmd
 
 
+def resolve_ssh_port(state: State, *, settings: Settings) -> int:
+    if state.ssh_port is None:
+        state.ssh_port = find_free_port(settings.ssh_port, bind_addr=settings.vm_host)
+    elif not is_port_free(state.ssh_port, bind_addr=settings.vm_host):
+        new_port = find_free_port(state.ssh_port, bind_addr=settings.vm_host)
+        warn(f"Previously used SSH port {state.ssh_port} is now busy — switching to {new_port}…")
+        state.ssh_port = new_port
+
+    return state.ssh_port
+
+
 def launch_vm(state: State, *, mode: QemuMode, settings: Settings) -> int | None:
+    if state.ssh_port is None:
+        raise RuntimeError("state.ssh_port is not set")
+
     cmd = build_qemu_cmd(state=state, mode=mode, settings=settings)
 
     if mode in {QemuMode.TTY, QemuMode.GRAPHIC}:
-        info(f"Starting VM in {mode} mode.")
+        info(f"Starting VM in {mode} mode…")
         settings.pid_file.unlink(missing_ok=True)
         subprocess.run(cmd, check=False)
         return None
@@ -185,8 +204,15 @@ def launch_vm(state: State, *, mode: QemuMode, settings: Settings) -> int | None
     with open(log_file, "ab") as log:
         proc = subprocess.Popen(cmd, stdout=log, stderr=log, start_new_session=True)
 
+    try:
+        proc.wait(timeout=3)
+        settings.pid_file.unlink(missing_ok=True)
+        raise RuntimeError(f"QEMU process {proc.pid} exited immediately — check {log_file}")
+    except subprocess.TimeoutExpired:
+        pass
+
     settings.pid_file.write_text(str(proc.pid))
-    ok(f"VM started (pid {proc.pid}).")
+    ok(f"VM started on {settings.vm_host}:{state.ssh_port} (pid {proc.pid}).")
 
     return proc.pid
 
@@ -255,8 +281,10 @@ def prepare_cloud_init(settings: Settings) -> None:
         public_key=settings.ssh_dir / f"{settings.ssh_key}.pub",
     )
     env = build_jinja_env()
+
     user_data = env.get_template("cloud_user_data.j2").render(ssh_key=ssh_key)
     meta_data = env.get_template("cloud_meta_data.j2").render()
+
     (settings.cloud_dir / "user-data").write_text(f"#cloud-config\n{user_data}")
     (settings.cloud_dir / "meta-data").write_text(meta_data)
 

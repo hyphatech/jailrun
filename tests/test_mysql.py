@@ -4,20 +4,21 @@ import pymysql
 import pytest
 
 from jailrun import ROOT_DIR
+from jailrun.settings import Settings
 from jailrun.testing.mysql import MySQLJail
 
 
 @pytest.fixture
 def mysql_jail() -> Generator[MySQLJail]:
-    with MySQLJail(ROOT_DIR / "tests" / "mysql.ucl", jail="hypha-mysql-test") as jail:
+    with MySQLJail("hypha-mysql-test", jail_config=ROOT_DIR / "tests" / "mysql.ucl") as jail:
         yield jail
 
 
 @pytest.fixture
-def mysql_conn(mysql_jail: MySQLJail) -> Generator[pymysql.Connection]:
+def mysql_conn(settings: Settings, mysql_jail: MySQLJail) -> Generator[pymysql.Connection]:
     with (
         pymysql.connect(
-            host="127.0.0.1",
+            host=settings.vm_host,
             port=mysql_jail.port,
             user=mysql_jail.user,
             password=mysql_jail.password,

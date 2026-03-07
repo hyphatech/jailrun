@@ -9,18 +9,12 @@ from rich.table import Table
 from rich.text import Text
 from rich.tree import Tree
 
-from jailrun.config import load_state
 from jailrun.qemu import vm_is_running
+from jailrun.schemas import State
 from jailrun.serializers import loads
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw, ssh_exec, wait_for_ssh
 from jailrun.ui import con
-
-
-class SSHKwargs(TypedDict):
-    private_key: Path
-    ssh_user: str
-    ssh_port: int
 
 
 class RawJail(TypedDict):
@@ -41,6 +35,8 @@ class JailRow(TypedDict):
 
 class StatusInfo(TypedDict):
     pid: int
+    ssh_host: str
+    ssh_port: int
     uptime: str | None
     disk_free: str | None
     disk_total: str | None
@@ -66,7 +62,7 @@ def short_path(p: str) -> str:
     return p
 
 
-def get_bastille_jails(private_key: Path, ssh_user: str, ssh_port: int) -> list[RawJail]:
+def get_bastille_jails(private_key: Path, ssh_user: str, ssh_host: str, ssh_port: int) -> list[RawJail]:
     raw_jails: list[dict[str, str]] = []
     clean_jails: list[RawJail] = []
 
@@ -74,6 +70,7 @@ def get_bastille_jails(private_key: Path, ssh_user: str, ssh_port: int) -> list[
         cmd="bastille list -j",
         private_key=private_key,
         ssh_user=ssh_user,
+        ssh_host=ssh_host,
         ssh_port=ssh_port,
     )
     if not bastille_list or bastille_list == "[]":
@@ -93,10 +90,10 @@ def get_bastille_jails(private_key: Path, ssh_user: str, ssh_port: int) -> list[
     return clean_jails
 
 
-def get_disk_stats(private_key: Path, ssh_user: str, ssh_port: int) -> DiskStats:
+def get_disk_stats(private_key: Path, ssh_user: str, ssh_host: str, ssh_port: int) -> DiskStats:
     disk_free: str | None = None
     disk_total: str | None = None
-    disk = ssh_exec(cmd="df -h /", private_key=private_key, ssh_user=ssh_user, ssh_port=ssh_port)
+    disk = ssh_exec(cmd="df -h /", private_key=private_key, ssh_user=ssh_user, ssh_host=ssh_host, ssh_port=ssh_port)
     if disk:
         parts = disk.splitlines()[-1].split()
         if len(parts) >= 4:
@@ -105,12 +102,13 @@ def get_disk_stats(private_key: Path, ssh_user: str, ssh_port: int) -> DiskStats
     return DiskStats(disk_free=disk_free, disk_total=disk_total)
 
 
-def get_mem_stats(private_key: Path, ssh_user: str, ssh_port: int) -> MemStats:
+def get_mem_stats(private_key: Path, ssh_user: str, ssh_host: str, ssh_port: int) -> MemStats:
     mem_total: float | None = None
     mem_usable: float | None = None
     mem = ssh_exec(
         cmd="sysctl -n hw.physmem hw.usermem",
         private_key=private_key,
+        ssh_host=ssh_host,
         ssh_user=ssh_user,
         ssh_port=ssh_port,
     )
@@ -122,7 +120,7 @@ def get_mem_stats(private_key: Path, ssh_user: str, ssh_port: int) -> MemStats:
     return MemStats(mem_total=mem_total, mem_usable=mem_usable)
 
 
-def collect_info(settings: Settings) -> StatusInfo:
+def collect_info(settings: Settings, state: State) -> StatusInfo:
     alive, pid = vm_is_running(settings.pid_file)
 
     if not alive:
@@ -143,8 +141,7 @@ def collect_info(settings: Settings) -> StatusInfo:
     if pid is None:
         raise RuntimeError("VM reported running but PID is missing")
 
-    state = load_state(settings.state_file)
-    ssh_kw = get_ssh_kw(settings)
+    ssh_kw = get_ssh_kw(settings, state)
 
     with con().status("[dim]Connecting to VM…[/dim]", spinner="dots"):
         wait_for_ssh(**ssh_kw, silent=True)
@@ -197,6 +194,8 @@ def collect_info(settings: Settings) -> StatusInfo:
 
     return StatusInfo(
         pid=int(pid),
+        ssh_host=ssh_kw["ssh_host"],
+        ssh_port=ssh_kw["ssh_port"],
         uptime=uptime,
         disk_free=disk_stats["disk_free"],
         disk_total=disk_stats["disk_total"],
@@ -231,7 +230,8 @@ def render_table(data: StatusInfo) -> None:
             ("  ● ", "bold green"),
             ("VM", "bold white"),
             ("  running", "green"),
-            (f"  pid {data['pid']}", "dim white"),
+            (f"  on {data['ssh_host']}:{data['ssh_port']}", "dim white"),
+            (f"  (pid {data['pid']})", "dim white"),
         )
     )
     c.print()
@@ -301,7 +301,8 @@ def render_tree(data: StatusInfo) -> None:
             ("● ", "bold green"),
             ("VM", "bold white"),
             ("  running", "green"),
-            (f"  pid {data['pid']}", "dim white"),
+            (f"  on {data['ssh_host']}:{data['ssh_port']}", "dim white"),
+            (f"  (pid {data['pid']})", "dim white"),
         )
     )
 
@@ -340,8 +341,8 @@ def render_tree(data: StatusInfo) -> None:
     c.print()
 
 
-def status(settings: Settings, tree: bool = False) -> None:
-    data = collect_info(settings)
+def status(state: State, settings: Settings, *, tree: bool = False) -> None:
+    data = collect_info(state=state, settings=settings)
     if tree:
         render_tree(data)
     else:
