@@ -69,11 +69,6 @@
       loop: "{{ monit_status.results }}"
       when: item.rc == 0
 
-    - name: Wait for monit to process reload
-      ansible.builtin.pause:
-        seconds: 3
-      when: monit_status.results | selectattr('rc', 'equalto', 0) | list | length > 0
-
     - name: Re-enable monitoring for all jrun services
       ansible.builtin.command: "bastille cmd {{ item.name }} monit -g jrun monitor all"
       loop: "{{ jails | default([]) }}"

@@ -53,6 +53,7 @@ def ssh_cmd(args: list[str], *, private_key: Path, ssh_user: str, ssh_port: int)
         str(private_key),
         "-p",
         str(ssh_port),
+        *(["-t"] if args else []),
         *SSH_OPTS,
         f"{ssh_user}@localhost",
         *args,

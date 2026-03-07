@@ -1,0 +1,5 @@
+jail "python-314" {
+  setup {
+    fastapi { type = "ansible"; file = "examples/fastapi/python-314.yml"; }
+  }
+}

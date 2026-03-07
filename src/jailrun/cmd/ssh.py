@@ -9,7 +9,7 @@ from jailrun.ssh import get_ssh_kw, jail_ssh_cmd, ssh_cmd, wait_for_ssh
 from jailrun.ui import err
 
 
-def ssh(settings: Settings, jail_name: str | None = None) -> None:
+def ssh(settings: Settings, jail_name: str | None = None, cmd: list[str] | None = None) -> None:
     alive, _ = vm_is_running(settings.pid_file)
     if not alive:
         err("VM is not running. Run 'jrun start' first.")
@@ -30,8 +30,8 @@ def ssh(settings: Settings, jail_name: str | None = None) -> None:
             err(f"Jail '{jail_name}' has no IP assigned.")
             raise typer.Exit(1)
 
-        cmd = jail_ssh_cmd(args=[], jail_ip=jail_ip, **ssh_kw)
+        command = jail_ssh_cmd(args=cmd or [], jail_ip=jail_ip, **ssh_kw)
     else:
-        cmd = ssh_cmd(args=[], **ssh_kw)
+        command = ssh_cmd(args=cmd or [], **ssh_kw)
 
-    subprocess.run(cmd, check=False)
+    subprocess.run(command, check=False)

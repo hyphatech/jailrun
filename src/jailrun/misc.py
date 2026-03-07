@@ -16,7 +16,7 @@ def current_arch() -> Literal["aarch64", "amd64"]:
 
 
 @contextmanager
-def _lock(state_file: Path) -> Generator[None]:
+def lock(state_file: Path) -> Generator[None]:
     lock_path = state_file.with_suffix(".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     fp = open(lock_path, "w")  # noqa: SIM115
@@ -42,7 +42,7 @@ def exclusive(state_file: Path) -> Callable[[F], F]:
     def decorator(fn: F) -> F:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            with _lock(state_file):
+            with lock(state_file):
                 return fn(*args, **kwargs)
 
         return wrapper  # type: ignore[return-value]

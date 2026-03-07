@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     playbook_cache_dir: Path = STATE_DIR / "playbooks"
     pid_file: Path = STATE_DIR / "vm.pid"
 
+    vm_host: str = "127.0.0.1"
+
     ssh_port: int = 2222
     ssh_user: str = "admin"
     ssh_key: str = "id_ed25519"
