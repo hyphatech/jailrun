@@ -1,4 +1,4 @@
-- name: Minimal VM setup
+- name: Base VM Setup
   hosts: localhost
   gather_facts: false
   become: true
@@ -14,7 +14,7 @@
         state: present
 
     - name: Load PF module
-      command: kldload pf
+      ansible.builtin.command: kldload pf
       register: kldload_pf
       failed_when: >
         kldload_pf.rc != 0 and 'already loaded' not in (kldload_pf.stderr | default(''))
@@ -24,10 +24,10 @@
       ansible.builtin.command: bastille setup
 
     - name: Load PF rules
-      command: pfctl -f /etc/pf.conf
+      ansible.builtin.command: pfctl -f /etc/pf.conf
 
     - name: Enable PF
-      command: pfctl -e
+      ansible.builtin.command: pfctl -e
       async: 1
       poll: 0
 
@@ -36,5 +36,20 @@
         delay: 5
         timeout: 60
 
+    - name: Configure ntpd to step on any offset
+      ansible.builtin.lineinfile:
+        path: /etc/ntp.conf
+        line: "tinker panic 0"
+        insertbefore: BOF
+
+    - name: Enable ntpd
+      ansible.builtin.command: sysrc ntpd_enable="YES"
+      changed_when: false
+
+    - name: Start ntpd
+      ansible.builtin.service:
+        name: ntpd
+        state: started
+
     - name: Bootstrap release (might take some time)
-      command: bastille bootstrap {{ bsd_version }}-{{ bsd_release_tag }}
+      ansible.builtin.command: bastille bootstrap {{ bsd_version }}-{{ bsd_release_tag }}
