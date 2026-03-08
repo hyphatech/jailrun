@@ -13,6 +13,21 @@
           - fping
         state: present
 
+    - name: Set VM-optimized kernel tunables
+      ansible.builtin.lineinfile:
+        path: /boot/loader.conf
+        line: "{{ item.line }}"
+        regexp: "{{ item.regexp }}"
+      loop:
+        - { regexp: '^kern\.hz=', line: 'kern.hz=100' }
+        - { regexp: '^virtio_load=', line: 'virtio_load="YES"' }
+
+    - name: Limit ZFS ARC
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: "vfs.zfs.arc_max=2147483648"
+        regexp: '^vfs\.zfs\.arc_max='
+
     - name: Load PF module
       ansible.builtin.command: kldload pf
       register: kldload_pf
@@ -22,6 +37,8 @@
 
     - name: Setup Bastille
       ansible.builtin.command: bastille setup
+      changed_when: false
+      failed_when: false
 
     - name: Load PF rules
       ansible.builtin.command: pfctl -f /etc/pf.conf
@@ -40,6 +57,7 @@
       ansible.builtin.lineinfile:
         path: /etc/ntp.conf
         line: "tinker panic 0"
+        regexp: '^tinker'
         insertbefore: BOF
 
     - name: Enable ntpd
