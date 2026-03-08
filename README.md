@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/logo.png" alt="jrun" width="100%" />
+  <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/logo.png" alt="jailrun" width="100%" />
 </p>
 
-# jrun
+# Jailrun
 
-jrun boots a [FreeBSD](https://www.freebsd.org/) VM on your machine and runs lightweight, isolated environments called jails inside it — each with its own filesystem, network, and processes. Define your apps and jrun handles the rest.
+Jailrun is a cross-platform orchestration tool for FreeBSD jails. Its CLI, `jrun`, brings FreeBSD to your host system and manages jails inside it — each with its own filesystem, network, and processes. Define your stack in a config file and `jrun` handles the rest.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/screenshot.png" alt="screenshot" width="100%" />
@@ -14,7 +14,11 @@ jrun boots a [FreeBSD](https://www.freebsd.org/) VM on your machine and runs lig
 
 A jail is a self-contained environment running inside FreeBSD. Nothing inside a jail can see or touch anything outside of it — and nothing outside can interfere with what's inside.
 
-Jails are a native FreeBSD feature. They're fast to create, cheap to run, and trivial to throw away and recreate. FreeBSD jails are one of the most proven isolation technologies in computing — and jrun makes them accessible from macOS and Linux.
+Jails are a native FreeBSD feature. They're fast to create, cheap to run, and easy to destroy and recreate from scratch. FreeBSD jails are one of the most proven isolation technologies in computing — and jrun makes them accessible from macOS and Linux.
+
+## ZFS
+
+Jailrun uses [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) as the backing filesystem for all jails, making snapshots instant and free on disk.
 
 ## Install
 
@@ -24,6 +28,8 @@ Jails are a native FreeBSD feature. They're fast to create, cheap to run, and tr
 brew tap hyphatech/jailrun
 brew install jailrun
 ```
+
+This installs `jrun` and all its dependencies — Python, QEMU, Ansible, and mkisofs.
 
 **Linux:**
 
@@ -60,12 +66,11 @@ uv tool install "git+https://github.com/hyphatech/jailrun.git@master"
 
 Bring FreeBSD to your system:
 
-
 ```bash
 jrun start
 ```
 
-That's it. On first run, jrun downloads a FreeBSD image, boots the VM, and sets up SSH.
+On first run, jrun downloads a FreeBSD image, boots the VM with hardware acceleration (HVF on macOS, KVM on Linux), and sets up SSH for further provisioning.
 
 After provisioning, connect:
 
@@ -74,6 +79,7 @@ jrun ssh
 ```
 
 Prefer an interactive experience? Run `jrun` with no arguments to enter the shell — guided wizards, autocomplete, and command history all included.
+
 ```bash
 jrun
 ```
@@ -107,7 +113,7 @@ Bring it up:
 jrun up web.ucl
 ```
 
-Here’s what’s happening:
+Here's what's happening:
 
 - **A jail was created** — a fully isolated environment with its own IP address and filesystem.
 - **Your project directory was mounted** inside the jail at `/srv/project`. Changes you make on your host show up instantly inside the jail, and vice versa.
@@ -175,24 +181,23 @@ jail "fastapi-314" {
 
 Bring all services up together:
 
-
 ```bash
 jrun up stack.ucl
 ```
 
-Here’s what’s happening:
+Here's what's happening:
 
-**Each `setup` block points to an Ansible playbook** that runs when the jail is first created. `hypha-python-314` compiles Python 3.14 from source. `hypha-postgres` installs and configures PostgreSQL.
+- **Each `setup` block points to an Ansible playbook** that runs when the jail is first created. `hypha-python-314` compiles Python 3.14 from source. `hypha-postgres` installs and configures PostgreSQL.
 
-**`base` clones one jail from another.** Compiling from source might be slow. You do it once in `hypha-python-314`, then `fastapi-314` is created as a clone — fast, cheap on disk, and fully independent from the base.
+- **Block `base` clones one jail from another.** Compiling from source might be slow. You do it once in `hypha-python-314`, then `fastapi-314` is created as a ZFS clone — a fully independent copy ready in milliseconds, using no extra disk space until it diverges from the base.
 
-**`depends` controls deploy order.** jrun resolves the dependency graph automatically. In this case: `hypha-python-314` first (it's the base), then `hypha-postgres` (it's a dependency), then `fastapi-314` last.
+- **Block `depends` controls deploy order.** jrun resolves the dependency graph automatically. In this case: `hypha-python-314` first (it's the base), then `hypha-postgres` (it's a dependency), then `fastapi-314` last.
 
-**Jails discover each other by name.** From inside `fastapi-314`, you can `ping hypha-postgres` — it just works. Use jail names directly in your app's database config.
+- **Jails discover each other by name.** From inside `fastapi-314`, you can `ping hypha-postgres` — it just works. Use jail names directly in your app's database config.
 
-**Port forwarding works from your host.** PostgreSQL is reachable at `localhost:6432`. Your FastAPI app is at `localhost:8080`. Healthchecks are built in — the process supervisor monitors it and restarts it if the check fails.
+- **Port forwarding works from your host.** PostgreSQL is reachable at `localhost:6432`. Your FastAPI app is at `localhost:8080`. Healthchecks are built in — the process supervisor monitors it and restarts it if the check fails.
 
-**Live reload works out of the box.** Your project directory is shared into the jail. Uvicorn's `--reload` sees file changes instantly.
+- **Live reload works out of the box.** Your project directory is shared into the jail. Uvicorn's `--reload` sees file changes instantly.
 
 Check on everything:
 
@@ -219,9 +224,9 @@ jrun ssh hypha-postgres
 
 ## Using shared playbooks
 
-Not every playbook needs to be written from scratch. [jailrun-hub](https://github.com/hyphatech/jailrun-hub) is a curated collection of ready-to-use playbooks for common services — Redis, Nginx, PostgreSQL, and more.
+Not every playbook needs to be written from scratch. [Jailrun Hub](https://github.com/hyphatech/jailrun-hub) is a curated collection of ready-to-use playbooks for common services — Redis, Nginx, PostgreSQL, and more.
 
-Point a setup step at a hub playbook with `url` instead of `file`:
+Point a setup step at a Hub playbook with `url` instead of `file`:
 
 ```
 jail "hypha-nginx" {
@@ -251,6 +256,34 @@ setup {
   core { type = "ansible"; file = "setup.yml"; vars { APP_ENV = "production"; } }
 }
 ```
+
+## Running a graphical desktop
+
+Jailrun isn't limited to headless services. You can provision a full FreeBSD desktop and launch the VM with a QEMU graphical window — useful for running GUI applications in a clean, isolated environment.
+
+Create a `base.ucl` at the VM level:
+
+```
+# base.ucl
+
+base {
+  setup {
+    desktop {
+      type = "ansible";
+      url  = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/xfce/latest/playbook.yml";
+      vars { X_RESOLUTION = "1920x1080"; }
+    }
+  }
+}
+```
+
+Apply the base config and boot with a graphical display:
+
+```bash
+jrun start --base base.ucl --mode graphic
+```
+
+QEMU opens a window with an XFCE desktop running inside FreeBSD — full mouse and keyboard support, with hardware acceleration. A [KDE Plasma](https://github.com/hyphatech/jailrun-hub/tree/main/playbooks/kde/latest) variant is also available in Jailrun Hub.
 
 ## Updating and tearing down
 
@@ -290,62 +323,56 @@ Jails integrate naturally with test suites. Here's an example of a pytest fixtur
 
 ```python
 from collections.abc import Generator
-from pathlib import Path
 
 import psycopg
 import pytest
 
+from jailrun import ROOT_DIR
+from jailrun.settings import Settings
 from jailrun.testing.postgres import PostgresJail
 
 
 @pytest.fixture
-def postgres() -> Generator[PostgresJail]:
-    with PostgresJail(Path("examples/postgres.ucl"), jail="hypha-postgres") as pg:
-        yield pg
+def postgres_jail() -> Generator[PostgresJail]:
+    with PostgresJail("hypha-postgres-test", jail_config=ROOT_DIR / "tests" / "postgres.ucl") as jail:
+        yield jail
 
 
-def test_insert_and_query(postgres: PostgresJail) -> None:
-    with psycopg.connect(host="127.0.0.1", port=postgres.port, dbname=postgres.dbname, user=postgres.user) as conn:
-        conn.execute("CREATE TABLE users (id serial, name text)")
-        conn.execute("INSERT INTO users (name) VALUES ('alice')")
-        row = conn.execute("SELECT name FROM users WHERE name = 'alice'").fetchone()
+@pytest.fixture
+def postgres_conn(settings: Settings, postgres_jail: PostgresJail) -> Generator[psycopg.Connection]:
+    with psycopg.connect(
+        host=settings.vm_host, port=postgres_jail.port, dbname=postgres_jail.dbname, user=postgres_jail.user
+    ) as conn:
+        yield conn
+
+
+def test_insert_and_query(postgres_conn: psycopg.Connection) -> None:
+    with postgres_conn.cursor() as cur:
+        cur.execute("CREATE TABLE users (id serial, name text)")
+        cur.execute("INSERT INTO users (name) VALUES ('alice')")
+        row = cur.execute("SELECT name FROM users WHERE name = 'alice'").fetchone()
         assert row
 
         [value] = row
         assert value == "alice"
+
+
+def test_empty_after_cleanup(postgres_conn: psycopg.Connection) -> None:
+    with postgres_conn.cursor() as cur:
+        tables = cur.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public'").fetchall()
+        assert tables == []
 ```
 
-Your tests run against a real PostgreSQL in its own jail, not an in-memory substitute.
-
-Works the same way for Redis:
-
-```python
-from collections.abc import Generator
-from pathlib import Path
-
-import pytest
-import redis
-
-from jailrun.testing.redis import RedisJail
-
-
-@pytest.fixture
-def redis_jail() -> Generator[RedisJail]:
-    with RedisJail(Path("examples/redis.ucl"), jail="hypha-redis") as r:
-        yield r
-
-
-def test_set_and_get(redis_jail: RedisJail) -> None:
-    r = redis.Redis(host="127.0.0.1", port=redis_jail.port)
-    r.set("name", "alice")
-    assert r.get("name") == b"alice"
-```
+Your tests run against a real PostgreSQL in its own jail, not an in-memory substitute. Jailrun includes ready-to-use testing fixtures for PostgreSQL, Redis, InfluxDB, MariaDB, and MySQL.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
 | `jrun start` | Boot the VM (downloads FreeBSD on first run) |
+| `jrun start --base <config>` | Boot the VM with a base config applied |
+| `jrun start --provision` | Re-run base provisioning on an already-booted VM |
+| `jrun start --mode graphic` | Boot the VM with a graphical QEMU display |
 | `jrun stop` | Shut down the VM gracefully |
 | `jrun ssh` | SSH into the VM |
 | `jrun ssh <name>` | SSH directly into a jail |
@@ -458,9 +485,9 @@ All settings have sensible defaults. Override them with environment variables if
 | `JRUN_QEMU_MEMORY` | `4096M` | VM memory |
 | `JRUN_QEMU_DISK_SIZE` | `20G` | VM disk size |
 
-## How jrun works
+## How Jailrun works
 
-jrun wires together a set of proven, focused tools — each chosen for a reason.
+Jailrun wires together a set of proven, focused tools — each chosen for a reason.
 
 | Layer | Tool | What it does |
 |-------|------|--------------|
@@ -472,11 +499,17 @@ jrun wires together a set of proven, focused tools — each chosen for a reason.
 | Filesystem | [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) + [9p](https://wiki.qemu.org/Documentation/9p) | Instant jail clones via ZFS snapshots; host directory sharing via 9p |
 | Networking | [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf) | FreeBSD's packet filter handles port forwarding between host and jails |
 
-**[Bastille](https://bastillebsd.org/)** is a small but solid and well-respected tool in the FreeBSD community. It does one thing — manage jails — and does it well.
+The lifecycle is controlled by three base commands:
 
-**[Ansible](https://docs.ansible.com/)** is an enterprise-grade provisioning system and the backbone of jrun's setup step. It brings flexibility, idempotency, procedural flow, and a powerful templating engine.
-
-The lifecycle goes like this: `jrun start` boots the VM and runs the base setup. `jrun up` reads your config, resolves the dependency graph, then deploys each jail in order — create (or clone from a base), mount shared directories, run provisioning playbooks, wire up port forwards, and start supervised processes. Removing a jail cleans up its mounts, ports, and processes without affecting the rest.
+- `jrun start` provisions FreeBSD on your host in QEMU.
+- `jrun up` reads your config, resolves the dependency graph, and deploys each jail in order:
+  - create (or clone from a base)
+  - mount shared directories
+  - run provisioning playbooks
+  - register jail name as a reachable host for other jails
+  - wire up port forwards
+  - start supervised processes
+- `jrun down` removes a jail and cleans up its mounts, ports, and processes without affecting the rest.
 
 ## Platform support
 
@@ -496,9 +529,9 @@ The lifecycle goes like this: `jrun start` boots the VM and runs the base setup.
 
 ## Acknowledgments
 
-jrun is built on top of [FreeBSD](https://www.freebsd.org/) — a remarkable operating system with decades of engineering behind it. Jails, ZFS, pf, and the overall quality of the system make everything jrun does possible.
+The isolation, filesystem, and networking features Jailrun exposes are native [FreeBSD](https://www.freebsd.org/) primitives — jails, ZFS, and pf — with decades of engineering behind them.
 
-Thanks to the [FreeBSD Foundation](https://freebsdfoundation.org/) for supporting the continued development of FreeBSD, and to the maintainers of [Bastille](https://bastillebsd.org/), [Ansible](https://docs.ansible.com/), [QEMU](https://www.qemu.org/), and [monit](https://mmonit.com/monit/) for the tools jrun builds on.
+Thanks to the [FreeBSD Foundation](https://freebsdfoundation.org/) for supporting the continued development of FreeBSD, and to the maintainers of [Bastille](https://bastillebsd.org/), [Ansible](https://docs.ansible.com/), [QEMU](https://www.qemu.org/), and [monit](https://mmonit.com/monit/) for the tools Jailrun builds on.
 
 ## License
 
