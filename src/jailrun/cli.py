@@ -5,6 +5,7 @@ from typing import Annotated
 import click
 import questionary
 import typer
+import typer.main as typer_main
 from rich.table import Table
 from rich.text import Text
 from typer.core import TyperGroup
@@ -78,7 +79,6 @@ app = typer.Typer(
 
 
 def _confirm_destructive(action: str, target: str, *, yes: bool) -> None:
-    """Prompt for confirmation unless --yes was passed. Exits on refusal."""
     if yes:
         return
 
@@ -209,7 +209,12 @@ def root(
     """Run without arguments for the interactive shell."""
     if ctx.invoked_subcommand is None:
         state = load_state(settings.state_file)
-        shell.run(state=state, settings=settings, version=_get_version())
+        shell.run(
+            state=state,
+            settings=settings,
+            version=_get_version(),
+            click_app=typer_main.get_command(app),  # type: ignore[arg-type]
+        )
 
 
 def main() -> None:

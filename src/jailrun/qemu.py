@@ -204,6 +204,8 @@ def launch_vm(state: State, *, mode: QemuMode, settings: Settings) -> int | None
     with open(log_file, "ab") as log:
         proc = subprocess.Popen(cmd, stdout=log, stderr=log, start_new_session=True)
 
+    settings.pid_file.write_text(str(proc.pid))
+
     try:
         proc.wait(timeout=3)
         settings.pid_file.unlink(missing_ok=True)
@@ -211,7 +213,6 @@ def launch_vm(state: State, *, mode: QemuMode, settings: Settings) -> int | None
     except subprocess.TimeoutExpired:
         pass
 
-    settings.pid_file.write_text(str(proc.pid))
     ok(f"VM started on {settings.vm_host}:{state.ssh_port} (pid {proc.pid}).")
 
     return proc.pid

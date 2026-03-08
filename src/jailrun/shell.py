@@ -1,6 +1,7 @@
-import signal
-from pathlib import Path
+import shlex
+from typing import Any
 
+import click
 import questionary
 import typer
 from prompt_toolkit import PromptSession
@@ -28,13 +29,49 @@ _SHELL_COMMANDS = [
 
 _ALIASES: dict[str, str] = {"?": "help", "quit": "exit", "q": "exit"}
 
+PT_STYLE = Style.from_dict({"prompt": "ansicyan bold", "rprompt": "ansibrightblack"})
 
-PT_STYLE = Style.from_dict(
-    {
-        "prompt": "ansicyan bold",
-        "rprompt": "ansibrightblack",
-    }
-)
+
+def _parse(click_app: click.Group, command: str, args: list[str]) -> dict[str, Any]:
+    sub_cmd = click_app.commands.get(command)
+    if sub_cmd is None:
+        return {}
+    try:
+        with sub_cmd.make_context(command, list(args), resilient_parsing=True) as ctx:
+            return dict(ctx.params)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _invoke(click_app: click.Group, argv: list[str]) -> None:
+    try:
+        with click_app.make_context("jrun", argv) as ctx:
+            click_app.invoke(ctx)
+    except SystemExit:
+        pass
+    except click.exceptions.Abort:
+        _nl()
+    except click.exceptions.UsageError as exc:
+        con().print(f"\n  [bold red]error:[/bold red] {exc}\n")
+
+
+def _build_completer(click_app: click.Group) -> NestedCompleter:
+    completions: dict[str, Any] = {}
+    for name, sub in click_app.commands.items():
+        opts = {
+            opt: None
+            for param in sub.params
+            if isinstance(param, click.Option)
+            for opt in param.opts
+            if opt.startswith("--")
+        }
+        completions[name] = opts or None
+
+    completions["help"] = None
+    completions["?"] = None
+    completions["exit"] = None
+
+    return NestedCompleter.from_nested_dict(completions)
 
 
 def _command_table(include_shell_extras: bool = False) -> Table:
@@ -69,12 +106,7 @@ def _print_welcome(version: str) -> None:
     c.print()
     c.print(_command_table(include_shell_extras=False))
     c.print()
-    c.print(
-        Text(
-            "  Tab · /  browse    ↑↓  history    ?  help    Ctrl-C  exit",
-            style="dim cyan",
-        )
-    )
+    c.print(Text("  Tab · /  browse    ↑↓  history    ?  help    Ctrl-C  exit", style="dim cyan"))
     c.print()
 
 
@@ -93,22 +125,11 @@ def _aborted() -> None:
     warn("Aborted.")
 
 
-def _confirm_destructive(action: str) -> bool:
-    _nl()
-    answer = questionary.confirm(
-        f"This will {action}. Continue?",
-        default=False,
-        style=Q_STYLE,
-    ).ask()
-    _nl()
-    return bool(answer)
-
-
 def _fetch_live_jails(state: State, settings: Settings) -> list[RawJail]:
     try:
         ssh_kw = get_ssh_kw(state=state, settings=settings)
         return get_bastille_jails(**ssh_kw)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return []
 
 
@@ -125,26 +146,14 @@ def _pick_jail_interactively(state: State, settings: Settings) -> str | None:
             state_col = "up" if j["state"].lower() == "up" else j["state"].lower()
             label = f"{j['name'].ljust(max_name)}   {state_col}   {j['ip']}"
             choices.append(Choice(label, value=j["name"]))
-
         choices.append(Separator())
 
-    choices += [
-        Choice("Host VM", value="__host__"),
-        Separator(),
-        Choice("Cancel", value="__cancel__"),
-    ]
-
-    chosen = questionary.select(
-        "SSH into:",
-        choices=choices,
-        style=Q_STYLE,
-    ).ask()
+    choices += [Choice("Host VM", value="__host__"), Separator(), Choice("Cancel", value="__cancel__")]
+    chosen = questionary.select("SSH into:", choices=choices, style=Q_STYLE).ask()
 
     _nl()
 
-    if chosen is None:
-        raise typer.Abort()
-    if chosen == "__cancel__":
+    if chosen in (None, "__cancel__"):
         raise typer.Abort()
     if chosen == "__host__":
         return None
@@ -159,146 +168,129 @@ def _is_vm_running(settings: Settings) -> bool:
 
 def _offer_start_vm(state: State, settings: Settings) -> bool:
     _nl()
-    answer = questionary.confirm(
-        "VM is not running. Boot it now?",
-        default=True,
-        style=Q_STYLE,
-    ).ask()
+    answer = questionary.confirm("VM is not running. Boot it now?", default=True, style=Q_STYLE).ask()
     _nl()
 
     if not answer:
         return False
 
     cmd.start(base_config=None, state=state, settings=settings, mode=QemuMode.SERVER)
+
     return True
 
 
-def _dispatch(state: State, settings: Settings, *, token: str, inline_args: list[str]) -> bool:
-    c = token.strip().lower()
-    c = _ALIASES.get(c, c)
+def _preflight_ssh(click_app: click.Group, args: list[str], state: State, settings: Settings) -> list[str] | None:
+    p = _parse(click_app, "ssh", args)
+    if p.get("jail_name") is not None:
+        return args
 
-    if c in ("exit", "quit", "q"):
+    if not _is_vm_running(settings):
+        if not _offer_start_vm(state, settings):
+            return None
+
+    jail_name = _pick_jail_interactively(state, settings)
+
+    return args if jail_name is None else [jail_name, *args]
+
+
+def _preflight_start(args: list[str]) -> list[str] | None:
+    if args:
+        return args
+
+    _nl()
+
+    want_base = questionary.confirm("Use a custom base.ucl config?", default=False, style=Q_STYLE).ask()
+    if want_base is None:
+        return None
+
+    _nl()
+
+    if not want_base:
+        return args
+
+    raw = questionary.path("Path to base.ucl:", style=Q_STYLE).ask()
+    if raw is None:
+        return None
+
+    _nl()
+
+    return ["--base", raw] if raw else args
+
+
+def _preflight_config_required(click_app: click.Group, command: str, args: list[str]) -> list[str] | None:
+    p = _parse(click_app, command, args)
+    if p.get("config") is not None:
+        return args
+
+    config = pick_config()
+    if config is None:
+        return None
+
+    names = pick_jails_from_config(config)
+
+    _nl()
+
+    flags = [a for a in args if a.startswith("-")]
+    result = [str(config), *(names or []), *flags]
+
+    return result
+
+
+def _preflight(
+    click_app: click.Group, command: str, args: list[str], state: State, settings: Settings
+) -> list[str] | None:
+    if command == "ssh":
+        return _preflight_ssh(click_app=click_app, args=args, state=state, settings=settings)
+    if command == "start":
+        return _preflight_start(args)
+    if command in ("down", "pause"):
+        return _preflight_config_required(click_app=click_app, command=command, args=args)
+
+    return args
+
+
+def _dispatch(
+    state: State,
+    settings: Settings,
+    click_app: click.Group,
+    *,
+    token: str,
+    inline_args: list[str],
+) -> bool:
+    c = _ALIASES.get(token.strip().lower(), token.strip().lower())
+
+    if c == "exit":
         return False
 
     if c == "help":
         _print_help()
         return True
 
-    if c == "status":
-        tree = "--tree" in inline_args or "-t" in inline_args
-        cmd.status(state=state, settings=settings, tree=tree)
+    if c not in click_app.commands:
+        con().print(
+            f"\n  [bold red]unknown command:[/bold red] [cyan]{c}[/cyan]"
+            "  —  type [bold]?[/bold] for help or Tab to browse\n"
+        )
         return True
 
-    if c == "start":
-        base: Path | None = None
-        if not inline_args:
-            _nl()
-            if questionary.confirm(
-                "Use a custom base.ucl config?",
-                default=False,
-                style=Q_STYLE,
-            ).ask():
-                _nl()
-                raw = questionary.path("Path to base.ucl:", style=Q_STYLE).ask()
-                base = Path(raw) if raw else None
-            _nl()
+    argv = _preflight(click_app=click_app, command=c, args=inline_args, state=state, settings=settings)
 
-        cmd.start(base_config=base, state=state, settings=settings, mode=QemuMode.SERVER)
+    if argv is None:
+        _aborted()
         return True
 
-    if c == "stop":
-        if not _confirm_destructive("stop the VM"):
-            _aborted()
-            return True
+    _invoke(click_app, [c, *argv])
 
-        cmd.stop(settings)
-        return True
-
-    if c == "ssh":
-        if inline_args:
-            cmd.ssh(state=state, settings=settings, jail_name=inline_args[0])
-        else:
-            if not _is_vm_running(settings):
-                _offer_start_vm(state=state, settings=settings)
-                return True
-
-            jail_name = _pick_jail_interactively(state=state, settings=settings)
-            cmd.ssh(state=state, settings=settings, jail_name=jail_name)
-
-        return True
-
-    if c == "up":
-        config = Path(inline_args[0]) if inline_args else pick_config()
-        if config is None:
-            _aborted()
-            return True
-
-        names = pick_jails_from_config(config)
-        _nl()
-        cmd.up(config=config, state=state, base_config=None, mode=QemuMode.SERVER, names=names, settings=settings)
-        return True
-
-    if c == "down":
-        config = Path(inline_args[0]) if inline_args else pick_config()
-        if config is None:
-            _aborted()
-            return True
-
-        names = pick_jails_from_config(config)
-        _nl()
-        target = f"jails in {config.name}" if not names else ", ".join(names)
-
-        if not _confirm_destructive(f"destroy {target}"):
-            _aborted()
-            return True
-
-        cmd.down(config=config, state=state, names=names, settings=settings)
-        return True
-
-    if c == "pause":
-        config = Path(inline_args[0]) if inline_args else pick_config()
-        if config is None:
-            _aborted()
-            return True
-
-        names = pick_jails_from_config(config)
-        _nl()
-        cmd.pause(config=config, state=state, names=names, settings=settings)
-        return True
-
-    if c == "purge":
-        if not _confirm_destructive("destroy the VM and ALL jails"):
-            _aborted()
-            return True
-
-        cmd.purge(settings=settings)
-        return True
-
-    con().print(
-        f"\n  [bold red]unknown command:[/bold red] [cyan]{c}[/cyan]"
-        "  —  type [bold]?[/bold] for help or Tab to browse\n"
-    )
     return True
 
 
-def run(state: State, settings: Settings, version: str = "dev") -> None:
-    """Start the interactive shell."""
+def run(state: State, settings: Settings, version: str = "dev", click_app: click.Group | None = None) -> None:
     _print_welcome(version)
 
-    completer = NestedCompleter.from_nested_dict(
-        {
-            "status": {"--tree": None},
-            "start": None,
-            "stop": None,
-            "ssh": None,
-            "up": None,
-            "down": None,
-            "pause": None,
-            "purge": None,
-            "help": None,
-            "exit": None,
-        }
-    )
+    if click_app is None:
+        click_app = click.Group()
+
+    completer = _build_completer(click_app)
 
     kb = KeyBindings()
 
@@ -309,11 +301,6 @@ def run(state: State, settings: Settings, version: str = "dev") -> None:
             buf.start_completion(select_first=False)
         else:
             buf.insert_text("/")
-
-    def _on_resize(sig: int, frame: object) -> None:  # noqa: ARG001
-        _print_welcome(version)
-
-    signal.signal(signal.SIGWINCH, _on_resize)
 
     session: PromptSession[str] = PromptSession(
         history=InMemoryHistory(),
@@ -335,15 +322,25 @@ def run(state: State, settings: Settings, version: str = "dev") -> None:
             con().print("[dim]\n  Bye![/dim]\n")
             break
 
-        parts = raw.strip().split()
-        if not parts:
+        try:
+            parts = shlex.split(raw)
+        except ValueError:
+            con().print("\n  [bold red]error:[/bold red] invalid quoting\n")
             continue
 
+        if not parts:
+            continue
         if parts[0] == "?":
             parts[0] = "help"
 
         try:
-            keep_going = _dispatch(state=state, settings=settings, token=parts[0], inline_args=parts[1:])
+            keep_going = _dispatch(
+                state=state,
+                settings=settings,
+                click_app=click_app,
+                token=parts[0],
+                inline_args=parts[1:],
+            )
         except (typer.Exit, typer.Abort):
             keep_going = True
         except Exception as exc:  # noqa: BLE001
