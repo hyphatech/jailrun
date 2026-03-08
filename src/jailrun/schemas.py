@@ -55,7 +55,7 @@ class RemoteSetupStep(BaseModel):
     @field_validator("url")
     @classmethod
     def url_must_be_url(cls, v: str) -> str:
-        if not v.startswith(("https://", "http://")):
+        if not v.startswith(("https://", "http://", "hub://")):
             raise ValueError(f"'{v}' looks like a path — use 'file' instead of 'url'")
         return v
 

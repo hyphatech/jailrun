@@ -105,7 +105,31 @@ def parse_manifest(content: str) -> dict[str, str]:
     return entries
 
 
+def expand_hub_url(url: str) -> str:
+    """Expand a hub:// shorthand into a full GitHub blob URL.
+
+    Examples:
+        hub://postgres/16          → .../blob/main/playbooks/postgres/16/playbook.yml
+        hub://nginx/latest@v1.0.0  → .../blob/v1.0.0/playbooks/nginx/latest/playbook.yml
+    """
+    if not url.startswith("hub://"):
+        return url
+
+    body = url.removeprefix("hub://").strip("/")
+
+    if "@" in body:
+        path, ref = body.rsplit("@", 1)
+    else:
+        path, ref = body, "main"
+
+    resolved = f"https://github.com/hyphatech/jailrun-hub/blob/{ref}/playbooks/{path}/playbook.yml"
+    info(f"hub://{body} → hyphatech/jailrun-hub@{ref}")
+
+    return resolved
+
+
 def fetch_remote_playbook(url: str, *, cache_dir: Path) -> Path:
+    url = expand_hub_url(url)
     pb = parse_github_url(url)
     dest = cache_dir / cache_key(pb)
 

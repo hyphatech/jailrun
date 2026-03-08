@@ -10,6 +10,7 @@ from jailrun.remote import (
     build_manifest,
     cache_is_valid,
     cache_key,
+    expand_hub_url,
     fetch_remote_playbook,
     parse_github_url,
     parse_manifest,
@@ -255,3 +256,72 @@ def test_fetch_connection_error_exits(tmp_path: Path) -> None:
 
     with pytest.raises(typer.Exit):
         fetch_remote_playbook(SAMPLE_URL, cache_dir=tmp_path)
+
+
+def test_hub_expand_default_ref() -> None:
+    result = expand_hub_url("hub://postgres/16")
+    assert result == "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/postgres/16/playbook.yml"
+
+
+def test_hub_expand_tag_ref() -> None:
+    result = expand_hub_url("hub://nginx/latest@v1.0.0")
+    assert result == "https://github.com/hyphatech/jailrun-hub/blob/v1.0.0/playbooks/nginx/latest/playbook.yml"
+
+
+def test_hub_expand_semver_ref() -> None:
+    result = expand_hub_url("hub://redis/7@v2.3.1")
+    assert result == "https://github.com/hyphatech/jailrun-hub/blob/v2.3.1/playbooks/redis/7/playbook.yml"
+
+
+def test_hub_expand_strips_trailing_slash() -> None:
+    result = expand_hub_url("hub://postgres/16/")
+    assert result == expand_hub_url("hub://postgres/16")
+
+
+def test_hub_passthrough_https() -> None:
+    url = "https://github.com/someone/repo/blob/main/playbooks/custom/playbook.yml"
+    assert expand_hub_url(url) == url
+
+
+def test_hub_passthrough_http() -> None:
+    url = "http://internal.example.com/playbook.yml"
+    assert expand_hub_url(url) == url
+
+
+HUB_POSTGRES_URL = "hub://redis/latest"
+HUB_POSTGRES_EXPANDED = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/redis/latest/playbook.yml"
+HUB_MANIFEST_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/latest/jrun.manifest"
+HUB_PLAYBOOK_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/latest/playbook.yml"
+
+
+@respx.mock
+def test_fetch_hub_url(tmp_path: Path) -> None:
+    playbook = b"---\n- hosts: all\n"
+    manifest = build_manifest(("playbook.yml", playbook))
+
+    respx.get(HUB_MANIFEST_RAW).mock(return_value=httpx.Response(200, content=manifest))
+    respx.get(HUB_PLAYBOOK_RAW).mock(return_value=httpx.Response(200, content=playbook))
+
+    result = fetch_remote_playbook(HUB_POSTGRES_URL, cache_dir=tmp_path)
+
+    assert result.name == "playbook.yml"
+    assert result.read_bytes() == playbook
+
+
+HUB_TAG_URL = "hub://redis/latest@v1.0.0"
+HUB_TAG_MANIFEST_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/v1.0.0/playbooks/redis/latest/jrun.manifest"
+HUB_TAG_PLAYBOOK_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/v1.0.0/playbooks/redis/latest/playbook.yml"
+
+
+@respx.mock
+def test_fetch_hub_url_with_tag(tmp_path: Path) -> None:
+    playbook = b"---\n- hosts: all\n"
+    manifest = build_manifest(("playbook.yml", playbook))
+
+    respx.get(HUB_TAG_MANIFEST_RAW).mock(return_value=httpx.Response(200, content=manifest))
+    respx.get(HUB_TAG_PLAYBOOK_RAW).mock(return_value=httpx.Response(200, content=playbook))
+
+    result = fetch_remote_playbook(HUB_TAG_URL, cache_dir=tmp_path)
+
+    assert result.name == "playbook.yml"
+    assert result.read_bytes() == playbook

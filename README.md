@@ -233,6 +233,23 @@ jail "hypha-nginx" {
   setup {
     nginx {
       type = "ansible";
+      url  = "hub://nginx/latest";
+      vars { NGINX_LISTEN_PORT = "88"; }
+    }
+  }
+  forward {
+    http { host = 8888; jail = 88; }
+  }
+}
+```
+
+The shorthand is equivalent to a full URL:
+
+```
+jail "hypha-nginx" {
+  setup {
+    nginx {
+      type = "ansible";
       url  = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/nginx/latest/playbook.yml";
       vars { NGINX_LISTEN_PORT = "88"; }
     }
@@ -243,7 +260,11 @@ jail "hypha-nginx" {
 }
 ```
 
-Pin to a tag for reproducible builds:
+Both forms support pinning to a tag for reproducible builds:
+
+```
+url = "hub://nginx/latest@v1.0.0";
+```
 
 ```
 url = "https://github.com/hyphatech/jailrun-hub/blob/v1.0.0/playbooks/nginx/latest/playbook.yml";
@@ -270,7 +291,7 @@ base {
   setup {
     desktop {
       type = "ansible";
-      url  = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/xfce/latest/playbook.yml";
+      url  = "hub://xfce/latest";
       vars { X_RESOLUTION = "1920x1080"; }
     }
   }
@@ -446,7 +467,7 @@ jail "myapp" {
     extras { type = "ansible"; file = "install-more-deps.yml"; vars { DEBUG = "true"; } }
     nginx {
       type = "ansible";
-      url  = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/nginx/latest/playbook.yml";
+      url  = "hub://nginx/latest";
       vars { NGINX_LISTEN_PORT = "80"; }
     }
   }

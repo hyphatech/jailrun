@@ -1,6 +1,6 @@
 jail "hypha-mysql-test" {
   setup {
-    mysql { type = "ansible"; url = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/mysql/8/playbook.yml"; }
+    mysql { type = "ansible"; url = "hub://mysql/8"; }
   }
   forward {
     mysql { host = 4306; jail = 3306; }
