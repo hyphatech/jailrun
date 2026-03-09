@@ -110,7 +110,7 @@ def expand_hub_url(url: str) -> str:
 
     Examples:
         hub://postgres/16          → .../blob/main/playbooks/postgres/16/playbook.yml
-        hub://nginx/latest@v1.0.0  → .../blob/v1.0.0/playbooks/nginx/latest/playbook.yml
+        hub://nginx/rolling@v1.0.0  → .../blob/v1.0.0/playbooks/nginx/rolling/playbook.yml
     """
     if not url.startswith("hub://"):
         return url

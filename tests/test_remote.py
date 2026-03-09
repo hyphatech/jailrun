@@ -19,10 +19,10 @@ from jailrun.remote import (
 )
 
 RAW_BASE = "https://raw.githubusercontent.com"
-SAMPLE_URL = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/redis/latest/playbook.yml"
-MANIFEST_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/latest/jrun.manifest"
-PLAYBOOK_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/latest/playbook.yml"
-TEMPLATE_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/latest/templates/index.html.j2"
+SAMPLE_URL = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/redis/rolling/playbook.yml"
+MANIFEST_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/rolling/jrun.manifest"
+PLAYBOOK_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/rolling/playbook.yml"
+TEMPLATE_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/rolling/templates/index.html.j2"
 
 
 def test_parse_main_branch() -> None:
@@ -30,12 +30,12 @@ def test_parse_main_branch() -> None:
     assert pb.owner == "hyphatech"
     assert pb.repo == "jailrun-hub"
     assert pb.ref == "main"
-    assert pb.dir_path == "playbooks/redis/latest"
+    assert pb.dir_path == "playbooks/redis/rolling"
     assert pb.entry == "playbook.yml"
 
 
 def test_parse_tag_ref() -> None:
-    url = "https://github.com/hyphatech/jailrun-hub/blob/v1.2.0/playbooks/redis/latest/playbook.yml"
+    url = "https://github.com/hyphatech/jailrun-hub/blob/v1.2.0/playbooks/redis/rolling/playbook.yml"
     assert parse_github_url(url).ref == "v1.2.0"
 
 
@@ -69,7 +69,7 @@ def test_raw_url_with_dir() -> None:
         owner="hyphatech",
         repo="jailrun-hub",
         ref="main",
-        dir_path="playbooks/redis/latest",
+        dir_path="playbooks/redis/rolling",
         entry="playbook.yml",
     )
     assert raw_url(pb, "playbook.yml") == PLAYBOOK_RAW
@@ -264,13 +264,13 @@ def test_hub_expand_default_ref() -> None:
 
 
 def test_hub_expand_tag_ref() -> None:
-    result = expand_hub_url("hub://nginx/latest@v1.0.0")
-    assert result == "https://github.com/hyphatech/jailrun-hub/blob/v1.0.0/playbooks/nginx/latest/playbook.yml"
+    result = expand_hub_url("hub://nginx/rolling@v1.0.0")
+    assert result == "https://github.com/hyphatech/jailrun-hub/blob/v1.0.0/playbooks/nginx/rolling/playbook.yml"
 
 
 def test_hub_expand_semver_ref() -> None:
-    result = expand_hub_url("hub://redis/7@v2.3.1")
-    assert result == "https://github.com/hyphatech/jailrun-hub/blob/v2.3.1/playbooks/redis/7/playbook.yml"
+    result = expand_hub_url("hub://redis/rolling@v2.3.1")
+    assert result == "https://github.com/hyphatech/jailrun-hub/blob/v2.3.1/playbooks/redis/rolling/playbook.yml"
 
 
 def test_hub_expand_strips_trailing_slash() -> None:
@@ -288,10 +288,10 @@ def test_hub_passthrough_http() -> None:
     assert expand_hub_url(url) == url
 
 
-HUB_POSTGRES_URL = "hub://redis/latest"
-HUB_POSTGRES_EXPANDED = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/redis/latest/playbook.yml"
-HUB_MANIFEST_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/latest/jrun.manifest"
-HUB_PLAYBOOK_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/latest/playbook.yml"
+HUB_POSTGRES_URL = "hub://redis/rolling"
+HUB_POSTGRES_EXPANDED = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/redis/rolling/playbook.yml"
+HUB_MANIFEST_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/rolling/jrun.manifest"
+HUB_PLAYBOOK_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/main/playbooks/redis/rolling/playbook.yml"
 
 
 @respx.mock
@@ -308,9 +308,9 @@ def test_fetch_hub_url(tmp_path: Path) -> None:
     assert result.read_bytes() == playbook
 
 
-HUB_TAG_URL = "hub://redis/latest@v1.0.0"
-HUB_TAG_MANIFEST_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/v1.0.0/playbooks/redis/latest/jrun.manifest"
-HUB_TAG_PLAYBOOK_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/v1.0.0/playbooks/redis/latest/playbook.yml"
+HUB_TAG_URL = "hub://redis/rolling@v1.0.0"
+HUB_TAG_MANIFEST_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/v1.0.0/playbooks/redis/rolling/jrun.manifest"
+HUB_TAG_PLAYBOOK_RAW = f"{RAW_BASE}/hyphatech/jailrun-hub/v1.0.0/playbooks/redis/rolling/playbook.yml"
 
 
 @respx.mock

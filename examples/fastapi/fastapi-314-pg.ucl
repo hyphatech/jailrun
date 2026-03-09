@@ -6,10 +6,7 @@ jail "hypha-python-314" {
 
 jail "hypha-postgres" {
   setup {
-    python {
-      type = "ansible";
-      url = "hub://postgres/16";
-    }
+    python { type = "ansible"; url = "hub://postgres/16"; }
   }
   forward {
     http { host = 6432; jail = 5432; }

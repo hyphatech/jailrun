@@ -21,6 +21,7 @@ COMMANDS: list[Command] = [
     Command("start", "Boot the VM"),
     Command("stop", "Gracefully shut down the VM", danger=True),
     Command("ssh", "Open a shell in the VM or a jail"),
+    Command("cmd", "Execute a command inside a jail"),
     Command("up", "Create or update jails from config"),
     Command("down", "Stop and destroy jails", danger=True),
     Command("pause", "Stop jails without destroying them"),

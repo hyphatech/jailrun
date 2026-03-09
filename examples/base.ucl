@@ -1,6 +1,6 @@
 base {
   setup {
-    xfce { type = "ansible"; url = "hub://xfce/latest"; }
+    xfce { type = "ansible"; url = "hub://xfce/rolling"; }
   }
   mount {
     src { host = "."; target = "/home/admin/workspace"; }

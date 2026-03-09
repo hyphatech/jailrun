@@ -1,6 +1,6 @@
 jail "hypha-influxdb-test" {
   setup {
-    influx { type = "ansible"; url = "hub://influxdb/1"; }
+    influx { type = "ansible"; url = "hub://influxdb/rolling"; }
   }
   forward {
     influx { host = 9086; jail = 8086; }

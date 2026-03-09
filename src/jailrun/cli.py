@@ -118,11 +118,21 @@ def stop(
 @app.command()
 def ssh(
     jail_name: str | None = typer.Argument(None, help="Jail name (default: host VM)"),
-    cmd_args: list[str] | None = typer.Argument(None, help="Command to run (default: interactive shell)"),
 ) -> None:
     """Open an interactive SSH session to the VM or a jail."""
     state = load_state(settings.state_file)
-    cmd.ssh(state=state, settings=settings, jail_name=jail_name, cmd=cmd_args)
+    cmd.ssh(state=state, settings=settings, jail_name=jail_name)
+
+
+@app.command(name="cmd", context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def run_cmd(
+    ctx: typer.Context,
+    jail_name: str = typer.Argument(..., help="Jail name"),
+    executable: str = typer.Argument(..., help="Command to execute"),
+) -> None:
+    """Execute a command inside a jail."""
+    state = load_state(settings.state_file)
+    cmd.run_cmd(state=state, settings=settings, jail_name=jail_name, cmd=[executable, *ctx.args])
 
 
 @app.command()

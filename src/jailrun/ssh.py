@@ -149,11 +149,11 @@ def jail_ssh_exec(
 
 
 def wait_for_ssh(*, private_key: Path, ssh_user: str, ssh_host: str, ssh_port: int, silent: bool = False) -> None:
-    status_ctx = con().status("[dim]Waiting for SSH…[/dim]", spinner="dots") if not silent else None
+    status_ctx = con().status("[dim]Waiting for connection…[/dim]", spinner="dots") if not silent else None
 
     def _before_sleep(s: Any) -> None:
         if status_ctx is not None:
-            status_ctx.update(f"[dim]Waiting for SSH… (attempt {s.attempt_number}/60)[/dim]")
+            status_ctx.update(f"[dim]Waiting for connection… (attempt {s.attempt_number}/60)[/dim]")
 
     @retry(
         stop=stop_after_attempt(60),
@@ -175,11 +175,11 @@ def wait_for_ssh(*, private_key: Path, ssh_user: str, ssh_host: str, ssh_port: i
         else:
             _probe()
     except Exception as exc:
-        err("SSH did not become available after 60 attempts.")
+        err("Connection did not become available after 60 attempts.")
         raise typer.Exit(1) from exc
 
     if not silent:
-        ok("SSH ready.")
+        ok("Connected.")
 
 
 def resolve_jail_ips(

@@ -222,6 +222,12 @@ Drop into any jail to debug or inspect:
 jrun ssh hypha-postgres
 ```
 
+Run a command inside a jail without opening a shell:
+
+```bash
+jrun cmd hypha-postgres psql -U postgres -c 'SELECT version()'
+```
+
 ## Using shared playbooks
 
 Not every playbook needs to be written from scratch. [Jailrun Hub](https://github.com/hyphatech/jailrun-hub) is a curated collection of ready-to-use playbooks for common services — Redis, Nginx, PostgreSQL, and more.
@@ -233,7 +239,7 @@ jail "hypha-nginx" {
   setup {
     nginx {
       type = "ansible";
-      url  = "hub://nginx/latest";
+      url  = "hub://nginx/rolling";
       vars { NGINX_LISTEN_PORT = "88"; }
     }
   }
@@ -250,7 +256,7 @@ jail "hypha-nginx" {
   setup {
     nginx {
       type = "ansible";
-      url  = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/nginx/latest/playbook.yml";
+      url  = "https://github.com/hyphatech/jailrun-hub/blob/main/playbooks/nginx/rolling/playbook.yml";
       vars { NGINX_LISTEN_PORT = "88"; }
     }
   }
@@ -263,11 +269,11 @@ jail "hypha-nginx" {
 Both forms support pinning to a tag for reproducible builds:
 
 ```
-url = "hub://nginx/latest@v1.0.0";
+url = "hub://nginx/rolling@v1.0.0";
 ```
 
 ```
-url = "https://github.com/hyphatech/jailrun-hub/blob/v1.0.0/playbooks/nginx/latest/playbook.yml";
+url = "https://github.com/hyphatech/jailrun-hub/blob/v1.0.0/playbooks/nginx/rolling/playbook.yml";
 ```
 
 `vars` passes variables into the playbook — each playbook documents what it accepts. Works the same way with local playbooks:
@@ -291,7 +297,7 @@ base {
   setup {
     desktop {
       type = "ansible";
-      url  = "hub://xfce/latest";
+      url  = "hub://xfce/rolling";
       vars { X_RESOLUTION = "1920x1080"; }
     }
   }
@@ -304,7 +310,7 @@ Apply the base config and boot with a graphical display:
 jrun start --base base.ucl --mode graphic
 ```
 
-QEMU opens a window with an XFCE desktop running inside FreeBSD — full mouse and keyboard support, with hardware acceleration. A [KDE Plasma](https://github.com/hyphatech/jailrun-hub/tree/main/playbooks/kde/latest) variant is also available in Jailrun Hub.
+QEMU opens a window with an XFCE desktop running inside FreeBSD — full mouse and keyboard support, with hardware acceleration. A [KDE Plasma](https://github.com/hyphatech/jailrun-hub/tree/main/playbooks/kde/rolling) variant is also available in Jailrun Hub.
 
 ## Updating and tearing down
 
@@ -397,6 +403,7 @@ Your tests run against a real PostgreSQL in its own jail, not an in-memory subst
 | `jrun stop` | Shut down the VM gracefully |
 | `jrun ssh` | SSH into the VM |
 | `jrun ssh <name>` | SSH directly into a jail |
+| `jrun cmd <name> <executable> [args]` | Run a command inside a jail |
 | `jrun up <config>` | Create or update all jails in a config |
 | `jrun up <config> <name...>` | Deploy specific jails (dependencies included automatically) |
 | `jrun pause <config>` | Stop all jails without destroying them |
@@ -467,7 +474,7 @@ jail "myapp" {
     extras { type = "ansible"; file = "install-more-deps.yml"; vars { DEBUG = "true"; } }
     nginx {
       type = "ansible";
-      url  = "hub://nginx/latest";
+      url  = "hub://nginx/rolling";
       vars { NGINX_LISTEN_PORT = "80"; }
     }
   }

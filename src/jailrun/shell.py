@@ -133,7 +133,9 @@ def _fetch_live_jails(state: State, settings: Settings) -> list[RawJail]:
         return []
 
 
-def _pick_jail_interactively(state: State, settings: Settings) -> str | None:
+def _pick_jail_interactively(
+    state: State, settings: Settings, *, prompt: str = "SSH into:", allow_host: bool = True
+) -> str | None:
     with con().status("[dim]Fetching jail list…[/dim]", spinner="dots"):
         jails = _fetch_live_jails(state=state, settings=settings)
 
@@ -148,8 +150,11 @@ def _pick_jail_interactively(state: State, settings: Settings) -> str | None:
             choices.append(Choice(label, value=j["name"]))
         choices.append(Separator())
 
-    choices += [Choice("Host VM", value="__host__"), Separator(), Choice("Cancel", value="__cancel__")]
-    chosen = questionary.select("SSH into:", choices=choices, style=Q_STYLE).ask()
+    if allow_host:
+        choices += [Choice("Host VM", value="__host__"), Separator()]
+
+    choices.append(Choice("Cancel", value="__cancel__"))
+    chosen = questionary.select(prompt, choices=choices, style=Q_STYLE).ask()
 
     _nl()
 
@@ -191,6 +196,35 @@ def _preflight_ssh(click_app: click.Group, args: list[str], state: State, settin
     jail_name = _pick_jail_interactively(state, settings)
 
     return args if jail_name is None else [jail_name, *args]
+
+
+def _preflight_cmd(click_app: click.Group, args: list[str], state: State, settings: Settings) -> list[str] | None:
+    p = _parse(click_app, "cmd", args)
+
+    if p.get("jail_name") is not None and p.get("executable") is not None:
+        return args
+
+    if not _is_vm_running(settings):
+        if not _offer_start_vm(state, settings):
+            return None
+
+    jail_name = p.get("jail_name")
+    if jail_name is None:
+        jail_name = _pick_jail_interactively(state, settings, prompt="Run command in:", allow_host=False)
+        if jail_name is None:
+            return None
+
+    raw = questionary.text("Executable (with args):", style=Q_STYLE).ask()
+    if not raw:
+        return None
+    _nl()
+    try:
+        extra = shlex.split(raw)
+    except ValueError:
+        con().print("\n  [bold red]error:[/bold red] invalid quoting\n")
+        return None
+
+    return [jail_name, *extra]
 
 
 def _preflight_start(args: list[str]) -> list[str] | None:
@@ -241,6 +275,8 @@ def _preflight(
 ) -> list[str] | None:
     if command == "ssh":
         return _preflight_ssh(click_app=click_app, args=args, state=state, settings=settings)
+    if command == "cmd":
+        return _preflight_cmd(click_app=click_app, args=args, state=state, settings=settings)
     if command == "start":
         return _preflight_start(args)
     if command in ("down", "pause"):

@@ -1,6 +1,6 @@
 jail "hypha-mariadb-test" {
   setup {
-    mariadb { type = "ansible"; url = "hub://mariadb/11"; }
+    mariadb { type = "ansible"; url = "hub://mariadb/11.8"; }
   }
   forward {
     mariadb { host = 5306; jail = 3306; }

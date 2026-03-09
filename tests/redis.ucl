@@ -1,9 +1,6 @@
 jail "hypha-redis-test" {
   setup {
-    redis {
-      type = "ansible";
-      url = "hub://redis/latest";
-    }
+    redis { type = "ansible"; url = "hub://redis/rolling"; }
   }
   forward {
     redis { host = 7379; jail = 6379; }
