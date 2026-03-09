@@ -144,7 +144,6 @@ def up(
     if config is None:
         con().print()
         con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
-        con().print()
         config = pick_config()
         if names is None:
             names = pick_jails_from_config(config)
@@ -163,7 +162,6 @@ def down(
     if config is None:
         con().print()
         con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
-        con().print()
         config = pick_config()
         if names is None:
             names = pick_jails_from_config(config)
@@ -183,7 +181,6 @@ def pause(
     if config is None:
         con().print()
         con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
-        con().print()
         config = pick_config()
         if names is None:
             names = pick_jails_from_config(config)
