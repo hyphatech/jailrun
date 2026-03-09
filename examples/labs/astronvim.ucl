@@ -1,0 +1,9 @@
+jail "hypha-ocaml-astronvim" {
+  setup {
+    ocaml { type = "ansible"; url  = "hub://ocaml/rolling"; }
+    astronvim { type = "ansible"; url  = "hub://astronvim/rolling"; }
+  }
+  mount {
+    src { host = "."; jail = "/srv/project"; }
+  }
+}

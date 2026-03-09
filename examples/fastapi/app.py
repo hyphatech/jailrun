@@ -4,5 +4,5 @@ app = FastAPI()
 
 
 @app.get("/")
-def read_root():
+def greet():
     return {"Hi": "I'm Jail"}

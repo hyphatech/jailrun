@@ -1,0 +1,21 @@
+jail "hypha-hugo" {
+  setup {
+    hugo {
+      type = "ansible";
+      url  = "hub://hugo/0.157";
+      vars { HUGO_SITE_DIR = "/srv/project"; }
+    }
+  }
+  mount {
+    src { host = "~/Projects/hugotest"; jail = "/srv/project"; }
+  }
+  forward {
+    http { host = 8080; jail = 80; }
+  }
+  exec {
+    build {
+      cmd = "hugo server --source /srv/project --bind 0.0.0.0 --port 80 --poll 1s";
+      dir = "/srv/project";
+    }
+  }
+}
