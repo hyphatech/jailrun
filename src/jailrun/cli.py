@@ -82,8 +82,6 @@ def _confirm_destructive(action: str, target: str, *, yes: bool) -> None:
     if yes:
         return
 
-    con().print()
-
     answer = questionary.confirm(
         f"This will {action} {target}. Continue?",
         default=False,
@@ -157,11 +155,19 @@ def up(
 
 @app.command()
 def down(
-    config: Path = typer.Argument(..., help="Path to jail config (.ucl)"),
+    config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)  [interactive if omitted]"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
 ) -> None:
     """Stop and destroy jails."""
+    if config is None:
+        con().print()
+        con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
+        con().print()
+        config = pick_config()
+        if names is None:
+            names = pick_jails_from_config(config)
+
     target = f"jails in {config}" if not names else ", ".join(names)
     _confirm_destructive("destroy", target, yes=yes)
     state = load_state(settings.state_file)
@@ -170,10 +176,18 @@ def down(
 
 @app.command()
 def pause(
-    config: Path = typer.Argument(..., help="Path to jail config (.ucl)"),
+    config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)  [interactive if omitted]"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
 ) -> None:
     """Stop jails without destroying them."""
+    if config is None:
+        con().print()
+        con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
+        con().print()
+        config = pick_config()
+        if names is None:
+            names = pick_jails_from_config(config)
+
     state = load_state(settings.state_file)
     cmd.pause(config=config, state=state, settings=settings, names=names)
 
