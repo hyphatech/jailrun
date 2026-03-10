@@ -180,6 +180,30 @@ def resolve_jail_dependencies(names: set[str], jails: dict[str, JailConfig]) -> 
     return result
 
 
+def resolve_jail_dependents(names: set[str], jails: dict[str, JailConfig]) -> set[str]:
+    result = set()
+    queue = list(names)
+
+    while queue:
+        name = queue.pop()
+        if name in result:
+            continue
+
+        result.add(name)
+
+        for other_name, cfg in jails.items():
+            if other_name in result:
+                continue
+
+            is_base_dependent = cfg.base is not None and cfg.base.name == name
+            is_dep_dependent = name in cfg.depends
+
+            if is_base_dependent or is_dep_dependent:
+                queue.append(other_name)
+
+    return result
+
+
 def derive_qemu_fwds(state: State) -> list[QemuFwd]:
     if state.ssh_port is None:
         raise RuntimeError("state.ssh_port is not set")

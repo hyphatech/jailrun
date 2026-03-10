@@ -193,7 +193,7 @@ Here's what's happening:
 
 - **Block `depends` controls deploy order.** jrun resolves the dependency graph automatically. In this case: `hypha-python-314` first (it's the base), then `hypha-postgres` (it's a dependency), then `fastapi-314` last.
 
-- **Jails discover each other by name.** From inside `fastapi-314`, you can `ping hypha-postgres` — it just works. Use jail names directly in your app's database config.
+- **Jails discover each other by name.** From inside `fastapi-314`, you can `ping hypha-postgres.jrun` — it just works. Use jail names directly in your app's database config.
 
 - **Port forwarding works from your host.** PostgreSQL is reachable at `localhost:6432`. Your FastAPI app is at `localhost:8080`. Healthchecks are built in — the process supervisor monitors it and restarts it if the check fails.
 
@@ -394,25 +394,26 @@ Your tests run against a real PostgreSQL in its own jail, not an in-memory subst
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `jrun start` | Boot the VM (downloads FreeBSD on first run) |
-| `jrun start --base <config>` | Boot the VM with a base config applied |
-| `jrun start --provision` | Re-run base provisioning on an already-booted VM |
-| `jrun start --mode graphic` | Boot the VM with a graphical QEMU display |
-| `jrun stop` | Shut down the VM gracefully |
-| `jrun ssh` | SSH into the VM |
-| `jrun ssh <name>` | SSH directly into a jail |
+| Command                               | Description |
+|---------------------------------------|-------------|
+| `jrun`                                | Interactive shell |
+| `jrun start`                          | Boot the VM (downloads FreeBSD on first run) |
+| `jrun start --base <config>`          | Boot the VM with a base config applied |
+| `jrun start --provision`              | Re-run base provisioning on an already-booted VM |
+| `jrun start --mode graphic`           | Boot the VM with a graphical QEMU display |
+| `jrun stop`                           | Shut down the VM gracefully |
+| `jrun ssh`                            | SSH into the VM |
+| `jrun ssh <name>`                     | SSH directly into a jail |
 | `jrun cmd <name> <executable> [args]` | Run a command inside a jail |
-| `jrun up <config>` | Create or update all jails in a config |
-| `jrun up <config> <name...>` | Deploy specific jails (dependencies included automatically) |
-| `jrun pause <config>` | Stop all jails without destroying them |
-| `jrun pause <config> <name...>` | Stop specific jails |
-| `jrun down <config>` | Destroy all jails in a config |
-| `jrun down <config> <name...>` | Destroy specific jails |
-| `jrun status` | Show VM and jail status |
-| `jrun status --tree` | Show VM and jail status as a tree |
-| `jrun purge` | Stop and destroy the VM with all jails |
+| `jrun up <config>`                    | Create or update all jails in a config |
+| `jrun up <config> <name...>`          | Deploy specific jails (dependencies included automatically) |
+| `jrun pause`                          | Interactively select existing jails to stop without destroying them |
+| `jrun pause <name...>`                | Stop specific existing jails without destroying them |
+| `jrun down`                           | Interactively select existing jails to destroy |
+| `jrun down <name...>`                 | Destroy specific jails |
+| `jrun status`                         | Show VM and jail status |
+| `jrun status --tree`                  | Show VM and jail status as a tree |
+| `jrun purge`                          | Stop and destroy the VM with all jails |
 
 ## Config reference
 

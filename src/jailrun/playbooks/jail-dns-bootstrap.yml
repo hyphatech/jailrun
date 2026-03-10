@@ -1,0 +1,102 @@
+- name: Bootstrap local_unbound for jail DNS
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  vars:
+    unbound_dir: /var/unbound
+    unbound_conf: /var/unbound/unbound.conf
+    jrun_include: /var/unbound/conf.d/jrun.conf
+    jrun_dns_ip: "10.17.89.1"
+    jrun_acl: "10.17.89.0/24"
+    jrun_iface: bastille0
+    upstream_dns: "10.0.2.3"
+
+  tasks:
+    - name: Ensure DNS IP is aliased on jail interface
+      ansible.builtin.command: /sbin/ifconfig {{ jrun_iface }} alias {{ jrun_dns_ip }}/32
+      register: alias_result
+      failed_when: >
+        alias_result.rc != 0 and
+        "File exists" not in (alias_result.stderr | default(""))
+      changed_when: alias_result.rc == 0
+
+    - name: Persist DNS alias across reboots
+      ansible.builtin.lineinfile:
+        path: /etc/rc.conf
+        regexp: '^ifconfig_{{ jrun_iface }}_alias_jrun_dns='
+        line: 'ifconfig_{{ jrun_iface }}_alias_jrun_dns="inet {{ jrun_dns_ip }}/32"'
+        state: present
+
+    - name: Enable local_unbound at boot
+      ansible.builtin.lineinfile:
+        path: /etc/rc.conf
+        regexp: '^local_unbound_enable='
+        line: 'local_unbound_enable="YES"'
+        state: present
+
+    - name: Ensure conf.d directory exists
+      ansible.builtin.file:
+        path: "{{ unbound_dir }}/conf.d"
+        state: directory
+        owner: unbound
+        group: unbound
+        mode: "0755"
+
+    - name: Write unbound.conf
+      ansible.builtin.copy:
+        dest: "{{ unbound_conf }}"
+        owner: unbound
+        group: unbound
+        mode: "0644"
+        backup: true
+        content: |
+          server:
+              username: unbound
+              directory: {{ unbound_dir }}
+              chroot: ""
+              pidfile: /var/run/local_unbound.pid
+          remote-control:
+              control-enable: yes
+              control-interface: /var/run/local_unbound.ctl
+          include: "{{ jrun_include }}"
+      register: conf_written
+
+    - name: Write bootstrap forwarding config
+      ansible.builtin.copy:
+        dest: "{{ jrun_include }}"
+        owner: unbound
+        group: unbound
+        mode: "0644"
+        force: false
+        content: |
+          server:
+              interface: {{ jrun_dns_ip }}
+              access-control: {{ jrun_acl }} allow
+
+          forward-zone:
+              name: "."
+              forward-addr: {{ upstream_dns }}
+      register: bootstrap_written
+
+    - name: Validate local_unbound config
+      ansible.builtin.command: local-unbound-checkconf
+      when: conf_written.changed or bootstrap_written.changed
+      changed_when: false
+
+    - name: Check if local_unbound is running
+      ansible.builtin.command: /usr/sbin/service local_unbound status
+      register: unbound_status
+      failed_when: false
+      changed_when: false
+
+    - name: Start local_unbound
+      ansible.builtin.command: /usr/sbin/service local_unbound start
+      when: unbound_status.rc != 0
+
+    - name: Restart local_unbound when config changed
+      ansible.builtin.command: /usr/sbin/service local_unbound restart
+      when:
+        - unbound_status.rc == 0
+        - conf_written.changed or bootstrap_written.changed

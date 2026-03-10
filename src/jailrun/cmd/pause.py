@@ -1,9 +1,4 @@
-from pathlib import Path
-
-import typer
-
 from jailrun.ansible import run_playbook
-from jailrun.config import parse_config
 from jailrun.misc import lock
 from jailrun.qemu import vm_is_running
 from jailrun.schemas import JailPlan, Plan, State
@@ -12,49 +7,51 @@ from jailrun.ssh import get_ssh_kw, wait_for_ssh
 from jailrun.ui import err, ok, warn
 
 
-def pause(config: Path, state: State, settings: Settings, *, names: list[str] | None = None) -> None:
+def pause(state: State, settings: Settings, *, names: list[str] | None = None) -> None:
     with lock(settings.state_file):
-        _pause(config=config, state=state, settings=settings, names=names)
+        _pause(state=state, settings=settings, names=names)
 
 
-def _pause(config: Path, state: State, settings: Settings, *, names: list[str] | None = None) -> None:
-    cfg = parse_config(config)
-    targets = set(names) if names else set(cfg.jail.keys())
-
-    unknown = targets - set(cfg.jail.keys())
-    if unknown:
-        warn(f"Not in config: {', '.join(sorted(unknown))}")
+def _pause(state: State, *, settings: Settings, names: list[str] | None = None) -> None:
+    if not names:
+        warn("No jails selected.")
+        return
 
     alive, _ = vm_is_running(settings.pid_file)
     if not alive:
         err("VM is not running. Run 'jrun start' first.")
-        raise typer.Exit(1)
+        raise SystemExit(1)
 
-    to_stop: list[str] = []
-    for name in sorted(targets):
-        if name in state.jails:
-            to_stop.append(name)
-        else:
-            warn(f"Jail '{name}' not in state — skipping.")
+    requested = list(dict.fromkeys(names))
+    selected: list[JailPlan] = []
+    skipped: list[str] = []
 
-    if not to_stop:
+    for name in requested:
+        jail = state.jails.get(name)
+        if jail is None:
+            skipped.append(name)
+            continue
+
+        selected.append(
+            JailPlan(
+                name=name,
+                release=jail.release,
+                ip=jail.ip,
+                base=jail.base,
+            )
+        )
+
+    for name in skipped:
+        warn(f"Jail '{name}' not in state — skipping.")
+
+    if not selected:
         warn("No matching jails found in state.")
         return
 
     ssh_kw = get_ssh_kw(settings, state)
     wait_for_ssh(**ssh_kw, silent=True)
 
-    stop_plan = Plan(
-        jails=[
-            JailPlan(
-                name=name,
-                release=state.jails[name].release,
-                ip=state.jails[name].ip,
-            )
-            for name in to_stop
-        ],
-    )
+    plan = Plan(jails=selected)
+    run_playbook("jail-stop.yml", plan=plan, settings=settings, state=state)
 
-    run_playbook("jail-stop.yml", plan=stop_plan, settings=settings, state=state)
-
-    ok(f"Paused: {', '.join(to_stop)}.")
+    ok(f"Paused: {', '.join(j.name for j in selected)}.")

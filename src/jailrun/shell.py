@@ -20,7 +20,7 @@ from jailrun.qemu import QemuMode, vm_is_running
 from jailrun.schemas import State
 from jailrun.settings import Settings
 from jailrun.ssh import get_ssh_kw
-from jailrun.ui import COMMANDS, Q_STYLE, con, pick_config, pick_jails_from_config, warn
+from jailrun.ui import COMMANDS, Q_STYLE, con, warn
 
 _SHELL_COMMANDS = [
     ("help", "Show available commands", False),
@@ -133,8 +133,12 @@ def _fetch_live_jails(state: State, settings: Settings) -> list[RawJail]:
         return []
 
 
-def _pick_jail_interactively(
-    state: State, settings: Settings, *, prompt: str = "SSH into:", allow_host: bool = True
+def pick_existing_jail(
+    state: State,
+    settings: Settings,
+    *,
+    prompt: str,
+    allow_host: bool = True,
 ) -> str | None:
     with con().status("[dim]Fetching jail list…[/dim]", spinner="dots"):
         jails = _fetch_live_jails(state=state, settings=settings)
@@ -160,10 +164,47 @@ def _pick_jail_interactively(
 
     if chosen in (None, "__cancel__"):
         raise typer.Abort()
+
     if chosen == "__host__":
         return None
 
     return str(chosen)
+
+
+def pick_existing_jails(
+    state: State,
+    settings: Settings,
+    *,
+    prompt: str,
+) -> list[str]:
+    with con().status("[dim]Fetching jail list…[/dim]", spinner="dots"):
+        jails = _fetch_live_jails(state=state, settings=settings)
+
+    _nl()
+
+    if not jails:
+        raise typer.Abort()
+
+    max_name = max(len(j["name"]) for j in jails)
+    choices: list[Choice] = []
+
+    for j in jails:
+        state_col = "up" if j["state"].lower() == "up" else j["state"].lower()
+        label = f"{j['name'].ljust(max_name)}   {state_col}   {j['ip']}"
+        choices.append(Choice(label, value=j["name"]))
+
+    selected = questionary.checkbox(
+        prompt,
+        choices=choices,
+        style=Q_STYLE,
+    ).ask()
+
+    _nl()
+
+    if selected is None:
+        raise typer.Abort()
+
+    return list(selected)
 
 
 def _is_vm_running(settings: Settings) -> bool:
@@ -193,7 +234,7 @@ def _preflight_ssh(click_app: click.Group, args: list[str], state: State, settin
         if not _offer_start_vm(state, settings):
             return None
 
-    jail_name = _pick_jail_interactively(state, settings)
+    jail_name = pick_existing_jail(state, settings, prompt="SSH into:")
 
     return args if jail_name is None else [jail_name, *args]
 
@@ -210,7 +251,7 @@ def _preflight_cmd(click_app: click.Group, args: list[str], state: State, settin
 
     jail_name = p.get("jail_name")
     if jail_name is None:
-        jail_name = _pick_jail_interactively(state, settings, prompt="Run command in:", allow_host=False)
+        jail_name = pick_existing_jail(state, settings, prompt="Run command in:", allow_host=False)
         if jail_name is None:
             return None
 
@@ -251,27 +292,34 @@ def _preflight_start(args: list[str]) -> list[str] | None:
     return ["--base", raw] if raw else args
 
 
-def _preflight_config_required(click_app: click.Group, command: str, args: list[str]) -> list[str] | None:
+def _preflight_existing_jails_required(
+    click_app: click.Group,
+    command: str,
+    args: list[str],
+    state: State,
+    settings: Settings,
+) -> list[str] | None:
     p = _parse(click_app, command, args)
-    if p.get("config") is not None:
+    if p.get("names"):
         return args
 
-    config = pick_config()
-    if config is None:
-        return None
+    if not _is_vm_running(settings):
+        if not _offer_start_vm(state, settings):
+            return None
 
-    names = pick_jails_from_config(config)
-
-    _nl()
+    prompt = "Destroy which jails?" if command == "down" else "Pause which jails?"
+    names = pick_existing_jails(state=state, settings=settings, prompt=prompt)
 
     flags = [a for a in args if a.startswith("-")]
-    result = [str(config), *(names or []), *flags]
-
-    return result
+    return [*names, *flags]
 
 
 def _preflight(
-    click_app: click.Group, command: str, args: list[str], state: State, settings: Settings
+    click_app: click.Group,
+    command: str,
+    args: list[str],
+    state: State,
+    settings: Settings,
 ) -> list[str] | None:
     if command == "ssh":
         return _preflight_ssh(click_app=click_app, args=args, state=state, settings=settings)
@@ -280,7 +328,13 @@ def _preflight(
     if command == "start":
         return _preflight_start(args)
     if command in ("down", "pause"):
-        return _preflight_config_required(click_app=click_app, command=command, args=args)
+        return _preflight_existing_jails_required(
+            click_app=click_app,
+            command=command,
+            args=args,
+            state=state,
+            settings=settings,
+        )
 
     return args
 

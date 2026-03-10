@@ -7,6 +7,8 @@
   vars:
     bastille_jails_root: /usr/local/bastille/jails
     jail_base_packages: "python313 monit"
+    jrun_domain: jrun
+    jrun_nameserver: "10.17.89.1"
 
   tasks:
     - name: Collect existing jail names from bastille
@@ -86,3 +88,12 @@
     - name: Enable sysvipc where needed
       ansible.builtin.command: "bastille config {{ item }} set allow.sysvipc 1"
       loop: "{{ sysvipc_needed | default([]) }}"
+
+    - name: Configure jail DNS resolver
+      ansible.builtin.copy:
+        dest: "{{ bastille_jails_root }}/{{ item.name }}/root/etc/resolv.conf"
+        mode: "0644"
+        content: |
+          search {{ jrun_domain }}
+          nameserver {{ jrun_nameserver }}
+      loop: "{{ jails | default([]) }}"

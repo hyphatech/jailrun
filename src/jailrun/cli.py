@@ -154,39 +154,61 @@ def up(
 
 @app.command()
 def down(
-    config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)  [interactive if omitted]"),
-    names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
-    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
+    names: list[str] | None = typer.Argument(
+        None,
+        help="Jail names (interactive multi-select if omitted)",
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Skip confirmation.",
+    ),
 ) -> None:
     """Stop and destroy jails."""
-    if config is None:
-        con().print()
-        con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
-        config = pick_config()
-        if names is None:
-            names = pick_jails_from_config(config)
-
-    target = f"jails in {config}" if not names else ", ".join(names)
-    _confirm_destructive("destroy", target, yes=yes)
     state = load_state(settings.state_file)
-    cmd.down(config=config, state=state, settings=settings, names=names)
+
+    if names is None:
+        con().print()
+        con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]select jails to destroy…[/dim]")
+        names = shell.pick_existing_jails(
+            state=state,
+            settings=settings,
+            prompt="Destroy which jails?",
+        )
+
+    if not names:
+        warn("No jails selected.")
+        raise typer.Exit(0)
+
+    _confirm_destructive("destroy", ", ".join(names), yes=yes)
+    cmd.down(state=state, settings=settings, names=names)
 
 
 @app.command()
 def pause(
-    config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)  [interactive if omitted]"),
-    names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
+    names: list[str] | None = typer.Argument(
+        None,
+        help="Jail names (interactive multi-select if omitted)",
+    ),
 ) -> None:
-    """Stop jails without destroying them."""
-    if config is None:
-        con().print()
-        con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
-        config = pick_config()
-        if names is None:
-            names = pick_jails_from_config(config)
-
+    """Stop running jails without destroying them."""
     state = load_state(settings.state_file)
-    cmd.pause(config=config, state=state, settings=settings, names=names)
+
+    if names is None:
+        con().print()
+        con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]select jails to pause…[/dim]")
+        names = shell.pick_existing_jails(
+            state=state,
+            settings=settings,
+            prompt="Pause which jails?",
+        )
+
+    if not names:
+        warn("No jails selected.")
+        raise typer.Exit(0)
+
+    cmd.pause(state=state, settings=settings, names=names)
 
 
 @app.command()

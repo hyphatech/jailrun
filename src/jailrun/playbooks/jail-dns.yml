@@ -1,0 +1,39 @@
+- name: Sync jail DNS records
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  vars:
+    jrun_include: /var/unbound/conf.d/jrun.conf
+    jrun_domain: jrun
+    jrun_dns_ip: "10.17.89.1"
+    jrun_acl: "10.17.89.0/24"
+    upstream_dns: "10.0.2.3"
+
+  tasks:
+    - name: Write jrun zone data
+      ansible.builtin.copy:
+        dest: "{{ jrun_include }}"
+        owner: unbound
+        group: unbound
+        mode: "0644"
+        content: |
+          server:
+              interface: {{ jrun_dns_ip }}
+              access-control: {{ jrun_acl }} allow
+              local-zone: "{{ jrun_domain }}." static
+          {% for j in jails %}
+          {% if j.ip %}
+              local-data: "{{ j.name }}.{{ jrun_domain }}. IN A {{ j.ip }}"
+          {% endif %}
+          {% endfor %}
+
+          forward-zone:
+              name: "."
+              forward-addr: {{ upstream_dns }}
+      register: zone_changed
+
+    - name: Reload local_unbound
+      ansible.builtin.command: service local_unbound reload
+      when: zone_changed.changed

@@ -72,13 +72,13 @@ def _up(
         raise typer.Exit(1)
 
     targets = resolve_jail_dependencies(targets, cfg.jail)
-    jail_order = [n for n in sort_jails(cfg.jail) if n in targets]
+    ordered_jails = [n for n in sort_jails(cfg.jail) if n in targets]
 
     new_state = state.model_copy(deep=True)
     new_state = load_base_into_state(base_config, new_state)
 
     default_release = f"{settings.bsd_version}-{settings.bsd_release_tag}"
-    for name in jail_order:
+    for name in ordered_jails:
         new_state.jails[name] = resolve_jail(
             jail_config=cfg.jail[name],
             config_base=config.parent.resolve(),
@@ -106,8 +106,15 @@ def _up(
 
     run_playbook("jail-teardown.yml", plan=plan, settings=settings, state=new_state)
     run_playbook("vm-mounts.yml", plan=plan, settings=settings, state=new_state)
+    run_playbook("jail-dns-bootstrap.yml", plan=plan, settings=settings, state=new_state)
 
-    for name in jail_order:
+    provisioned_jails: list[JailPlan] = [
+        JailPlan(name=n, release=j.release, ip=j.ip, base=j.base)
+        for n, j in new_state.jails.items()
+        if n not in targets
+    ]
+
+    for name in ordered_jails:
         jail_state = new_state.jails[name]
         jail_cfg = cfg.jail[name]
 
@@ -135,6 +142,12 @@ def _up(
         finally:
             save_state(state=new_state, state_file=settings.state_file)
 
+        provisioned_jails.append(jail_plan)
+
+        # apply DNS in same topological order
+        dns_plan = Plan(jails=list(provisioned_jails))
+        run_playbook("jail-dns.yml", plan=dns_plan, settings=settings, state=new_state)
+
         for step in jail_cfg.setup.values():
             if step.type == "ansible":
                 if isinstance(step, RemoteSetupStep):
@@ -160,16 +173,13 @@ def _up(
                         state=new_state,
                     )
 
-    if plan.jails:
-        run_playbook("jail-hosts.yml", plan=plan, settings=settings, state=new_state)
-
     if plan.jail_rdrs:
         run_playbook("jail-forwards.yml", plan=plan, settings=settings, state=new_state)
 
     if plan.execs:
         run_playbook("jail-monit.yml", plan=plan, settings=settings, state=new_state)
 
-    ok(f"Deploy complete ({', '.join(jail_order)}).")
+    ok(f"Deploy complete ({', '.join(ordered_jails)}).")
 
     if mode in {QemuMode.TTY, QemuMode.GRAPHIC}:
         info(f"Restarting VM in {mode} mode…")
