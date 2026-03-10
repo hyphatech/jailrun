@@ -1,4 +1,4 @@
-set daemon 10
+set daemon 30
 set logfile syslog
 set idfile /var/db/monit.id
 set pidfile /var/run/monit.pid
@@ -8,8 +8,8 @@ set httpd port 2812 and
     allow {{ item.ip }}
 
 check system {{ item.name }}-system
-    if loadavg(5min) > 4 then alert
+    if loadavg(5min) > 6 for 5 cycles then alert
     if memory usage > 90% for 5 cycles then alert
-    if cpu usage (system) > 90% for 5 cycles then alert
+    if cpu usage (system) > 95% for 5 cycles then alert
 
 include /usr/local/etc/monit.d/*.monitrc

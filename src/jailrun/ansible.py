@@ -87,6 +87,7 @@ def run_playbook(
         "localhost,",
         "-c",
         "ssh",
+        "-v",
         str(playbook),
         "--private-key",
         str(ssh_kw["private_key"]),
