@@ -16,10 +16,10 @@ from rich.text import Text
 
 from jailrun import cmd
 from jailrun.cmd.status import RawJail, get_bastille_jails
+from jailrun.network import get_ssh_kw
 from jailrun.qemu import QemuMode, vm_is_running
 from jailrun.schemas import State
 from jailrun.settings import Settings
-from jailrun.ssh import get_ssh_kw
 from jailrun.ui import COMMANDS, Q_STYLE, con, warn
 
 _SHELL_COMMANDS = [

@@ -2,8 +2,8 @@ from pathlib import Path
 from types import TracebackType
 from typing import Self
 
+from jailrun.network import get_ssh_kw, jail_ssh_exec
 from jailrun.settings import Settings
-from jailrun.ssh import get_ssh_kw, jail_ssh_exec
 from jailrun.testing.commons import Jail
 
 

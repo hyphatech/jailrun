@@ -8,7 +8,7 @@ from tenacity import retry, retry_if_result, stop_after_attempt, wait_fixed
 
 from jailrun.schemas import State
 from jailrun.settings import Settings
-from jailrun.ui import con, err, info, ok
+from jailrun.ui import con, err, info, ok, warn
 
 SWEEP_START = "10.17.89.10"
 SWEEP_END = "10.17.89.250"
@@ -232,3 +232,14 @@ def resolve_jail_ips(
         taken.add(ip)
 
         info(f"{name}: assigned {ip}")
+
+
+def resolve_ssh_port(state: State, *, settings: Settings) -> int:
+    if state.ssh_port is None:
+        state.ssh_port = find_free_port(settings.ssh_port, bind_addr=settings.vm_host)
+    elif not is_port_free(state.ssh_port, bind_addr=settings.vm_host):
+        new_port = find_free_port(state.ssh_port, bind_addr=settings.vm_host)
+        warn(f"Previously used SSH port {state.ssh_port} is now busy — switching to {new_port}…")
+        state.ssh_port = new_port
+
+    return state.ssh_port

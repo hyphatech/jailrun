@@ -7,11 +7,11 @@ from tenacity import retry, retry_if_result, stop_after_attempt, wait_fixed
 from jailrun.cmd import up
 from jailrun.cmd.status import get_bastille_jails
 from jailrun.config import load_state
+from jailrun.network import get_ssh_kw, wait_for_ssh
 from jailrun.qemu import vm_is_running
 from jailrun.schemas import State
 from jailrun.settings import Settings
 from jailrun.settings import settings as default_settings
-from jailrun.ssh import get_ssh_kw, wait_for_ssh
 
 
 class Jail:

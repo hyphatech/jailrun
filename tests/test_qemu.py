@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from jailrun import qemu
+from jailrun.qemu import QemuFeatures
 from jailrun.schemas import QemuFwd, QemuShare, State
 from jailrun.settings import Settings
 
@@ -11,6 +12,9 @@ from jailrun.settings import Settings
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     root = tmp_path / "jrun"
+    for name in ("ssh", "logs", "disks", "cloud"):
+        (root / name).mkdir(parents=True, exist_ok=True)
+
     return Settings(
         ssh_dir=root / "ssh",
         log_dir=root / "logs",
@@ -21,84 +25,407 @@ def settings(tmp_path: Path) -> Settings:
     )
 
 
-def test_parse_size_bytes_and_units() -> None:
-    assert qemu.parse_size("123") == 123
-    assert qemu.parse_size("1K") == 1024
-    assert qemu.parse_size("2M") == 2 * 1024**2
-    assert qemu.parse_size("3G") == 3 * 1024**3
-    assert qemu.parse_size("1.5G") == int(1.5 * 1024**3)
+@pytest.fixture
+def sample_features() -> QemuFeatures:
+    return QemuFeatures(
+        qemu_bin="qemu-system-x86_64",
+        arch="x86_64",
+        machine="q35",
+        accel="tcg",
+        cpu="max",
+        bios="OVMF.fd",
+        virtio_suffix="pci",
+        display="gtk",
+        supports_9p=True,
+    )
 
 
-def test_build_netdev_arg_includes_ssh_and_rules(settings: Settings) -> None:
-    rules = [
-        QemuFwd(proto="tcp", host=8080, guest=80),
-        QemuFwd(proto="udp", host=5353, guest=5353),
-    ]
-    out = qemu.build_netdev_arg(hostfwd=rules, ssh_host=settings.vm_host, ssh_port=settings.ssh_port)
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("123", 123),
+        ("1K", 1024),
+        ("2M", 2 * 1024**2),
+        ("3G", 3 * 1024**3),
+        ("1.5G", int(1.5 * 1024**3)),
+        ("2t", 2 * 1024**4),
+    ],
+)
+def test_parse_size(value: str, expected: int) -> None:
+    assert qemu.parse_size(value) == expected
 
-    assert "user" in out
-    assert "id=net0" in out
-    assert f"hostfwd=tcp:{settings.vm_host}:{settings.ssh_port}-:22" in out
-    assert f"hostfwd=tcp:{settings.vm_host}:8080-:80" in out
-    assert f"hostfwd=udp:{settings.vm_host}:5353-:5353" in out
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("AMD64", "x86_64"),
+        ("x86_64", "x86_64"),
+        ("arm64", "aarch64"),
+        ("aarch64", "aarch64"),
+        ("riscv64", "riscv64"),
+    ],
+)
+def test_normalize_machine(value: str, expected: str) -> None:
+    assert qemu._normalize_machine(value) == expected
 
 
-def test_build_share_args_two_shares(tmp_path: Path) -> None:
-    s1 = QemuShare(host=str((tmp_path / "h1").resolve()), id="fs_a", mount_tag="tag_a")
-    s2 = QemuShare(host=str((tmp_path / "h2").resolve()), id="fs_b", mount_tag="tag_b")
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("amd64", "x86_64"),
+        ("x86_64", "x86_64"),
+        ("arm64", "aarch64"),
+        ("aarch64", "aarch64"),
+    ],
+)
+def test_qemu_arch_for_host_supported(value: str, expected: str) -> None:
+    assert qemu._qemu_arch_for_host(value) == expected
 
-    features = qemu.detect_qemu_features()
-    args = qemu.build_share_args([s1, s2], features=features)
+
+def test_qemu_arch_for_host_rejects_unsupported_architecture() -> None:
+    with pytest.raises(RuntimeError, match="Unsupported architecture: sparc64"):
+        qemu._qemu_arch_for_host("sparc64")
+
+
+@pytest.mark.parametrize(
+    ("arch", "expected"),
+    [
+        ("x86_64", "q35"),
+        ("aarch64", "virt"),
+    ],
+)
+def test_default_machine_for_arch(arch: str, expected: str) -> None:
+    assert qemu._default_machine_for_arch(arch) == expected
+
+
+def test_default_machine_for_arch_rejects_unsupported_architecture() -> None:
+    with pytest.raises(RuntimeError, match="Unsupported architecture: riscv64"):
+        qemu._default_machine_for_arch("riscv64")
+
+
+@pytest.mark.parametrize(
+    ("arch", "expected"),
+    [
+        ("x86_64", "pci"),
+        ("aarch64", "device"),
+    ],
+)
+def test_virtio_suffix_for_arch(arch: str, expected: str) -> None:
+    assert qemu._virtio_suffix_for_arch(arch) == expected
+
+
+def test_virtio_suffix_for_arch_rejects_unsupported_architecture() -> None:
+    with pytest.raises(RuntimeError, match="Unsupported architecture: riscv64"):
+        qemu._virtio_suffix_for_arch("riscv64")
+
+
+@pytest.mark.parametrize(
+    ("system", "expected"),
+    [
+        ("darwin", "cocoa"),
+        ("linux", "gtk"),
+        ("freebsd", "gtk"),
+    ],
+)
+def test_preferred_display_for_host(system: str, expected: str) -> None:
+    assert qemu._preferred_display_for_host(system) == expected
+
+
+@pytest.mark.parametrize(
+    ("system", "expected"),
+    [
+        ("darwin", "hvf:tcg"),
+        ("linux", "kvm:tcg"),
+        ("freebsd", "tcg"),
+    ],
+)
+def test_accel_chain_for_host(system: str, expected: str) -> None:
+    assert qemu._accel_chain_for_host(system) == expected
+
+
+@pytest.mark.parametrize(
+    ("accel", "expected"),
+    [
+        ("kvm", "host"),
+        ("hvf", "host"),
+        ("tcg", "max"),
+        ("kvm:tcg", None),
+        ("hvf:tcg", None),
+        ("unknown", None),
+    ],
+)
+def test_pick_cpu(accel: str, expected: str | None) -> None:
+    assert qemu._pick_cpu(accel) == expected
+
+
+def test_build_netdev_arg_always_includes_ssh_forward(settings: Settings) -> None:
+    out = qemu.build_netdev_arg(
+        hostfwd=[],
+        ssh_host=settings.vm_host,
+        ssh_port=settings.ssh_port,
+    )
+
+    assert out == f"user,id=net0,hostfwd=tcp:{settings.vm_host}:{settings.ssh_port}-:22"
+
+
+@pytest.mark.parametrize(
+    ("rule", "expected"),
+    [
+        (QemuFwd(proto="tcp", host=8080, guest=80), "hostfwd=tcp:127.0.0.1:8080-:80"),
+        (QemuFwd(proto="udp", host=5353, guest=5353), "hostfwd=udp:127.0.0.1:5353-:5353"),
+    ],
+)
+def test_build_netdev_arg_appends_forward_rule(
+    settings: Settings,
+    rule: QemuFwd,
+    expected: str,
+) -> None:
+    out = qemu.build_netdev_arg(
+        hostfwd=[rule],
+        ssh_host=settings.vm_host,
+        ssh_port=settings.ssh_port,
+    )
+
+    assert expected in out
+
+
+def test_build_share_args_rejects_when_9p_is_not_supported(tmp_path: Path, sample_features: QemuFeatures) -> None:
+    share = QemuShare(host=str(tmp_path), id="fs0", mount_tag="tag0")
+    features = QemuFeatures(
+        qemu_bin=sample_features.qemu_bin,
+        arch=sample_features.arch,
+        machine=sample_features.machine,
+        accel=sample_features.accel,
+        cpu=sample_features.cpu,
+        bios=sample_features.bios,
+        virtio_suffix=sample_features.virtio_suffix,
+        display=sample_features.display,
+        supports_9p=False,
+    )
+
+    with pytest.raises(RuntimeError, match="does not appear to support 9p"):
+        qemu.build_share_args([share], features=features)
+
+
+def test_build_share_args_adds_fsdev_entry(tmp_path: Path, sample_features: QemuFeatures) -> None:
+    share = QemuShare(host=str(tmp_path.resolve()), id="fs0", mount_tag="tag0")
+
+    args = qemu.build_share_args([share], features=sample_features)
 
     assert "-fsdev" in args
+    assert f"local,id={share.id},path={share.host},security_model=none,readonly=off" in args
+
+
+def test_build_share_args_adds_virtio_9p_device_entry(tmp_path: Path, sample_features: QemuFeatures) -> None:
+    share = QemuShare(host=str(tmp_path.resolve()), id="fs0", mount_tag="tag0")
+
+    args = qemu.build_share_args([share], features=sample_features)
+
     assert "-device" in args
-
-    assert f"local,id={s1.id},path={s1.host},security_model=none,readonly=off" in args
-    assert f"virtio-9p-device,fsdev={s1.id},mount_tag={s1.mount_tag}" in args
-
-    assert f"local,id={s2.id},path={s2.host},security_model=none,readonly=off" in args
-    assert f"virtio-9p-device,fsdev={s2.id},mount_tag={s2.mount_tag}" in args
+    assert f"virtio-9p-pci,fsdev={share.id},mount_tag={share.mount_tag}" in args
 
 
-def test_build_qemu_cmd_minimal_state_no_shares_or_fwds(settings: Settings) -> None:
-    state = State()
-
-    ssh_port = qemu.resolve_ssh_port(state=state, settings=settings)
-    assert ssh_port
-
-    cmd = qemu.build_qemu_cmd(state, mode=qemu.QemuMode.SERVER, settings=settings)
-    features = qemu.detect_qemu_features()
-
-    assert cmd[0] == f"qemu-system-{features.arch}"
-
-    netdev_idx = cmd.index("-netdev") + 1
-    assert f"hostfwd=tcp:{settings.vm_host}:{ssh_port}-:22" in cmd[netdev_idx]
-
-    assert "-display" in cmd
-    assert "none" in cmd
+def test_build_qemu_cmd_requires_state_ssh_port(settings: Settings, sample_features: QemuFeatures) -> None:
+    with pytest.raises(RuntimeError, match="state.ssh_port is not set"):
+        qemu.build_qemu_cmd(
+            State(),
+            settings=settings,
+            mode=qemu.QemuMode.SERVER,
+            features=sample_features,
+        )
 
 
-def test_build_qemu_cmd_foreground_adds_serial_and_nographic(settings: Settings) -> None:
-    state = State()
+def test_build_qemu_cmd_uses_featured_qemu_binary(settings: Settings, sample_features: QemuFeatures) -> None:
+    state = State(ssh_port=2222)
 
-    ssh_port = qemu.resolve_ssh_port(state=state, settings=settings)
-    assert ssh_port
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features,
+    )
 
-    cmd = qemu.build_qemu_cmd(state, mode=qemu.QemuMode.TTY, settings=settings)
+    assert cmd[0] == sample_features.qemu_bin
+
+
+def test_build_qemu_cmd_sets_machine_and_accel(settings: Settings, sample_features: QemuFeatures) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features,
+    )
+
+    assert cmd[cmd.index("-M") + 1] == "q35,accel=tcg"
+
+
+def test_build_qemu_cmd_sets_cpu_when_feature_provides_one(settings: Settings, sample_features: QemuFeatures) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features,
+    )
+
+    assert cmd[cmd.index("-cpu") + 1] == "max"
+
+
+def test_build_qemu_cmd_omits_cpu_when_feature_cpu_is_none(settings: Settings, sample_features: QemuFeatures) -> None:
+    state = State(ssh_port=2222)
+    features = QemuFeatures(
+        qemu_bin=sample_features.qemu_bin,
+        arch=sample_features.arch,
+        machine=sample_features.machine,
+        accel="kvm:tcg",
+        cpu=None,
+        bios=sample_features.bios,
+        virtio_suffix=sample_features.virtio_suffix,
+        display=sample_features.display,
+        supports_9p=sample_features.supports_9p,
+    )
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=features,
+    )
+
+    assert "-cpu" not in cmd
+
+
+def test_build_qemu_cmd_server_mode_uses_display_none(settings: Settings, sample_features: QemuFeatures) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features,
+    )
+
+    assert cmd[cmd.index("-display") + 1] == "none"
+
+
+def test_build_qemu_cmd_tty_mode_adds_nographic(settings: Settings, sample_features: QemuFeatures) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.TTY,
+        features=sample_features,
+    )
 
     assert "-nographic" in cmd
-    assert "-serial" in cmd
-    assert "mon:stdio" in cmd
 
 
-def test_vm_is_running_missing_pid_file(tmp_path: Path) -> None:
-    pid_file = tmp_path / "missing.pid"
-    running, pid = qemu.vm_is_running(pid_file)
+def test_build_qemu_cmd_tty_mode_uses_mon_stdio_serial(settings: Settings, sample_features: QemuFeatures) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.TTY,
+        features=sample_features,
+    )
+
+    assert cmd[cmd.index("-serial") + 1] == "mon:stdio"
+
+
+def test_build_qemu_cmd_graphic_mode_uses_feature_display(settings: Settings, sample_features: QemuFeatures) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.GRAPHIC,
+        features=sample_features,
+    )
+
+    assert cmd[cmd.index("-display") + 1] == sample_features.display
+
+
+@pytest.mark.parametrize(
+    "device",
+    ["ramfb", "qemu-xhci", "usb-kbd", "usb-tablet"],
+)
+def test_build_qemu_cmd_graphic_mode_adds_required_devices(
+    settings: Settings,
+    sample_features: QemuFeatures,
+    device: str,
+) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.GRAPHIC,
+        features=sample_features,
+    )
+
+    assert device in cmd
+
+
+def test_build_qemu_cmd_uses_state_ssh_port_for_builtin_forward(
+    settings: Settings,
+    sample_features: QemuFeatures,
+) -> None:
+    state = State(ssh_port=2299)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features,
+    )
+
+    netdev = cmd[cmd.index("-netdev") + 1]
+    assert f"hostfwd=tcp:{settings.vm_host}:2299-:22" in netdev
+
+
+def test_build_qemu_cmd_uses_settings_memory(settings: Settings, sample_features: QemuFeatures) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features,
+    )
+
+    assert cmd[cmd.index("-m") + 1] == settings.qemu_memory
+
+
+def test_build_qemu_cmd_uses_explicit_cpu_count_from_settings(
+    settings: Settings,
+    sample_features: QemuFeatures,
+) -> None:
+    state = State(ssh_port=2222)
+    settings.qemu_cpus = 6
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features,
+    )
+
+    assert cmd[cmd.index("-smp") + 1] == "6"
+
+
+def test_vm_is_running_returns_false_when_pid_file_is_missing(tmp_path: Path) -> None:
+    running, pid = qemu.vm_is_running(tmp_path / "missing.pid")
+
     assert running is False
     assert pid is None
 
 
-def test_vm_is_running_pid_not_qemu_unlinks(tmp_path: Path) -> None:
+def test_vm_is_running_rejects_non_qemu_process_and_unlinks_pid_file(tmp_path: Path) -> None:
     pid_file = tmp_path / "vm.pid"
     pid_file.write_text(str(os.getpid()))
 

@@ -36,6 +36,8 @@ class Settings(BaseSettings):
 
     qemu_memory: str = "4096M"
     qemu_disk_size: str = "20G"
+    qemu_cpus: int | None = None
+    qemu_bios: str | None = None
 
     @computed_field
     def bsd_image_url(self) -> HttpUrl:
