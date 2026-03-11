@@ -12,9 +12,6 @@ from jailrun.settings import Settings
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     root = tmp_path / "jrun"
-    for name in ("ssh", "logs", "disks", "cloud"):
-        (root / name).mkdir(parents=True, exist_ok=True)
-
     return Settings(
         ssh_dir=root / "ssh",
         log_dir=root / "logs",
