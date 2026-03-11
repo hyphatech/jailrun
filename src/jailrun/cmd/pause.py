@@ -1,9 +1,9 @@
 from jailrun.ansible import run_playbook
 from jailrun.misc import lock
+from jailrun.network import get_ssh_kw, wait_for_ssh
 from jailrun.qemu import vm_is_running
 from jailrun.schemas import JailPlan, Plan, State
 from jailrun.settings import Settings
-from jailrun.ssh import get_ssh_kw, wait_for_ssh
 from jailrun.ui import err, ok, warn
 
 

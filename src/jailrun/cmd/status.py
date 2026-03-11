@@ -9,11 +9,11 @@ from rich.table import Table
 from rich.text import Text
 from rich.tree import Tree
 
+from jailrun.network import get_ssh_kw, ssh_exec, wait_for_ssh
 from jailrun.qemu import vm_is_running
 from jailrun.schemas import State
 from jailrun.serializers import loads
 from jailrun.settings import Settings
-from jailrun.ssh import get_ssh_kw, ssh_exec, wait_for_ssh
 from jailrun.ui import con
 
 

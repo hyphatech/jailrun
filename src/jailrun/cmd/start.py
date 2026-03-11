@@ -11,11 +11,11 @@ from jailrun.config import (
     snapshot_qemu_wiring,
 )
 from jailrun.misc import lock
-from jailrun.qemu import QemuMode, launch_vm, prepare_disk, resolve_ssh_port, vm_is_running
+from jailrun.network import get_ssh_kw, resolve_ssh_port, wait_for_ssh
+from jailrun.qemu import QemuMode, launch_vm, prepare_disk, vm_is_running
 from jailrun.remote import fetch_remote_playbook
 from jailrun.schemas import LocalSetupStep, RemoteSetupStep, State
 from jailrun.settings import Settings
-from jailrun.ssh import get_ssh_kw, wait_for_ssh
 from jailrun.ui import info, warn
 
 

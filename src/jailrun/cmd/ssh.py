@@ -3,10 +3,10 @@ import subprocess
 
 import typer
 
+from jailrun.network import get_ssh_kw, jail_ssh_cmd, ssh_cmd, wait_for_ssh
 from jailrun.qemu import vm_is_running
 from jailrun.schemas import State
 from jailrun.settings import Settings
-from jailrun.ssh import get_ssh_kw, jail_ssh_cmd, ssh_cmd, wait_for_ssh
 from jailrun.ui import err
 
 

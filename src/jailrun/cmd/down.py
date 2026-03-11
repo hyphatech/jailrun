@@ -1,10 +1,10 @@
 from jailrun.ansible import run_playbook
 from jailrun.config import derive_plan, save_state
 from jailrun.misc import lock
+from jailrun.network import get_ssh_kw, wait_for_ssh
 from jailrun.qemu import vm_is_running
 from jailrun.schemas import JailPlan, Plan, State
 from jailrun.settings import Settings
-from jailrun.ssh import get_ssh_kw, wait_for_ssh
 from jailrun.ui import err, ok, warn
 
 
@@ -55,11 +55,7 @@ def _down(state: State, *, settings: Settings, names: list[str] | None = None) -
     if plan.execs:
         run_playbook("jail-monit.yml", plan=plan, settings=settings, state=new_state)
 
-    dns_jails = [
-        JailPlan(name=n, release=j.release, ip=j.ip, base=j.base)
-        for n, j in new_state.jails.items()
-        if j.ip
-    ]
+    dns_jails = [JailPlan(name=n, release=j.release, ip=j.ip, base=j.base) for n, j in new_state.jails.items() if j.ip]
 
     run_playbook(
         "jail-dns.yml",

@@ -7,10 +7,10 @@ from typing import Any
 import typer
 
 from jailrun import PACKAGE_DIR
+from jailrun.network import SSH_OPTS, get_ssh_kw, proxy_cmd
 from jailrun.schemas import Plan, State
 from jailrun.serializers import dumps
 from jailrun.settings import Settings
-from jailrun.ssh import SSH_OPTS, get_ssh_kw, proxy_cmd
 from jailrun.ui import err, info, ok
 
 
