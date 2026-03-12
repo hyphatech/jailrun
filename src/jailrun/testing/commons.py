@@ -48,9 +48,13 @@ class Jail:
         ssh_kw = get_ssh_kw(self._settings, state)
         wait_for_ssh(**ssh_kw, silent=True)
 
+        jail_state = state.jails.get(jail)
+
         bastille_jails = get_bastille_jails(**ssh_kw)
-        grouped_bastille_jails = {j["name"]: j for j in bastille_jails}
-        bastille_jail = grouped_bastille_jails.get(jail)
+        bastille_by_private = {j["private_name"]: j for j in bastille_jails}
+
+        bastille_private_name = str(jail_state.private_name) if jail_state else None
+        bastille_jail = bastille_by_private.get(bastille_private_name) if bastille_private_name else None
 
         if (jail not in state.jails) or (bastille_jail is None) or (bastille_jail["state"].upper() != "UP"):
             up(

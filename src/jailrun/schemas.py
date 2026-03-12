@@ -1,6 +1,11 @@
+import hashlib
 from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field, field_validator
+
+
+def private_jail_name(name: str) -> str:
+    return "j" + hashlib.sha256(name.encode()).hexdigest()[:12]
 
 
 class HealthcheckConfig(BaseModel):
@@ -95,8 +100,13 @@ class JailBaseConfig(BaseModel):
     type: Literal["jail"] = "jail"
     name: str
 
+    @computed_field
+    def private_name(self) -> str:
+        return private_jail_name(self.name)
+
 
 class JailConfig(BaseModel):
+    name: str
     release: str | None = None
     ip: str | None = None
     base: JailBaseConfig | None = None
@@ -106,6 +116,10 @@ class JailConfig(BaseModel):
     setup: dict[str, SetupStep] = Field(default_factory=dict)
     exec: dict[str, ExecConfig] = Field(default_factory=dict)
 
+    @computed_field
+    def private_name(self) -> str:
+        return private_jail_name(self.name)
+
 
 class Config(BaseModel):
     base: BaseConfig | None = None
@@ -113,6 +127,7 @@ class Config(BaseModel):
 
 
 class JailState(BaseModel):
+    name: str
     base: JailBaseConfig | None = None
     release: str
     ip: str | None = None
@@ -120,6 +135,10 @@ class JailState(BaseModel):
     mounts: dict[str, JailMountConfig] = Field(default_factory=dict)
     execs: dict[str, ExecConfig] = Field(default_factory=dict)
     setup: dict[str, SetupStep] = Field(default_factory=dict)
+
+    @computed_field
+    def private_name(self) -> str:
+        return private_jail_name(self.name)
 
 
 class BaseState(BaseModel):
@@ -155,6 +174,10 @@ class JailPlan(BaseModel):
     ip: str | None = None
     base: JailBaseConfig | None = None
 
+    @computed_field
+    def private_name(self) -> str:
+        return private_jail_name(self.name)
+
 
 class MountPlan(BaseModel):
     mount_tag: str
@@ -169,6 +192,10 @@ class ExecPlan(BaseModel):
     env: dict[str, str] = Field(default_factory=dict)
     healthcheck: HealthcheckConfig | None = None
 
+    @computed_field
+    def jail_private_name(self) -> str:
+        return private_jail_name(self.jail)
+
 
 class RdrPlan(BaseModel):
     jail: str
@@ -176,11 +203,19 @@ class RdrPlan(BaseModel):
     target_port: int
     jail_port: int
 
+    @computed_field
+    def jail_private_name(self) -> str:
+        return private_jail_name(self.jail)
+
 
 class NullfsPlan(BaseModel):
     jail: str
     target_path: str
     jail_path: str
+
+    @computed_field
+    def jail_private_name(self) -> str:
+        return private_jail_name(self.jail)
 
 
 class StaleMountPlan(BaseModel):
@@ -192,6 +227,18 @@ class StaleNullfsPlan(BaseModel):
     jail: str
     target_path: str
 
+    @computed_field
+    def jail_private_name(self) -> str:
+        return private_jail_name(self.jail)
+
+
+class StaleJailPlan(BaseModel):
+    name: str
+
+    @computed_field
+    def private_name(self) -> str:
+        return private_jail_name(self.name)
+
 
 class Plan(BaseModel):
     jails: list[JailPlan] = Field(default_factory=list)
@@ -199,6 +246,6 @@ class Plan(BaseModel):
     execs: list[ExecPlan] = Field(default_factory=list)
     jail_rdrs: list[RdrPlan] = Field(default_factory=list)
     jail_mounts: list[NullfsPlan] = Field(default_factory=list)
-    stale_jails: list[str] = Field(default_factory=list)
+    stale_jails: list[StaleJailPlan] = Field(default_factory=list)
     stale_mounts: list[StaleMountPlan] = Field(default_factory=list)
     stale_jail_mounts: list[StaleNullfsPlan] = Field(default_factory=list)

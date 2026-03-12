@@ -19,25 +19,25 @@
       changed_when: false
       failed_when: false
 
-    - name: Parse existing jail names
+    - name: Parse existing private jail names
       ansible.builtin.set_fact:
-        existing_jail_names: >-
+        existing_private_names: >-
           {{ (bastille_list_raw.stdout | default('[]') | from_json)
             | map(attribute='Name') | list }}
       when: bastille_list_raw.rc == 0
 
     - name: Fallback to empty list if bastille list failed
       ansible.builtin.set_fact:
-        existing_jail_names: []
-      when: existing_jail_names is not defined
+        existing_private_names: []
+      when: existing_private_names is not defined
 
     - name: Create missing jails as bridged VNET jails
       ansible.builtin.command: >-
-        bastille create -B {{ item.name }} {{ item.release }}
+        bastille create -B {{ item.private_name }} {{ item.release }}
         {{ item.ip }}{{ jrun_cidr_suffix }} {{ jrun_bridge_name }}
       loop: "{{ jails | default([]) }}"
       when:
-        - item.name not in existing_jail_names
+        - item.private_name not in existing_private_names
         - item.base is not defined or item.base is none
       register: create_result
       failed_when: >
@@ -46,10 +46,10 @@
       changed_when: create_result.rc == 0
 
     - name: Stop base jail before clone
-      ansible.builtin.command: "bastille stop {{ item.base.name }}"
+      ansible.builtin.command: "bastille stop {{ item.base.private_name }}"
       loop: "{{ jails | default([]) }}"
       when:
-        - item.name not in existing_jail_names
+        - item.private_name not in existing_private_names
         - item.base is defined and item.base is not none
         - item.base.type == "jail"
       failed_when: false
@@ -57,11 +57,11 @@
 
     - name: Clone jails from base as bridged VNET jails
       ansible.builtin.command: >-
-        bastille clone -B {{ item.base.name }} {{ item.name }}
+        bastille clone -B {{ item.base.private_name }} {{ item.private_name }}
         {{ item.ip }}{{ jrun_cidr_suffix }} {{ jrun_bridge_name }}
       loop: "{{ jails | default([]) }}"
       when:
-        - item.name not in existing_jail_names
+        - item.private_name not in existing_private_names
         - item.base is defined and item.base is not none
         - item.base.type == "jail"
       register: clone_result
@@ -71,7 +71,7 @@
       changed_when: clone_result.rc == 0
 
     - name: Check sysvipc for all jails
-      ansible.builtin.command: "bastille config {{ item.name }} get allow.sysvipc"
+      ansible.builtin.command: "bastille config {{ item.private_name }} get allow.sysvipc"
       loop: "{{ jails | default([]) }}"
       register: sysvipc_check
       changed_when: false
@@ -83,22 +83,15 @@
           {{ sysvipc_check.results | default([])
              | selectattr('stdout', 'defined')
              | rejectattr('stdout', 'match', '^\s*1\s*$')
-             | map(attribute='item.name') | list }}
+             | map(attribute='item.private_name') | list }}
 
     - name: Enable sysvipc where needed
       ansible.builtin.command: "bastille config {{ item }} set allow.sysvipc 1"
       loop: "{{ sysvipc_needed | default([]) }}"
 
-    - name: Ensure jail rc.conf exists
-      ansible.builtin.file:
-        path: "{{ bastille_jails_root }}/{{ item.name }}/root/etc/rc.conf"
-        state: touch
-        mode: "0644"
-      loop: "{{ jails | default([]) }}"
-
     - name: Configure default router in jail rc.conf
       ansible.builtin.lineinfile:
-        path: "{{ bastille_jails_root }}/{{ item.name }}/root/etc/rc.conf"
+        path: "{{ bastille_jails_root }}/{{ item.private_name }}/root/etc/rc.conf"
         regexp: '^defaultrouter='
         line: 'defaultrouter="{{ jrun_gateway }}"'
         mode: "0644"
@@ -106,7 +99,7 @@
 
     - name: Configure jail DNS resolver
       ansible.builtin.copy:
-        dest: "{{ bastille_jails_root }}/{{ item.name }}/root/etc/resolv.conf"
+        dest: "{{ bastille_jails_root }}/{{ item.private_name }}/root/etc/resolv.conf"
         mode: "0644"
         content: |
           search {{ jrun_domain }}
@@ -115,14 +108,14 @@
 
     - name: Ensure pkg repo directory exists in jails
       ansible.builtin.file:
-        path: "{{ bastille_jails_root }}/{{ item.name }}/root/usr/local/etc/pkg/repos"
+        path: "{{ bastille_jails_root }}/{{ item.private_name }}/root/usr/local/etc/pkg/repos"
         state: directory
         mode: "0755"
       loop: "{{ jails | default([]) }}"
 
     - name: Disable SRV mirror discovery in jails
       ansible.builtin.copy:
-        dest: "{{ bastille_jails_root }}/{{ item.name }}/root/usr/local/etc/pkg/repos/FreeBSD.conf"
+        dest: "{{ bastille_jails_root }}/{{ item.private_name }}/root/usr/local/etc/pkg/repos/FreeBSD.conf"
         mode: "0644"
         content: |
           FreeBSD-ports: {

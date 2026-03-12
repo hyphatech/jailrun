@@ -10,18 +10,18 @@
   tasks:
     - name: Update jrun fstab entries in jails
       ansible.builtin.blockinfile:
-        path: "{{ bastille_jails_root }}/{{ item.name }}/fstab"
+        path: "{{ bastille_jails_root }}/{{ item.private_name }}/fstab"
         marker: "# {mark} JRUN MOUNTS"
         create: true
         block: |
           {% for m in jail_mounts | default([]) if m.jail == item.name %}
-          {{ m.target_path }} {{ bastille_jails_root }}/{{ item.name }}/root{{ m.jail_path }} nullfs rw 0 0
+          {{ m.target_path }} {{ bastille_jails_root }}/{{ item.private_name }}/root{{ m.jail_path }} nullfs rw 0 0
           {% endfor %}
       loop: "{{ jails | default([]) }}"
 
     - name: Ensure jail nullfs mountpoints exist in jail root
       ansible.builtin.file:
-        path: "{{ bastille_jails_root }}/{{ item.jail }}/root{{ item.jail_path }}"
+        path: "{{ bastille_jails_root }}/{{ item.jail_private_name }}/root{{ item.jail_path }}"
         state: directory
         mode: "0755"
       loop: "{{ jail_mounts | default([]) }}"

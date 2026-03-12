@@ -22,6 +22,7 @@ from jailrun.schemas import (
     QemuFwd,
     QemuShare,
     RdrPlan,
+    StaleJailPlan,
     StaleMountPlan,
     StaleNullfsPlan,
     State,
@@ -107,6 +108,8 @@ def parse_config(config: Path) -> Config:
 
     raw = ucl.load_file(str(config))
 
+    raw["jail"] = {name: {"name": name, **cfg} for name, cfg in raw.get("jail", {}).items()}
+
     try:
         cfg = Config.model_validate(raw)
     except ValidationError as exc:
@@ -144,6 +147,7 @@ def resolve_base(base_config: BaseConfig, config_base: Path) -> BaseState:
 
 def resolve_jail(jail_config: JailConfig, config_base: Path, *, default_release: str) -> JailState:
     return JailState(
+        name=jail_config.name,
         base=jail_config.base,
         release=jail_config.release or default_release,
         ip=jail_config.ip,
@@ -294,7 +298,7 @@ def derive_plan(old_state: State, new_state: State) -> Plan:
     new_nullfs = _all_nullfs(new_state)
     jail_mounts = sorted(new_nullfs.values(), key=lambda m: (m.jail, m.target_path))
 
-    stale_jails = sorted(set(old_state.jails) - set(new_state.jails))
+    stale_jails = [StaleJailPlan(name=name) for name in sorted(set(old_state.jails) - set(new_state.jails))]
 
     old_target_mounts = _all_target_mounts(old_state)
     stale_mounts = [

@@ -15,22 +15,22 @@
       changed_when: false
       failed_when: false
 
-    - name: Parse running jail names
+    - name: Parse running jail private names
       ansible.builtin.set_fact:
-        running_jail_names: >-
+        running_jail_private_names: >-
           {{ (jail_states_raw.stdout | default('[]') | from_json)
              | selectattr('State', 'equalto', 'Up')
              | map(attribute='Name') | list }}
 
     - name: Start new jails
-      ansible.builtin.command: "bastille start {{ item.name }}"
+      ansible.builtin.command: "bastille start {{ item.private_name }}"
       loop: "{{ jails | default([]) }}"
-      when: item.name not in running_jail_names
+      when: item.private_name not in running_jail_private_names
 
     - name: Restart existing jails
-      ansible.builtin.command: "bastille restart {{ item.name }}"
+      ansible.builtin.command: "bastille restart {{ item.private_name }}"
       loop: "{{ jails | default([]) }}"
-      when: item.name in running_jail_names
+      when: item.private_name in running_jail_private_names
 
     - name: Verify jails are running
       ansible.builtin.command: bastille list -j
@@ -42,25 +42,25 @@
         msg: "Jail {{ item.name }} failed to start"
       loop: "{{ jails | default([]) }}"
       when: >-
-        item.name not in ((verify_states_raw.stdout | from_json)
+        item.private_name not in ((verify_states_raw.stdout | from_json)
           | selectattr('State', 'equalto', 'Up')
           | map(attribute='Name') | list)
 
     - name: Install base packages in jails
-      ansible.builtin.command: "bastille pkg {{ item.name }} install -y {{ jail_base_packages }}"
+      ansible.builtin.command: "bastille pkg {{ item.private_name }} install -y {{ jail_base_packages }}"
       loop: "{{ jails | default([]) }}"
       register: pkg_install
       changed_when: false
       failed_when: pkg_install.rc != 0
 
     - name: Enable sshd in jails
-      ansible.builtin.command: "bastille sysrc {{ item.name }} sshd_enable=YES"
+      ansible.builtin.command: "bastille sysrc {{ item.private_name }} sshd_enable=YES"
       loop: "{{ jails | default([]) }}"
       changed_when: false
 
     - name: Ensure ssh dir in jails
       ansible.builtin.file:
-        path: "{{ bastille_jails_root }}/{{ item.name }}/root/root/.ssh"
+        path: "{{ bastille_jails_root }}/{{ item.private_name }}/root/root/.ssh"
         state: directory
         mode: "0700"
       loop: "{{ jails | default([]) }}"
@@ -68,37 +68,37 @@
     - name: Inject ssh keys into jails
       ansible.builtin.copy:
         src: "/home/admin/.ssh/authorized_keys"
-        dest: "{{ bastille_jails_root }}/{{ item.name }}/root/root/.ssh/authorized_keys"
+        dest: "{{ bastille_jails_root }}/{{ item.private_name }}/root/root/.ssh/authorized_keys"
         remote_src: true
         mode: "0600"
       loop: "{{ jails | default([]) }}"
 
     - name: Enable root login in jails
       ansible.builtin.lineinfile:
-        path: "{{ bastille_jails_root }}/{{ item.name }}/root/etc/ssh/sshd_config"
+        path: "{{ bastille_jails_root }}/{{ item.private_name }}/root/etc/ssh/sshd_config"
         regexp: "^#?PermitRootLogin"
         line: "PermitRootLogin prohibit-password"
       loop: "{{ jails | default([]) }}"
 
     - name: Check sshd status in jails
-      ansible.builtin.command: "bastille cmd {{ item.name }} service sshd status"
+      ansible.builtin.command: "bastille cmd {{ item.private_name }} service sshd status"
       loop: "{{ jails | default([]) }}"
       register: sshd_status
       failed_when: false
       changed_when: false
 
     - name: Start sshd in new jails
-      ansible.builtin.command: "bastille cmd {{ item.item.name }} service sshd start"
+      ansible.builtin.command: "bastille cmd {{ item.item.private_name }} service sshd start"
       loop: "{{ sshd_status.results }}"
       when: item.rc != 0
 
     - name: Restart sshd in existing jails
-      ansible.builtin.command: "bastille cmd {{ item.item.name }} service sshd restart"
+      ansible.builtin.command: "bastille cmd {{ item.item.private_name }} service sshd restart"
       loop: "{{ sshd_status.results }}"
       when: item.rc == 0
 
     - name: Wait for sshd to be listening in jails
-      ansible.builtin.command: "bastille cmd {{ item.name }} sockstat -4l -p 22 -q"
+      ansible.builtin.command: "bastille cmd {{ item.private_name }} sockstat -4l -p 22 -q"
       loop: "{{ jails | default([]) }}"
       register: sshd_check
       retries: 5

@@ -143,15 +143,29 @@ def pick_existing_jail(
     with con().status("[dim]Fetching jail list…[/dim]", spinner="dots"):
         jails = _fetch_live_jails(state=state, settings=settings)
 
+    private_to_public = {str(j.private_name): name for name, j in state.jails.items()}
+
     _nl()
 
     choices: list[Choice] = []
     if jails:
-        max_name = max(len(j["name"]) for j in jails)
-        for j in jails:
-            state_col = "up" if j["state"].lower() == "up" else j["state"].lower()
-            label = f"{j['name'].ljust(max_name)}   {state_col}   {j['ip']}"
-            choices.append(Choice(label, value=j["name"]))
+        rendered: list[dict[str, str]] = []
+        for raw_jail in jails:
+            public_name = private_to_public.get(raw_jail["private_name"], raw_jail["private_name"])
+            rendered.append(
+                {
+                    "name": public_name,
+                    "state": raw_jail["state"],
+                    "ip": raw_jail["ip"],
+                }
+            )
+
+        max_name = max(len(j["name"]) for j in rendered)
+        for row in rendered:
+            state_col = "up" if row["state"].lower() == "up" else row["state"].lower()
+            label = f"{row['name'].ljust(max_name)}   {state_col}   {row['ip']}"
+            choices.append(Choice(label, value=row["name"]))
+
         choices.append(Separator())
 
     if allow_host:
@@ -185,13 +199,26 @@ def pick_existing_jails(
     if not jails:
         raise typer.Abort()
 
-    max_name = max(len(j["name"]) for j in jails)
+    private_to_public = {str(j.private_name): name for name, j in state.jails.items()}
+
+    rendered: list[dict[str, str]] = []
+    for raw_jail in jails:
+        public_name = private_to_public.get(raw_jail["private_name"], raw_jail["private_name"])
+        rendered.append(
+            {
+                "name": public_name,
+                "state": raw_jail["state"],
+                "ip": raw_jail["ip"],
+            }
+        )
+
+    max_name = max(len(j["name"]) for j in rendered)
     choices: list[Choice] = []
 
-    for j in jails:
-        state_col = "up" if j["state"].lower() == "up" else j["state"].lower()
-        label = f"{j['name'].ljust(max_name)}   {state_col}   {j['ip']}"
-        choices.append(Choice(label, value=j["name"]))
+    for row in rendered:
+        state_col = "up" if row["state"].lower() == "up" else row["state"].lower()
+        label = f"{row['name'].ljust(max_name)}   {state_col}   {row['ip']}"
+        choices.append(Choice(label, value=row["name"]))
 
     selected = questionary.checkbox(
         prompt,

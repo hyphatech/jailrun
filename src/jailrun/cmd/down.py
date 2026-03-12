@@ -3,7 +3,7 @@ from jailrun.config import derive_plan, save_state
 from jailrun.misc import lock
 from jailrun.network import get_ssh_kw, wait_for_ssh
 from jailrun.qemu import vm_is_running
-from jailrun.schemas import JailPlan, Plan, State
+from jailrun.schemas import ExecPlan, JailPlan, Plan, State
 from jailrun.settings import Settings
 from jailrun.ui import err, ok, warn
 
@@ -51,9 +51,7 @@ def _down(state: State, *, settings: Settings, names: list[str] | None = None) -
     run_playbook("jail-forwards.yml", plan=plan, settings=settings, state=new_state)
 
     dns_jails = [
-        JailPlan(name=name, release=j.release, ip=j.ip, base=j.base)
-        for name, j in new_state.jails.items()
-        if j.ip
+        JailPlan(name=name, release=j.release, ip=j.ip, base=j.base) for name, j in new_state.jails.items() if j.ip
     ]
     run_playbook(
         "jail-dns.yml",
@@ -67,10 +65,16 @@ def _down(state: State, *, settings: Settings, names: list[str] | None = None) -
         for name in removed
         if name in state.jails
     ]
+    stop_execs = [
+        ExecPlan(name=en, jail=jn, cmd=e.cmd, dir=e.dir, env=e.env, healthcheck=e.healthcheck)
+        for jn, j in state.jails.items()
+        if jn in removed
+        for en, e in j.execs.items()
+    ]
     if stop_jails:
         run_playbook(
             "jail-stop.yml",
-            plan=Plan(jails=stop_jails),
+            plan=Plan(jails=stop_jails, execs=stop_execs),
             settings=settings,
             state=state,
         )

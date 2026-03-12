@@ -18,7 +18,7 @@ from jailrun.ui import con
 
 
 class RawJail(TypedDict):
-    name: str
+    private_name: str
     state: str
     ip: str
 
@@ -82,7 +82,7 @@ def get_bastille_jails(private_key: Path, ssh_user: str, ssh_host: str, ssh_port
     for j in sorted(raw_jails, key=lambda x: x.get("Name", "")):
         clean_jails.append(
             RawJail(
-                name=j.get("Name", "?"),
+                private_name=j.get("Name", "?"),
                 state=j.get("State", "?"),
                 ip=j.get("IP Address", "-"),
             )
@@ -151,13 +151,18 @@ def collect_info(settings: Settings, state: State) -> StatusInfo:
         bastille_jails = get_bastille_jails(**ssh_kw)
 
     managed_names = set(state.jails.keys())
+    public_by_private = {str(j.private_name): name for name, j in state.jails.items()}
+    private_by_public = {name: str(j.private_name) for name, j in state.jails.items()}
+
     jail_rows: list[JailRow] = []
 
     for j in bastille_jails:
-        j_name = j["name"]
-        managed = j_name in managed_names
+        private_name = j["private_name"]
+        public_name = public_by_private.get(private_name, private_name)
+        managed = private_name in public_by_private
+
         if managed:
-            jail_state = state.jails[j_name]
+            jail_state = state.jails[public_name]
             ports = ", ".join(f"{f.proto}/{f.host}→{f.jail}" for f in jail_state.forwards.values())
             mounts = ", ".join(f"{short_path(m.host)} → {m.jail}" for m in jail_state.mounts.values())
         else:
@@ -166,7 +171,7 @@ def collect_info(settings: Settings, state: State) -> StatusInfo:
 
         jail_rows.append(
             JailRow(
-                name=j_name,
+                name=public_name,
                 state=j["state"],
                 ip=j["ip"],
                 managed=managed,
@@ -175,14 +180,18 @@ def collect_info(settings: Settings, state: State) -> StatusInfo:
             )
         )
 
-    bastille_names = {j["name"] for j in bastille_jails}
-    for name in sorted(managed_names - bastille_names):
-        jail = state.jails[name]
+    bastille_private_names = {j["private_name"] for j in bastille_jails}
+    for public_name in sorted(managed_names):
+        private_name = private_by_public[public_name]
+        if private_name in bastille_private_names:
+            continue
+
+        jail = state.jails[public_name]
         ports = ", ".join(f"{f.proto}/{f.host}→{f.jail}" for f in jail.forwards.values())
         mounts = ", ".join(f"{short_path(m.host)} → {m.jail}" for m in jail.mounts.values())
         jail_rows.append(
             JailRow(
-                name=name,
+                name=public_name,
                 state="Missing",
                 ip=jail.ip or "-",
                 managed=True,

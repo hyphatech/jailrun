@@ -10,71 +10,71 @@
   tasks:
     - name: Ensure monit.d dir in jails
       ansible.builtin.file:
-        path: "{{ bastille_jails_root }}/{{ item.name }}/root/usr/local/etc/monit.d"
+        path: "{{ bastille_jails_root }}/{{ item.private_name }}/root/usr/local/etc/monit.d"
         state: directory
         mode: "0700"
       loop: "{{ jails | default([]) }}"
 
     - name: Ensure service directory exists inside jail
       ansible.builtin.file:
-        path: "{{ bastille_jails_root }}/{{ item.jail }}/root{{ item.dir }}"
+        path: "{{ bastille_jails_root }}/{{ item.jail_private_name }}/root{{ item.dir }}"
         state: directory
         mode: "0755"
       loop: "{{ execs | default([]) }}"
 
     - name: Remove stale monitrc files
       ansible.builtin.shell: |
-        find {{ bastille_jails_root }}/{{ item.name }}/root/usr/local/etc/monit.d/ -name '*.monitrc' -delete
+        find {{ bastille_jails_root }}/{{ item.private_name }}/root/usr/local/etc/monit.d/ -name '*.monitrc' -delete
       loop: "{{ jails | default([]) }}"
       changed_when: true
 
     - name: Write base monitrc
       ansible.builtin.template:
         src: monitrc.j2
-        dest: "{{ bastille_jails_root }}/{{ item.name }}/root/usr/local/etc/monitrc"
+        dest: "{{ bastille_jails_root }}/{{ item.private_name }}/root/usr/local/etc/monitrc"
         mode: "0600"
       loop: "{{ jails | default([]) }}"
 
     - name: Write exec monitrc files
       ansible.builtin.template:
         src: exec.monitrc.j2
-        dest: "{{ bastille_jails_root }}/{{ item.jail }}/root/usr/local/etc/monit.d/{{ item.jail }}-{{ item.name }}.monitrc"
+        dest: "{{ bastille_jails_root }}/{{ item.jail_private_name }}/root/usr/local/etc/monit.d/{{ item.jail }}-{{ item.name }}.monitrc"
         mode: "0600"
       loop: "{{ execs | default([]) }}"
 
     - name: Enable monit in jails
-      ansible.builtin.command: "bastille sysrc {{ item.name }} monit_enable=YES"
+      ansible.builtin.command: "bastille sysrc {{ item.private_name }} monit_enable=YES"
       loop: "{{ jails | default([]) }}"
 
     - name: Validate monit config in jails
-      ansible.builtin.command: "bastille cmd {{ item.name }} monit -t"
+      ansible.builtin.command: "bastille cmd {{ item.private_name }} monit -t"
       loop: "{{ jails | default([]) }}"
 
     - name: Check monit status in jails
-      ansible.builtin.command: "bastille cmd {{ item.name }} service monit status"
+      ansible.builtin.command: "bastille cmd {{ item.private_name }} service monit status"
       loop: "{{ jails | default([]) }}"
       register: monit_status
       failed_when: false
       changed_when: false
 
     - name: Start monit in jails where it is not running
-      ansible.builtin.command: "bastille cmd {{ item.item.name }} service monit start"
+      ansible.builtin.command: "bastille cmd {{ item.item.private_name }} service monit start"
       loop: "{{ monit_status.results }}"
       when: item.rc != 0
       register: monit_start
       failed_when: monit_start.rc != 0
 
     - name: Reload monit config in jails where it is already running
-      ansible.builtin.command: "bastille cmd {{ item.item.name }} monit reload"
+      ansible.builtin.command: "bastille cmd {{ item.item.private_name }} monit reload"
       loop: "{{ monit_status.results }}"
       when: item.rc == 0
 
     - name: Re-enable monitoring for all jrun services
-      ansible.builtin.command: "bastille cmd {{ item.name }} monit -g jrun monitor all"
+      ansible.builtin.command: "bastille cmd {{ item.private_name }} monit -g jrun monitor all"
       loop: "{{ jails | default([]) }}"
       failed_when: false
 
     - name: Start all jrun-managed services via monit
-      ansible.builtin.command: "bastille cmd {{ item.name }} monit -g jrun start all"
+      ansible.builtin.command: "bastille cmd {{ item.private_name }} monit -g jrun start all"
       loop: "{{ jails | default([]) }}"
       failed_when: false
