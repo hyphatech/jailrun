@@ -1,0 +1,17 @@
+jail "hypha-gitea" {
+  setup {
+    gitea {
+      type = "ansible";
+      url  = "hub://gitea/1.25";
+    }
+  }
+  forward {
+    http { host = 3000; jail = 3000; }
+  }
+  exec {
+    build {
+      cmd = "doas -u git gitea web --config /usr/local/etc/gitea/conf/app.ini";
+      dir = "/var/db/gitea";
+    }
+  }
+}

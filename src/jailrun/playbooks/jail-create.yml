@@ -6,7 +6,6 @@
 
   vars:
     bastille_jails_root: /usr/local/bastille/jails
-    jail_base_packages: "python313 monit"
     jrun_domain: jrun
     jrun_nameserver: "10.17.89.1"
 
@@ -96,4 +95,41 @@
         content: |
           search {{ jrun_domain }}
           nameserver {{ jrun_nameserver }}
+      loop: "{{ jails | default([]) }}"
+
+    - name: Ensure pkg repo directory exists in jails
+      ansible.builtin.file:
+        path: "{{ bastille_jails_root }}/{{ item.name }}/root/usr/local/etc/pkg/repos"
+        state: directory
+        mode: "0755"
+      loop: "{{ jails | default([]) }}"
+
+    - name: Disable SRV mirror discovery in jails
+      ansible.builtin.copy:
+        dest: "{{ bastille_jails_root }}/{{ item.name }}/root/usr/local/etc/pkg/repos/FreeBSD.conf"
+        mode: "0644"
+        content: |
+          FreeBSD-ports: {
+            url: "https://pkg.FreeBSD.org/${ABI}/quarterly",
+            mirror_type: "none",
+            signature_type: "fingerprints",
+            fingerprints: "/usr/share/keys/pkg",
+            enabled: yes
+          }
+
+          FreeBSD-ports-kmods: {
+            url: "https://pkg.FreeBSD.org/${ABI}/kmods_quarterly_${VERSION_MINOR}",
+            mirror_type: "none",
+            signature_type: "fingerprints",
+            fingerprints: "/usr/share/keys/pkg",
+            enabled: yes
+          }
+
+          FreeBSD-base: {
+            url: "https://pkg.FreeBSD.org/${ABI}/base_release_${VERSION_MINOR}",
+            mirror_type: "none",
+            signature_type: "fingerprints",
+            fingerprints: "/usr/share/keys/pkgbase-${VERSION_MAJOR}",
+            enabled: no
+          }
       loop: "{{ jails | default([]) }}"

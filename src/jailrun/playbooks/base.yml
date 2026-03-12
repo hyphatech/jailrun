@@ -5,6 +5,14 @@
   become_method: doas
 
   tasks:
+    - name: Refresh pkg repository
+      ansible.builtin.command: pkg update -f
+      register: pkg_update
+      changed_when: false
+      retries: 3
+      delay: 10
+      until: pkg_update.rc == 0
+
     - name: Install base packages
       ansible.builtin.package:
         name:

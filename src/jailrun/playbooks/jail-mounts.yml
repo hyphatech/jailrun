@@ -25,9 +25,3 @@
         state: directory
         mode: "0755"
       loop: "{{ jail_mounts | default([]) }}"
-
-    - name: Unmount stale jail nullfs mounts
-      ansible.builtin.command: "bastille umount {{ item.jail }} {{ item.target_path }}"
-      loop: "{{ stale_jail_mounts | default([]) }}"
-      failed_when: false
-      changed_when: true

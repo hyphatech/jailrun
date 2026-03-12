@@ -105,8 +105,10 @@ def _up(
     plan = derive_plan(state, new_state)
 
     run_playbook("jail-teardown.yml", plan=plan, settings=settings, state=new_state)
+
     run_playbook("vm-mounts.yml", plan=plan, settings=settings, state=new_state)
-    run_playbook("jail-dns-bootstrap.yml", plan=plan, settings=settings, state=new_state)
+
+    run_playbook("vm-dns-bootstrap.yml", plan=plan, settings=settings, state=new_state)
 
     provisioned_jails: list[JailPlan] = [
         JailPlan(name=n, release=j.release, ip=j.ip, base=j.base)
@@ -131,20 +133,16 @@ def _up(
             execs=[e for e in plan.execs if e.jail == name],
         )
 
-        try:
-            run_playbook("jail-create.yml", plan=provision_plan, settings=settings, state=new_state)
+        run_playbook("jail-create.yml", plan=provision_plan, settings=settings, state=new_state)
 
-            if provision_plan.jail_mounts:
-                run_playbook("jail-mounts.yml", plan=provision_plan, settings=settings, state=new_state)
+        run_playbook("jail-mounts.yml", plan=provision_plan, settings=settings, state=new_state)
 
-            run_playbook("jail-start.yml", plan=provision_plan, settings=settings, state=new_state)
+        run_playbook("jail-start.yml", plan=provision_plan, settings=settings, state=new_state)
 
-        finally:
-            save_state(state=new_state, state_file=settings.state_file)
+        save_state(state=new_state, state_file=settings.state_file)
 
         provisioned_jails.append(jail_plan)
 
-        # apply DNS in same topological order
         dns_plan = Plan(jails=list(provisioned_jails))
         run_playbook("jail-dns.yml", plan=dns_plan, settings=settings, state=new_state)
 
