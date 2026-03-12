@@ -4,6 +4,13 @@
   become: true
   become_method: doas
 
+  vars:
+    jrun_bridge_name: bridge0
+    jrun_bridge_ip: 10.17.89.1
+    jrun_bridge_cidr: 10.17.89.1/24
+    jrun_jail_subnet: 10.17.89.0/24
+    jrun_ext_if: vtnet0
+
   tasks:
     - name: Refresh pkg repository
       ansible.builtin.command: pkg update -f
@@ -40,7 +47,8 @@
       ansible.builtin.command: kldload pf
       register: kldload_pf
       failed_when: >
-        kldload_pf.rc != 0 and 'already loaded' not in (kldload_pf.stderr | default(''))
+        kldload_pf.rc != 0 and
+        'already loaded' not in (kldload_pf.stderr | default(''))
       changed_when: kldload_pf.rc == 0
 
     - name: Setup Bastille
@@ -48,8 +56,78 @@
       changed_when: false
       failed_when: false
 
+    - name: Ensure bridge0 is configured as a cloned interface at boot
+      ansible.builtin.command: sysrc cloned_interfaces+=" {{ jrun_bridge_name }}"
+      changed_when: false
+
+    - name: Check whether bridge exists
+      ansible.builtin.command: ifconfig {{ jrun_bridge_name }}
+      register: jrun_bridge_check
+      failed_when: false
+      changed_when: false
+
+    - name: Create bridge if missing
+      ansible.builtin.command: ifconfig {{ jrun_bridge_name }} create
+      when: jrun_bridge_check.rc != 0
+      changed_when: true
+
+    - name: Configure bridge address at boot
+      ansible.builtin.command: sysrc ifconfig_{{ jrun_bridge_name }}="inet {{ jrun_bridge_cidr }}"
+      changed_when: false
+
+    - name: Assign bridge address now
+      ansible.builtin.command: ifconfig {{ jrun_bridge_name }} inet {{ jrun_bridge_cidr }}
+      changed_when: false
+
+    - name: Enable IPv4 routing at boot
+      ansible.builtin.command: sysrc gateway_enable="YES"
+      changed_when: false
+
+    - name: Enable IPv4 routing now
+      ansible.builtin.command: sysctl net.inet.ip.forwarding=1
+      changed_when: false
+
+    - name: Ensure PF anchor directory exists
+      ansible.builtin.file:
+        path: /etc/pf.anchors
+        state: directory
+        owner: root
+        group: wheel
+        mode: "0755"
+
+    - name: Ensure jrun PF anchor file exists
+      ansible.builtin.copy:
+        dest: /etc/pf.anchors/jrun
+        content: ""
+        owner: root
+        group: wheel
+        mode: "0644"
+        force: false
+
+    - name: Install managed PF configuration
+      ansible.builtin.template:
+        src: pf.conf.j2
+        dest: /etc/pf.conf
+        owner: root
+        group: wheel
+        mode: "0644"
+
+    - name: Ensure PF starts at boot
+      ansible.builtin.command: sysrc pf_enable="YES"
+      changed_when: false
+
+    - name: Validate PF configuration
+      ansible.builtin.command: pfctl -nf /etc/pf.conf
+      changed_when: false
+
     - name: Load PF rules
       ansible.builtin.command: pfctl -f /etc/pf.conf
+
+    - name: Check PF status
+      ansible.builtin.command: pfctl -s info
+      register: pf_status
+      changed_when: false
+      failed_when: false
 
     - name: Enable PF
       ansible.builtin.command: pfctl -e
@@ -77,5 +155,5 @@
         name: ntpd
         state: started
 
-    - name: Bootstrap release (might take some time)
+    - name: Bootstrap release (might take some time ☕️)
       ansible.builtin.command: bastille bootstrap {{ bsd_version }}-{{ bsd_release_tag }}

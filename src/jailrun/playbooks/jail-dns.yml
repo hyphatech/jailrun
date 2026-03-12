@@ -34,6 +34,11 @@
               forward-addr: {{ upstream_dns }}
       register: zone_changed
 
+    - name: Validate local_unbound config
+      ansible.builtin.command: local-unbound-checkconf
+      changed_when: false
+      when: zone_changed.changed
+
     - name: Reload local_unbound
       ansible.builtin.command: service local_unbound reload
       when: zone_changed.changed

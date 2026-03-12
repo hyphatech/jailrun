@@ -1,0 +1,26 @@
+ext_if="{{ jrun_ext_if }}"
+jrun_if="{{ jrun_bridge_name }}"
+jrun_net="{{ jrun_jail_subnet }}"
+
+set block-policy return
+scrub in on $ext_if all fragment reassemble
+set skip on lo
+
+table <jails> persist
+
+nat on $ext_if from <jails> to any -> ($ext_if:0)
+rdr-anchor "rdr/*"
+
+nat on $ext_if from $jrun_net to any -> ($ext_if)
+
+rdr-anchor "jrun/*"
+
+block in all
+pass out quick keep state
+antispoof for $ext_if
+
+pass in quick on $ext_if inet proto tcp from any to ($ext_if) port ssh flags S/SA keep state
+
+pass quick on $jrun_if
+pass in quick on $jrun_if inet from $jrun_net to any keep state
+pass out quick on $jrun_if inet from any to $jrun_net keep state

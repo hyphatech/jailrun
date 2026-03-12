@@ -19,7 +19,7 @@
       failed_when: false
       changed_when: false
 
-    - name: SAFETY STOP if stale nullfs mount is still active
+    - name: Safety stop if stale nullfs mount is still active
       ansible.builtin.fail:
         msg: >
           Cannot unmount nullfs {{ item.item.target_path }} in jail {{ item.item.jail }}.
@@ -27,19 +27,15 @@
       loop: "{{ verify_stale_umount.results | default([]) }}"
       when: item.rc is defined and item.rc == 0
 
-    - name: Clear rdr rules for stale jails
-      ansible.builtin.command: "bastille rdr {{ item }} reset"
-      loop: "{{ stale_jails | default([]) }}"
-      failed_when: false
-      changed_when: true
-
     - name: Stop stale jails
       ansible.builtin.command: "bastille stop {{ item }}"
       loop: "{{ stale_jails | default([]) }}"
       failed_when: false
+      changed_when: false
 
     - name: Destroy stale jails
       ansible.builtin.command: "bastille destroy -f -y {{ item }}"
       loop: "{{ stale_jails | default([]) }}"
       register: destroy_result
-      failed_when: destroy_result.rc != 0 and 'not found' not in destroy_result.stderr
+      failed_when: destroy_result.rc != 0 and 'not found' not in (destroy_result.stderr | default(''))
+      changed_when: destroy_result.rc == 0

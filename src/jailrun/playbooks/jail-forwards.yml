@@ -4,18 +4,43 @@
   become: true
   become_method: doas
 
+  vars:
+    pf_conf: /etc/pf.conf
+    pf_anchor_file: /etc/pf.anchors/jrun-forwards.conf
+    pf_anchor_name: "jrun/managed"
+    ext_if: vtnet0
+
   tasks:
-    - name: Clear rdr rules
-      ansible.builtin.command: "bastille rdr {{ item.name }} reset"
+    - name: Build jail IP map
+      ansible.builtin.set_fact:
+        jail_ip_map: "{{ jail_ip_map | default({}) | combine({ item.name: item.ip }) }}"
       loop: "{{ jails | default([]) }}"
-      failed_when: false
+
+    - name: Ensure PF anchor directory exists
+      ansible.builtin.file:
+        path: /etc/pf.anchors
+        state: directory
+        owner: root
+        group: wheel
+        mode: "0755"
+
+    - name: Render jrun PF redirect rules
+      ansible.builtin.template:
+        src: jrun-forwards.conf.j2
+        dest: "{{ pf_anchor_file }}"
+        owner: root
+        group: wheel
+        mode: "0644"
+      register: pf_rdr_written
+
+    - name: Validate main PF configuration
+      ansible.builtin.command: pfctl -nf {{ pf_conf }}
       changed_when: false
 
-    - name: Add rdr rules
-      ansible.builtin.command: >
-        bastille rdr {{ item.jail }}
-        {{ item.proto }} {{ item.target_port }} {{ item.jail_port }}
-      loop: "{{ jail_rdrs | default([]) }}"
-      register: rdr_result
-      failed_when: rdr_result.rc != 0
-      changed_when: true
+    - name: Validate jrun anchor rules
+      ansible.builtin.command: pfctl -a {{ pf_anchor_name }} -nf {{ pf_anchor_file }}
+      changed_when: false
+
+    - name: Load jrun anchor rules
+      ansible.builtin.command: pfctl -a {{ pf_anchor_name }} -f {{ pf_anchor_file }}
+      when: pf_rdr_written.changed

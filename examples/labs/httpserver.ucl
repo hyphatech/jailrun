@@ -1,12 +1,9 @@
-jail "astronvim" {
-  setup {
-    astronvim { type = "ansible"; url  = "hub://astronvim/rolling"; }
+jail "httpserver" {
+  forward {
+    http { host = 7777; jail = 8080; }
   }
   mount {
     src { host = "."; jail = "/srv/project"; }
-  }
-  forward {
-    http { host = 7778; jail = 8080; }
   }
   exec {
     server {

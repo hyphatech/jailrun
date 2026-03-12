@@ -48,21 +48,36 @@ def _down(state: State, *, settings: Settings, names: list[str] | None = None) -
     ssh_kw = get_ssh_kw(settings, state)
     wait_for_ssh(**ssh_kw, silent=True)
 
-    run_playbook("jail-teardown.yml", plan=plan, settings=settings, state=new_state)
-    run_playbook("vm-mounts.yml", plan=plan, settings=settings, state=new_state)
     run_playbook("jail-forwards.yml", plan=plan, settings=settings, state=new_state)
 
-    if plan.execs:
-        run_playbook("jail-monit.yml", plan=plan, settings=settings, state=new_state)
-
-    dns_jails = [JailPlan(name=n, release=j.release, ip=j.ip, base=j.base) for n, j in new_state.jails.items() if j.ip]
-
+    dns_jails = [
+        JailPlan(name=name, release=j.release, ip=j.ip, base=j.base)
+        for name, j in new_state.jails.items()
+        if j.ip
+    ]
     run_playbook(
         "jail-dns.yml",
         plan=Plan(jails=dns_jails),
         settings=settings,
         state=new_state,
     )
+
+    stop_jails = [
+        JailPlan(name=name, release=state.jails[name].release, ip=state.jails[name].ip, base=state.jails[name].base)
+        for name in removed
+        if name in state.jails
+    ]
+    if stop_jails:
+        run_playbook(
+            "jail-stop.yml",
+            plan=Plan(jails=stop_jails),
+            settings=settings,
+            state=state,
+        )
+
+    run_playbook("jail-teardown.yml", plan=plan, settings=settings, state=new_state)
+
+    run_playbook("vm-mounts.yml", plan=plan, settings=settings, state=new_state)
 
     save_state(state=new_state, state_file=settings.state_file)
 
