@@ -230,11 +230,32 @@ def _probe_linux_bios(arch: str, predefined: str | None) -> str:
     return bios
 
 
+def _probe_freebsd_bios(arch: str, predefined: str | None) -> str:
+    if predefined:
+        return predefined
+
+    if arch == "x86_64":
+        candidates = ["/usr/local/share/qemu/edk2-x86_64-code.fd"]
+    elif arch == "aarch64":
+        candidates = ["/usr/local/share/qemu/edk2-aarch64-code.fd"]
+    else:
+        raise RuntimeError(f"Unsupported architecture: {arch}")
+
+    bios = _first_existing_path(candidates)
+    if bios is None:
+        checked = "\n  ".join(candidates)
+        raise RuntimeError(f"Could not find QEMU firmware.\nChecked:\n  {checked}\nInstall qemu or set qemu_bios.")
+
+    return bios
+
+
 def _probe_bios(system: str, arch: str, predefined: str | None) -> str:
     if system == "darwin":
         return _probe_darwin_bios(arch, predefined=predefined)
     if system == "linux":
         return _probe_linux_bios(arch, predefined=predefined)
+    if system == "freebsd":
+        return _probe_freebsd_bios(arch, predefined=predefined)
 
     raise RuntimeError(f"Unsupported host OS: {system}")
 
@@ -261,7 +282,7 @@ def detect_qemu_features(settings: Settings) -> QemuFeatures:
     system = platform.system().lower()
     machine = _normalize_machine(platform.machine())
 
-    if system not in {"darwin", "linux"}:
+    if system not in {"darwin", "linux", "freebsd"}:
         raise RuntimeError("Your platform is not supported yet")
 
     arch = _qemu_arch_for_host(machine)

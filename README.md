@@ -46,20 +46,53 @@ sudo dnf install qemu-system-x86 genisoimage ansible
 sudo pacman -S qemu-full cdrtools ansible
 ```
 
+Install Python 3.13+ using your operating system’s package manager or preferred installation method.
+
+Install uv using your distribution’s package manager if available, or via the official installer:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 Then `jrun` itself:
 
 ```bash
-pipx install jailrun
-# or
 uv tool install jailrun
 ```
 
-To install `jrun` directly from the latest source on `master`:
+To install `jrun` directly from the latest source on `main`:
 
 ```bash
-pipx install "git+https://github.com/hyphatech/jailrun.git@master"
-# or
-uv tool install "git+https://github.com/hyphatech/jailrun.git@master"
+uv tool install "git+https://github.com/hyphatech/jailrun.git@main"
+```
+
+**FreeBSD:**
+
+Install the host dependencies first:
+
+```bash
+sudo pkg install qemu uv rust cdrtools python313
+```
+
+Some Python dependencies may not have prebuilt wheels on FreeBSD and may need to be compiled locally, so `rust` is required.
+
+Install Ansible and jrun with Python 3.13:
+
+```bash
+uv tool install --python 3.13 ansible
+uv tool install --python 3.13 jailrun
+```
+
+To install jrun directly from the latest source on main:
+
+```bash
+uv tool install --python 3.13 "git+https://github.com/hyphatech/jailrun.git@main"
+```
+
+If jrun is not found after installation, make sure uv’s user bin directory is on your PATH:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ## Quick start
