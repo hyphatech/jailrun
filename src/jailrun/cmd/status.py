@@ -84,7 +84,7 @@ def get_bastille_jails(private_key: Path, ssh_user: str, ssh_host: str, ssh_port
             RawJail(
                 private_name=j.get("Name", "?"),
                 state=j.get("State", "?"),
-                ip=j.get("IP Address", "-"),
+                ip=" | ".join(j.get("IP Address", "-").split(",", 1)),
             )
         )
     return clean_jails
@@ -163,7 +163,7 @@ def collect_info(settings: Settings, state: State) -> StatusInfo:
 
         if managed:
             jail_state = state.jails[public_name]
-            ports = ", ".join(f"{f.proto}/{f.host}→{f.jail}" for f in jail_state.forwards.values())
+            ports = ", ".join(f"{f.proto}/{f.host} → {f.jail}" for f in jail_state.forwards.values())
             mounts = ", ".join(f"{short_path(m.host)} → {m.jail}" for m in jail_state.mounts.values())
         else:
             ports = ""
@@ -187,7 +187,7 @@ def collect_info(settings: Settings, state: State) -> StatusInfo:
             continue
 
         jail = state.jails[public_name]
-        ports = ", ".join(f"{f.proto}/{f.host}→{f.jail}" for f in jail.forwards.values())
+        ports = ", ".join(f"{f.proto}/{f.host} → {f.jail}" for f in jail.forwards.values())
         mounts = ", ".join(f"{short_path(m.host)} → {m.jail}" for m in jail.mounts.values())
         jail_rows.append(
             JailRow(

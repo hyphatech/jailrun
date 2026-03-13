@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     bsd_release_tag: str = "RELEASE"
     bsd_arch: Literal["aarch64", "amd64"] = Field(default_factory=current_arch)
 
+    mesh_network: bool = True
+
     qemu_memory: str = "4096M"
     qemu_disk_size: str = "20G"
     qemu_cpus: int | None = None

@@ -35,9 +35,9 @@ def resolve_playbook_path(playbook: str | Path) -> Path:
 def run_playbook(
     name: str,
     *,
-    plan: Plan | None = None,
     settings: Settings,
     state: State,
+    plan: Plan | None = None,
     jail_name: str | None = None,
     jail_ip: str | None = None,
     extra_vars: dict[str, Any] | None = None,

@@ -67,6 +67,8 @@ def _start_vm(
 
     if needs_base or provision:
         run_playbook("base.yml", settings=settings, state=new_state)
+        if settings.mesh_network:
+            run_playbook("vm-yggdrasil.yml", settings=settings, state=new_state)
 
     for step in new_state.base.setup.values():
         if step.type == "ansible":
