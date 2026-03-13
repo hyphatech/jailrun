@@ -1,4 +1,5 @@
 import shlex
+from collections.abc import Callable
 from typing import Any
 
 import click
@@ -367,10 +368,10 @@ def _preflight(
 
 
 def _dispatch(
-    state: State,
-    settings: Settings,
-    click_app: click.Group,
     *,
+    settings: Settings,
+    state_loader: Callable[[], State],
+    click_app: click.Group,
     token: str,
     inline_args: list[str],
 ) -> bool:
@@ -390,7 +391,7 @@ def _dispatch(
         )
         return True
 
-    argv = _preflight(click_app=click_app, command=c, args=inline_args, state=state, settings=settings)
+    argv = _preflight(click_app=click_app, command=c, args=inline_args, state=state_loader(), settings=settings)
 
     if argv is None:
         _aborted()
@@ -401,11 +402,14 @@ def _dispatch(
     return True
 
 
-def run(state: State, settings: Settings, version: str = "dev", click_app: click.Group | None = None) -> None:
+def run(
+    *,
+    settings: Settings,
+    state_loader: Callable[[], State],
+    click_app: click.Group,
+    version: str,
+) -> None:
     _print_welcome(version)
-
-    if click_app is None:
-        click_app = click.Group()
 
     completer = _build_completer(click_app)
 
@@ -452,8 +456,8 @@ def run(state: State, settings: Settings, version: str = "dev", click_app: click
 
         try:
             keep_going = _dispatch(
-                state=state,
                 settings=settings,
+                state_loader=state_loader,
                 click_app=click_app,
                 token=parts[0],
                 inline_args=parts[1:],

@@ -45,6 +45,15 @@
         'already exists' not in (create_result.stderr | default(''))
       changed_when: create_result.rc == 0
 
+    - name: Stop newly created jails
+      ansible.builtin.command: "bastille stop {{ item.item.private_name }}"
+      loop: "{{ create_result.results | default([]) }}"
+      when:
+        - item is not skipped
+        - item.changed | default(false)
+      failed_when: false
+      changed_when: false
+
     - name: Stop base jail before clone
       ansible.builtin.command: "bastille stop {{ item.base.private_name }}"
       loop: "{{ jails | default([]) }}"
@@ -69,6 +78,15 @@
         clone_result.rc != 0 and
         'already exists' not in (clone_result.stderr | default(''))
       changed_when: clone_result.rc == 0
+
+    - name: Stop newly cloned jails
+      ansible.builtin.command: "bastille stop {{ item.item.private_name }}"
+      loop: "{{ clone_result.results | default([]) }}"
+      when:
+        - item is not skipped
+        - item.changed | default(false)
+      failed_when: false
+      changed_when: false
 
     - name: Check sysvipc for all jails
       ansible.builtin.command: "bastille config {{ item.private_name }} get allow.sysvipc"
@@ -114,31 +132,8 @@
       loop: "{{ jails | default([]) }}"
 
     - name: Disable SRV mirror discovery in jails
-      ansible.builtin.copy:
+      ansible.builtin.template:
+        src: repos.conf.j2
         dest: "{{ bastille_jails_root }}/{{ item.private_name }}/root/usr/local/etc/pkg/repos/FreeBSD.conf"
         mode: "0644"
-        content: |
-          FreeBSD-ports: {
-            url: "https://pkg.FreeBSD.org/${ABI}/quarterly",
-            mirror_type: "none",
-            signature_type: "fingerprints",
-            fingerprints: "/usr/share/keys/pkg",
-            enabled: yes
-          }
-
-          FreeBSD-ports-kmods: {
-            url: "https://pkg.FreeBSD.org/${ABI}/kmods_quarterly_${VERSION_MINOR}",
-            mirror_type: "none",
-            signature_type: "fingerprints",
-            fingerprints: "/usr/share/keys/pkg",
-            enabled: yes
-          }
-
-          FreeBSD-base: {
-            url: "https://pkg.FreeBSD.org/${ABI}/base_release_${VERSION_MINOR}",
-            mirror_type: "none",
-            signature_type: "fingerprints",
-            fingerprints: "/usr/share/keys/pkgbase-${VERSION_MAJOR}",
-            enabled: no
-          }
       loop: "{{ jails | default([]) }}"

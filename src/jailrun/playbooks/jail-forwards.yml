@@ -26,7 +26,7 @@
 
     - name: Render jrun PF redirect rules
       ansible.builtin.template:
-        src: jrun-forwards.conf.j2
+        src: pf-anchor.conf.j2
         dest: "{{ pf_anchor_file }}"
         owner: root
         group: wheel
@@ -43,4 +43,4 @@
 
     - name: Load jrun anchor rules
       ansible.builtin.command: pfctl -a {{ pf_anchor_name }} -f {{ pf_anchor_file }}
-      when: pf_rdr_written.changed
+      changed_when: false

@@ -77,12 +77,11 @@ def _up(
     new_state = state.model_copy(deep=True)
     new_state = load_base_into_state(base_config, new_state)
 
-    default_release = f"{settings.bsd_version}-{settings.bsd_release_tag}"
     for name in ordered_jails:
         new_state.jails[name] = resolve_jail(
             jail_config=cfg.jail[name],
             config_base=config.parent.resolve(),
-            default_release=default_release,
+            default_release=f"{settings.bsd_version}-{settings.bsd_release_tag}",
         )
 
     if needs_qemu_restart(old_state=state, new_state=new_state):
@@ -115,6 +114,7 @@ def _up(
         for n, j in new_state.jails.items()
         if n not in targets
     ]
+    provisioned_names = {j.name for j in provisioned_jails}
 
     for name in ordered_jails:
         jail_state = new_state.jails[name]
@@ -142,9 +142,16 @@ def _up(
         save_state(state=new_state, state_file=settings.state_file)
 
         provisioned_jails.append(jail_plan)
+        provisioned_names.add(jail_plan.name)
 
-        dns_plan = Plan(jails=list(provisioned_jails))
-        run_playbook("jail-dns.yml", plan=dns_plan, settings=settings, state=new_state)
+        cumulative_plan = Plan(
+            jails=list(provisioned_jails),
+            jail_rdrs=[r for r in plan.jail_rdrs if r.jail in provisioned_names],
+        )
+
+        run_playbook("jail-dns.yml", plan=cumulative_plan, settings=settings, state=new_state)
+
+        run_playbook("jail-forwards.yml", plan=cumulative_plan, settings=settings, state=new_state)
 
         for step in jail_cfg.setup.values():
             if step.type == "ansible":
@@ -171,11 +178,8 @@ def _up(
                         state=new_state,
                     )
 
-    if plan.jail_rdrs:
-        run_playbook("jail-forwards.yml", plan=plan, settings=settings, state=new_state)
-
-    if plan.execs:
-        run_playbook("jail-monit.yml", plan=plan, settings=settings, state=new_state)
+        if provision_plan.execs:
+            run_playbook("jail-monit.yml", plan=provision_plan, settings=settings, state=new_state)
 
     ok(f"Deploy complete ({', '.join(ordered_jails)}).")
 

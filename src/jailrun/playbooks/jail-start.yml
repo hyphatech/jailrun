@@ -22,15 +22,10 @@
              | selectattr('State', 'equalto', 'Up')
              | map(attribute='Name') | list }}
 
-    - name: Start new jails
+    - name: Start jails that are not running
       ansible.builtin.command: "bastille start {{ item.private_name }}"
       loop: "{{ jails | default([]) }}"
       when: item.private_name not in running_jail_private_names
-
-    - name: Restart existing jails
-      ansible.builtin.command: "bastille restart {{ item.private_name }}"
-      loop: "{{ jails | default([]) }}"
-      when: item.private_name in running_jail_private_names
 
     - name: Verify jails are running
       ansible.builtin.command: bastille list -j
@@ -46,12 +41,19 @@
           | selectattr('State', 'equalto', 'Up')
           | map(attribute='Name') | list)
 
-    - name: Install base packages in jails
-      ansible.builtin.command: "bastille pkg {{ item.private_name }} install -y {{ jail_base_packages }}"
+    - name: Check whether base packages are already installed in jails
+      ansible.builtin.command: >-
+        bastille cmd {{ item.private_name }} pkg info -e {{ jail_base_packages | join(' ') }}
       loop: "{{ jails | default([]) }}"
-      register: pkg_install
+      register: pkg_present
       changed_when: false
-      failed_when: pkg_install.rc != 0
+      failed_when: false
+
+    - name: Install base packages in jails
+      ansible.builtin.command: >-
+        bastille pkg {{ item.item.private_name }} install -y {{ jail_base_packages | join(' ') }}
+      loop: "{{ pkg_present.results | default([]) }}"
+      when: item.rc != 0
 
     - name: Enable sshd in jails
       ansible.builtin.command: "bastille sysrc {{ item.private_name }} sshd_enable=YES"

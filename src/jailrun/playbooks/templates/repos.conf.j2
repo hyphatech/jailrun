@@ -1,0 +1,23 @@
+FreeBSD-ports: {
+  url: "https://pkg.FreeBSD.org/${ABI}/quarterly",
+  mirror_type: "none",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/share/keys/pkg",
+  enabled: yes
+}
+
+FreeBSD-ports-kmods: {
+  url: "https://pkg.FreeBSD.org/${ABI}/kmods_quarterly_${VERSION_MINOR}",
+  mirror_type: "none",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/share/keys/pkg",
+  enabled: yes
+}
+
+FreeBSD-base: {
+  url: "https://pkg.FreeBSD.org/${ABI}/base_release_${VERSION_MINOR}",
+  mirror_type: "none",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/share/keys/pkgbase-${VERSION_MAJOR}",
+  enabled: no
+}

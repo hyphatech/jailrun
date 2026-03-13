@@ -168,20 +168,21 @@ def down(
     """Stop and destroy jails."""
     state = load_state(settings.state_file)
 
+    if not state.jails:
+        warn("No jails in state.")
+        raise typer.Exit(0)
+
     if names is None:
         con().print()
         con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]select jails to destroy…[/dim]")
-        names = shell.pick_existing_jails(
-            state=state,
-            settings=settings,
-            prompt="Destroy which jails?",
-        )
+        names = shell.pick_existing_jails(state=state, settings=settings, prompt="Destroy which jails?")
 
     if not names:
         warn("No jails selected.")
         raise typer.Exit(0)
 
     _confirm_destructive("destroy", ", ".join(names), yes=yes)
+
     cmd.down(state=state, settings=settings, names=names)
 
 
@@ -195,14 +196,14 @@ def pause(
     """Stop running jails without destroying them."""
     state = load_state(settings.state_file)
 
+    if not state.jails:
+        warn("No jails in state.")
+        raise typer.Exit(0)
+
     if names is None:
         con().print()
         con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]select jails to pause…[/dim]")
-        names = shell.pick_existing_jails(
-            state=state,
-            settings=settings,
-            prompt="Pause which jails?",
-        )
+        names = shell.pick_existing_jails(state=state, settings=settings, prompt="Pause which jails?")
 
     if not names:
         warn("No jails selected.")
@@ -251,11 +252,10 @@ def root(
 ) -> None:
     """Run without arguments for the interactive shell."""
     if ctx.invoked_subcommand is None:
-        state = load_state(settings.state_file)
         shell.run(
-            state=state,
             settings=settings,
             version=_get_version(),
+            state_loader=lambda: load_state(settings.state_file),
             click_app=typer_main.get_command(app),  # type: ignore[arg-type]
         )
 
