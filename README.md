@@ -14,7 +14,7 @@ Jailrun is a cross-platform orchestration tool for FreeBSD jails. Its CLI, `jrun
 
 A jail is a self-contained environment running inside FreeBSD. Nothing inside a jail can see or touch anything outside of it — and nothing outside can interfere with what's inside.
 
-Jails are a native FreeBSD feature. They're fast to create, cheap to run, and easy to destroy and recreate from scratch. FreeBSD jails are one of the most proven isolation technologies in computing — and jrun makes them accessible from macOS and Linux.
+Jails are a native FreeBSD feature. They're fast to create, cheap to run, and easy to destroy and recreate from scratch. FreeBSD jails are one of the most proven isolation technologies in computing — and jrun makes them accessible from macOS, Linux, and FreeBSD itself.
 
 ## ZFS
 
@@ -79,7 +79,7 @@ Some Python dependencies may not have prebuilt wheels on FreeBSD and may need to
 Install Ansible and jrun with Python 3.13:
 
 ```bash
-uv tool install --python 3.13 ansible
+uv tool install --python 3.13 --with-executables-from ansible-core ansible
 uv tool install --python 3.13 jailrun
 ```
 
@@ -581,6 +581,8 @@ The lifecycle is controlled by three base commands:
 | macOS Intel | Should work (HVF), untested |
 | Linux x86_64 | Tested (KVM acceleration) |
 | Linux aarch64 | Should work (KVM), untested |
+| FreeBSD x86_64 | Tested (TCG emulation) |
+| FreeBSD aarch64 | Should work (TCG emulation), untested |
 
 ## Roadmap
 
