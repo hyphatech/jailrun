@@ -235,7 +235,10 @@ def _probe_freebsd_bios(arch: str, predefined: str | None) -> str:
         return predefined
 
     if arch == "x86_64":
-        candidates = ["/usr/local/share/qemu/edk2-x86_64-code.fd"]
+        candidates = [
+            "/usr/local/share/edk2-qemu/QEMU_UEFI-x86_64.fd",
+            "/usr/local/share/edk2-qemu/QEMU_UEFI_CODE-x86_64.fd",
+        ]
     elif arch == "aarch64":
         candidates = ["/usr/local/share/qemu/edk2-aarch64-code.fd"]
     else:

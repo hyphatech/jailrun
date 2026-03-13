@@ -71,7 +71,7 @@ uv tool install "git+https://github.com/hyphatech/jailrun.git@main"
 Install the host dependencies first:
 
 ```bash
-sudo pkg install qemu uv rust cdrtools python313
+sudo pkg install qemu edk2-qemu-x64 uv rust cdrtools python313
 ```
 
 Some Python dependencies may not have prebuilt wheels on FreeBSD and may need to be compiled locally, so `rust` is required.
