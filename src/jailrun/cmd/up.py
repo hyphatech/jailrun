@@ -178,6 +178,8 @@ def _up(
                         state=new_state,
                     )
 
+        run_playbook("jail-yggdrasil.yml", plan=provision_plan, settings=settings, state=new_state)
+
         if provision_plan.execs:
             run_playbook("jail-monit.yml", plan=provision_plan, settings=settings, state=new_state)
 

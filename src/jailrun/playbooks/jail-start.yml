@@ -41,19 +41,12 @@
           | selectattr('State', 'equalto', 'Up')
           | map(attribute='Name') | list)
 
-    - name: Check whether base packages are already installed in jails
-      ansible.builtin.command: >-
-        bastille cmd {{ item.private_name }} pkg info -e {{ jail_base_packages | join(' ') }}
-      loop: "{{ jails | default([]) }}"
-      register: pkg_present
-      changed_when: false
-      failed_when: false
-
     - name: Install base packages in jails
-      ansible.builtin.command: >-
-        bastille pkg {{ item.item.private_name }} install -y {{ jail_base_packages | join(' ') }}
-      loop: "{{ pkg_present.results | default([]) }}"
-      when: item.rc != 0
+      ansible.builtin.command: "bastille pkg {{ item.private_name }} install -y {{ jail_base_packages }}"
+      loop: "{{ jails | default([]) }}"
+      register: pkg_install
+      changed_when: false
+      failed_when: pkg_install.rc != 0
 
     - name: Enable sshd in jails
       ansible.builtin.command: "bastille sysrc {{ item.private_name }} sshd_enable=YES"
