@@ -20,7 +20,6 @@ def _purge(settings: Settings) -> None:
     paths = [
         settings.state_file,
         settings.disk_dir / Path(image_xz).with_suffix(""),
-        settings.disk_dir / "OVMF_VARS.fd",
         settings.cloud_dir / "cloud-init.iso",
         settings.playbook_cache_dir,
     ]
