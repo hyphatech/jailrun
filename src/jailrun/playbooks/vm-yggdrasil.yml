@@ -88,25 +88,6 @@
       changed_when: false
       failed_when: "'10.17.89.1:19001' not in (ygg_sockstat.stdout | default(''))"
 
-    - name: Configure ntpd to step on any offset
-      ansible.builtin.lineinfile:
-        path: /etc/ntp.conf
-        line: "tinker panic 0"
-        regexp: '^tinker'
-        insertbefore: BOF
-
-    - name: Enable ntpd
-      ansible.builtin.command: sysrc ntpd_enable="YES"
-      changed_when: false
-
-    - name: Start ntpd
-      ansible.builtin.service:
-        name: ntpd
-        state: started
-
-    - name: Bootstrap release (might take some time ☕️)
-      ansible.builtin.command: bastille bootstrap {{ bsd_version }}-{{ bsd_release_tag }}
-
   handlers:
     - name: stop yggdrasil
       ansible.builtin.command: service yggdrasil stop
