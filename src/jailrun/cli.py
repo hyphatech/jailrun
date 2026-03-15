@@ -230,6 +230,19 @@ def status(
     cmd.status(state=state, settings=settings, tree=tree)
 
 
+@app.command()
+def pair(
+    code: str | None = typer.Argument(None, help="Mesh code to join (omit to create new)"),
+) -> None:
+    """Pair with other jailrun instances over the mesh network."""
+    state = load_state(settings.state_file)
+
+    if code is None:
+        cmd.pair_create(state=state, settings=settings)
+    else:
+        cmd.pair_join(code=code, state=state, settings=settings)
+
+
 def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"jrun {_get_version()}")

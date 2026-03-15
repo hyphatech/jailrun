@@ -159,6 +159,10 @@ class QemuShare(BaseModel):
     mount_tag: str
 
 
+class PeerInfo(BaseModel):
+    pubkey: str
+
+
 class State(BaseModel):
     version: int = 1
     base: BaseState = Field(default_factory=BaseState)
@@ -166,6 +170,7 @@ class State(BaseModel):
     launched_fwds: list[QemuFwd] = Field(default_factory=list)
     launched_shares: list[QemuShare] = Field(default_factory=list)
     ssh_port: int | None = None
+    peers: list[PeerInfo] = Field(default_factory=list)
 
 
 class JailPlan(BaseModel):

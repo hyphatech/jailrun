@@ -25,6 +25,7 @@
           - bastille
           - btop
           - fping
+          - curl
         state: present
 
     - name: Set VM-optimized kernel tunables

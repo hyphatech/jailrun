@@ -1,11 +1,16 @@
 {
-  "Peers": [],
+  "Peers": ["tcp://{{ relay_peer_uri }}"],
   "InterfacePeers": {},
   "Listen": [
     "{{ ygg_listen_uri }}"
   ],
   "MulticastInterfaces": [],
-  "AllowedPublicKeys": [],
+  "AllowedPublicKeys": [
+    "{{ relay_pubkey }}"
+    {% for key in peer_pubkeys | default([]) %}
+    ,"{{ key }}"
+    {% endfor %}
+  ],
   "IfName": "ygg0",
   "IfMTU": 65535,
   "NodeInfoPrivacy": true,
