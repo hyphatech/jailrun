@@ -6,7 +6,6 @@ from jailrun.ansible import run_playbook
 from jailrun.cmd.stop import stop_vm
 from jailrun.config import (
     derive_plan,
-    load_base_into_state,
     needs_qemu_restart,
     parse_config,
     resolve_jail,
@@ -21,7 +20,7 @@ from jailrun.qemu import QemuMode, launch_vm, vm_is_running
 from jailrun.remote import fetch_remote_playbook
 from jailrun.schemas import JailPlan, LocalSetupStep, Plan, RemoteSetupStep, State
 from jailrun.settings import Settings
-from jailrun.ui import err, info, ok, warn
+from jailrun.ui import err, ok, warn
 
 
 def up(
@@ -29,8 +28,6 @@ def up(
     state: State,
     settings: Settings,
     *,
-    base_config: Path | None,
-    mode: QemuMode = QemuMode.SERVER,
     names: list[str] | None = None,
 ) -> None:
     with lock(settings.state_file):
@@ -38,8 +35,6 @@ def up(
             config=config,
             state=state,
             settings=settings,
-            base_config=base_config,
-            mode=mode,
             names=names,
         )
 
@@ -49,8 +44,6 @@ def _up(
     state: State,
     settings: Settings,
     *,
-    base_config: Path | None,
-    mode: QemuMode = QemuMode.SERVER,
     names: list[str] | None = None,
 ) -> None:
     alive, _ = vm_is_running(settings.pid_file)
@@ -75,7 +68,6 @@ def _up(
     ordered_jails = [n for n in sort_jails(cfg.jail) if n in targets]
 
     new_state = state.model_copy(deep=True)
-    new_state = load_base_into_state(base_config, new_state)
 
     for name in ordered_jails:
         new_state.jails[name] = resolve_jail(
@@ -185,8 +177,3 @@ def _up(
             run_playbook("jail-monit.yml", plan=provision_plan, settings=settings, state=new_state)
 
     ok(f"Deploy complete ({', '.join(ordered_jails)}).")
-
-    if mode in {QemuMode.TTY, QemuMode.GRAPHIC}:
-        info(f"Restarting VM in {mode} mode…")
-        stop_vm(settings)
-        launch_vm(state=new_state, mode=mode, settings=settings)

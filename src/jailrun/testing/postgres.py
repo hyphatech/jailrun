@@ -13,7 +13,6 @@ class PostgresJail(Jail):
         jail: str = "hypha-postgres-test",
         *,
         jail_config: Path,
-        base_config: Path | None = None,
         settings: Settings | None = None,
         user: str = "postgres",
         dbname: str = "testdb",
@@ -22,7 +21,7 @@ class PostgresJail(Jail):
         self.user = user
         self.dbname = dbname
         self.port = port
-        super().__init__(jail=jail, jail_config=jail_config, base_config=base_config, settings=settings)
+        super().__init__(jail=jail, jail_config=jail_config, settings=settings)
 
     def is_ready(self) -> bool:
         result = jail_ssh_exec(

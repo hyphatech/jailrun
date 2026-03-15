@@ -137,8 +137,6 @@ def run_cmd(
 def up(
     config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
-    base: Path | None = typer.Option(None, "--base", "-b", help="Path to base.ucl"),
-    mode: QemuMode = typer.Option(QemuMode.SERVER, "--mode", "-m", help="VM mode"),
 ) -> None:
     """Create or update jails from a config file."""
     if config is None:
@@ -146,7 +144,7 @@ def up(
         raise typer.Exit(1)
 
     state = load_state(settings.state_file)
-    cmd.up(config=config, state=state, settings=settings, base_config=base, mode=mode, names=names)
+    cmd.up(config=config, state=state, settings=settings, names=names)
 
 
 @app.command()
