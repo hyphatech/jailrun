@@ -14,7 +14,7 @@ from jailrun import cmd, shell
 from jailrun.config import load_state
 from jailrun.qemu import QemuMode
 from jailrun.settings import settings
-from jailrun.ui import COMMANDS, Q_STYLE, con, pick_config, pick_jails_from_config, warn
+from jailrun.ui import COMMANDS, Q_STYLE, con, warn
 
 
 def _get_version() -> str:
@@ -135,18 +135,15 @@ def run_cmd(
 
 @app.command()
 def up(
-    config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)  [interactive if omitted]"),
+    config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
     base: Path | None = typer.Option(None, "--base", "-b", help="Path to base.ucl"),
     mode: QemuMode = typer.Option(QemuMode.SERVER, "--mode", "-m", help="VM mode"),
 ) -> None:
     """Create or update jails from a config file."""
     if config is None:
-        con().print()
-        con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
-        config = pick_config()
-        if names is None:
-            names = pick_jails_from_config(config)
+        warn("Config file required. Run 'jrun' for interactive mode.")
+        raise typer.Exit(1)
 
     state = load_state(settings.state_file)
     cmd.up(config=config, state=state, settings=settings, base_config=base, mode=mode, names=names)
@@ -156,7 +153,7 @@ def up(
 def down(
     names: list[str] | None = typer.Argument(
         None,
-        help="Jail names (interactive multi-select if omitted)",
+        help="Jail names to destroy",
     ),
     yes: bool = typer.Option(
         False,
@@ -166,23 +163,13 @@ def down(
     ),
 ) -> None:
     """Stop and destroy jails."""
-    state = load_state(settings.state_file)
-
-    if not state.jails:
-        warn("No jails in state.")
-        raise typer.Exit(0)
-
-    if names is None:
-        con().print()
-        con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]select jails to destroy…[/dim]")
-        names = shell.pick_existing_jails(state=state, settings=settings, prompt="Destroy which jails?")
-
     if not names:
-        warn("No jails selected.")
-        raise typer.Exit(0)
+        warn("Jail names required. Run 'jrun' for interactive mode.")
+        raise typer.Exit(1)
 
     _confirm_destructive("destroy", ", ".join(names), yes=yes)
 
+    state = load_state(settings.state_file)
     cmd.down(state=state, settings=settings, names=names)
 
 
@@ -190,25 +177,15 @@ def down(
 def pause(
     names: list[str] | None = typer.Argument(
         None,
-        help="Jail names (interactive multi-select if omitted)",
+        help="Jail names to pause",
     ),
 ) -> None:
     """Stop running jails without destroying them."""
-    state = load_state(settings.state_file)
-
-    if not state.jails:
-        warn("No jails in state.")
-        raise typer.Exit(0)
-
-    if names is None:
-        con().print()
-        con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]select jails to pause…[/dim]")
-        names = shell.pick_existing_jails(state=state, settings=settings, prompt="Pause which jails?")
-
     if not names:
-        warn("No jails selected.")
-        raise typer.Exit(0)
+        warn("Jail names required. Run 'jrun' for interactive mode.")
+        raise typer.Exit(1)
 
+    state = load_state(settings.state_file)
     cmd.pause(state=state, settings=settings, names=names)
 
 

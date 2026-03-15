@@ -21,7 +21,7 @@ from jailrun.network import get_ssh_kw
 from jailrun.qemu import QemuMode, vm_is_running
 from jailrun.schemas import State
 from jailrun.settings import Settings
-from jailrun.ui import COMMANDS, Q_STYLE, con, warn
+from jailrun.ui import COMMANDS, Q_STYLE, con, pick_config, pick_jails_from_config, warn
 
 _SHELL_COMMANDS = [
     ("help", "Show available commands", False),
@@ -253,49 +253,6 @@ def _offer_start_vm(state: State, settings: Settings) -> bool:
     return True
 
 
-def _preflight_ssh(click_app: click.Group, args: list[str], state: State, settings: Settings) -> list[str] | None:
-    p = _parse(click_app, "ssh", args)
-    if p.get("jail_name") is not None:
-        return args
-
-    if not _is_vm_running(settings):
-        if not _offer_start_vm(state, settings):
-            return None
-
-    jail_name = pick_existing_jail(state, settings, prompt="SSH into:")
-
-    return args if jail_name is None else [jail_name, *args]
-
-
-def _preflight_cmd(click_app: click.Group, args: list[str], state: State, settings: Settings) -> list[str] | None:
-    p = _parse(click_app, "cmd", args)
-
-    if p.get("jail_name") is not None and p.get("executable") is not None:
-        return args
-
-    if not _is_vm_running(settings):
-        if not _offer_start_vm(state, settings):
-            return None
-
-    jail_name = p.get("jail_name")
-    if jail_name is None:
-        jail_name = pick_existing_jail(state, settings, prompt="Run command in:", allow_host=False)
-        if jail_name is None:
-            return None
-
-    raw = questionary.text("Executable (with args):", style=Q_STYLE).ask()
-    if not raw:
-        return None
-    _nl()
-    try:
-        extra = shlex.split(raw)
-    except ValueError:
-        con().print("\n  [bold red]error:[/bold red] invalid quoting\n")
-        return None
-
-    return [jail_name, *extra]
-
-
 def _preflight_start(args: list[str]) -> list[str] | None:
     if args:
         return args
@@ -320,7 +277,90 @@ def _preflight_start(args: list[str]) -> list[str] | None:
     return ["--base", raw] if raw else args
 
 
-def _preflight_existing_jails_required(
+def _preflight_up(
+    click_app: click.Group,
+    args: list[str],
+    state: State,
+    settings: Settings,
+) -> list[str] | None:
+    p = _parse(click_app, "up", args)
+
+    if p.get("config") is not None:
+        if not _is_vm_running(settings) and not _offer_start_vm(state, settings):
+            return None
+        return args
+
+    if not _is_vm_running(settings) and not _offer_start_vm(state, settings):
+        return None
+
+    _nl()
+
+    con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
+
+    config = pick_config()
+    names = pick_jails_from_config(config)
+
+    result = [str(config)]
+    if names:
+        result.extend(names)
+
+    return result
+
+
+def _preflight_ssh(
+    click_app: click.Group,
+    args: list[str],
+    state: State,
+    settings: Settings,
+) -> list[str] | None:
+    p = _parse(click_app, "ssh", args)
+    if p.get("jail_name") is not None:
+        return args
+
+    if not _is_vm_running(settings) and not _offer_start_vm(state, settings):
+        return None
+
+    jail_name = pick_existing_jail(state, settings, prompt="SSH into:")
+
+    return args if jail_name is None else [jail_name, *args]
+
+
+def _preflight_cmd(
+    click_app: click.Group,
+    args: list[str],
+    state: State,
+    settings: Settings,
+) -> list[str] | None:
+    p = _parse(click_app, "cmd", args)
+
+    if p.get("jail_name") is not None and p.get("executable") is not None:
+        return args
+
+    if not _is_vm_running(settings) and not _offer_start_vm(state, settings):
+        return None
+
+    jail_name = p.get("jail_name")
+    if jail_name is None:
+        jail_name = pick_existing_jail(state, settings, prompt="Run command in:", allow_host=False)
+        if jail_name is None:
+            return None
+
+    raw = questionary.text("Executable (with args):", style=Q_STYLE).ask()
+    if not raw:
+        return None
+
+    _nl()
+
+    try:
+        extra = shlex.split(raw)
+    except ValueError:
+        con().print("\n  [bold red]error:[/bold red] invalid quoting\n")
+        return None
+
+    return [jail_name, *extra]
+
+
+def _preflight_jail_select(
     click_app: click.Group,
     command: str,
     args: list[str],
@@ -331,15 +371,20 @@ def _preflight_existing_jails_required(
     if p.get("names"):
         return args
 
-    if not _is_vm_running(settings):
-        if not _offer_start_vm(state, settings):
-            return None
+    if not _is_vm_running(settings) and not _offer_start_vm(state, settings):
+        return None
 
-    prompt = "Destroy which jails?" if command == "down" else "Pause which jails?"
-    names = pick_existing_jails(state=state, settings=settings, prompt=prompt)
+    if not state.jails:
+        warn("No jails in state.")
+        return None
 
-    flags = [a for a in args if a.startswith("-")]
-    return [*names, *flags]
+    prompt_map = {"down": "Destroy which jails?", "pause": "Pause which jails?"}
+    names = pick_existing_jails(state=state, settings=settings, prompt=prompt_map[command])
+
+    if not names:
+        return None
+
+    return list(names)
 
 
 def _preflight(
@@ -349,14 +394,16 @@ def _preflight(
     state: State,
     settings: Settings,
 ) -> list[str] | None:
+    if command == "start":
+        return _preflight_start(args)
+    if command == "up":
+        return _preflight_up(click_app=click_app, args=args, state=state, settings=settings)
     if command == "ssh":
         return _preflight_ssh(click_app=click_app, args=args, state=state, settings=settings)
     if command == "cmd":
         return _preflight_cmd(click_app=click_app, args=args, state=state, settings=settings)
-    if command == "start":
-        return _preflight_start(args)
     if command in ("down", "pause"):
-        return _preflight_existing_jails_required(
+        return _preflight_jail_select(
             click_app=click_app,
             command=command,
             args=args,
