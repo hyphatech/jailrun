@@ -11,6 +11,18 @@
     jrun_ext_if: vtnet0
 
   tasks:
+    - name: Ensure pkg repo directory exists
+      ansible.builtin.file:
+        path: /usr/local/etc/pkg/repos
+        state: directory
+        mode: "0755"
+
+    - name: Disable SRV mirror discovery
+      ansible.builtin.template:
+        src: repos.conf.j2
+        dest: /usr/local/etc/pkg/repos/FreeBSD.conf
+        mode: "0644"
+
     - name: Refresh pkg repository
       ansible.builtin.command: pkg update -f
       register: pkg_update
