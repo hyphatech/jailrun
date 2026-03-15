@@ -5,12 +5,7 @@
     "{{ ygg_listen_uri }}"
   ],
   "MulticastInterfaces": [],
-  "AllowedPublicKeys": [
-    "{{ relay_pubkey }}"
-    {% for key in peer_pubkeys | default([]) %}
-    ,"{{ key }}"
-    {% endfor %}
-  ],
+  "AllowedPublicKeys": [],
   "IfName": "ygg0",
   "IfMTU": 65535,
   "NodeInfoPrivacy": true,
