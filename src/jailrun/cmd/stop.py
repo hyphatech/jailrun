@@ -19,6 +19,10 @@ def stop(settings: Settings) -> None:
 def stop_vm(settings: Settings) -> None:
     alive, pid = vm_is_running(settings.pid_file)
 
+    vars_path = settings.disk_dir / "OVMF_VARS.fd"
+    if vars_path.exists():
+        vars_path.unlink()
+
     if not alive or not pid:
         warn("VM is not running.")
         return
