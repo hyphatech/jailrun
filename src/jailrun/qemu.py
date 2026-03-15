@@ -26,6 +26,7 @@ class QemuFeatures:
     accel: str
     cpu: str | None
     bios: str
+    bios_vars: str | None
     virtio_suffix: str
     display: str
     supports_9p: bool
@@ -189,6 +190,28 @@ def _probe_darwin_bios(arch: str, predefined: str | None) -> str:
     return fallback
 
 
+LINUX_VARS_MAP = {
+    "/usr/share/OVMF/OVMF_CODE.fd": "/usr/share/OVMF/OVMF_VARS.fd",
+    "/usr/share/OVMF/OVMF_CODE_4M.fd": "/usr/share/OVMF/OVMF_VARS_4M.fd",
+    "/usr/share/ovmf/OVMF.fd": "/usr/share/ovmf/OVMF_VARS.fd",
+    "/usr/share/edk2/ovmf/OVMF_CODE.fd": "/usr/share/edk2/ovmf/OVMF_VARS.fd",
+    "/usr/share/edk2/x64/OVMF_CODE.4m.fd": "/usr/share/edk2/x64/OVMF_VARS.4m.fd",
+    "/usr/share/qemu/OVMF.fd": "/usr/share/qemu/OVMF_VARS.fd",
+    "/usr/share/qemu/ovmf-x86_64-code.bin": "/usr/share/qemu/ovmf-x86_64-vars.bin",
+    "/usr/share/qemu/ovmf-x86_64-ms-code.bin": "/usr/share/qemu/ovmf-x86_64-ms-vars.bin",
+    "/usr/share/qemu/ovmf-x86_64-ms-4m-code.bin": "/usr/share/qemu/ovmf-x86_64-ms-4m-vars.bin",
+    "/run/libvirt/nix-ovmf/OVMF_CODE.fd": "/run/libvirt/nix-ovmf/OVMF_VARS.fd",
+    "/run/libvirt/nix-ovmf/OVMF_CODE_4M.fd": "/run/libvirt/nix-ovmf/OVMF_VARS_4M.fd",
+    "/usr/share/AAVMF/AAVMF_CODE.fd": "/usr/share/AAVMF/AAVMF_VARS.fd",
+    "/usr/share/AAVMF/AAVMF_CODE_4M.fd": "/usr/share/AAVMF/AAVMF_VARS_4M.fd",
+    "/usr/share/edk2/aarch64/QEMU_EFI.fd": "/usr/share/edk2/aarch64/QEMU_VARS.fd",
+    "/usr/share/edk2/aarch64/OVMF_CODE.fd": "/usr/share/edk2/aarch64/OVMF_VARS.fd",
+    "/usr/share/qemu/aavmf-aarch64-code.bin": "/usr/share/qemu/aavmf-aarch64-vars.bin",
+    "/run/libvirt/nix-ovmf/AAVMF_CODE.fd": "/run/libvirt/nix-ovmf/AAVMF_VARS.fd",
+    "/run/libvirt/nix-ovmf/QEMU_EFI.fd": "/run/libvirt/nix-ovmf/QEMU_VARS.fd",
+}
+
+
 def _probe_linux_bios(arch: str, predefined: str | None) -> str:
     if predefined:
         return predefined
@@ -228,6 +251,21 @@ def _probe_linux_bios(arch: str, predefined: str | None) -> str:
         )
 
     return bios
+
+
+def _probe_linux_vars_template(bios_code: str) -> str | None:
+    template = LINUX_VARS_MAP.get(bios_code)
+    if template and Path(template).exists():
+        return template
+    return None
+
+
+def _ensure_linux_vars(settings: Settings, vars_template: str) -> Path:
+    vars_path = settings.disk_dir / "OVMF_VARS.fd"
+    if not vars_path.exists():
+        info(f"Creating per-VM EFI VARS from {vars_template}…")
+        shutil.copy(vars_template, vars_path)
+    return vars_path
 
 
 def _probe_freebsd_bios(arch: str, predefined: str | None) -> str:
@@ -298,6 +336,12 @@ def detect_qemu_features(settings: Settings) -> QemuFeatures:
     display = _pick_display(system, qemu_bin)
     supports_9p = _supports_9p(qemu_bin, arch)
 
+    bios_vars: str | None = None
+    if system == "linux":
+        vars_template = _probe_linux_vars_template(bios)
+        if vars_template:
+            bios_vars = str(_ensure_linux_vars(settings, vars_template))
+
     return QemuFeatures(
         qemu_bin=qemu_bin,
         arch=arch,
@@ -305,6 +349,7 @@ def detect_qemu_features(settings: Settings) -> QemuFeatures:
         accel=accel,
         cpu=cpu,
         bios=bios,
+        bios_vars=bios_vars,
         virtio_suffix=virtio_suffix,
         display=display,
         supports_9p=supports_9p,
@@ -391,8 +436,19 @@ def build_qemu_cmd(
         str(smp),
         "-M",
         f"{features.machine},accel={features.accel}",
-        "-bios",
-        features.bios,
+    ]
+
+    if features.bios_vars:
+        cmd += [
+            "-drive",
+            f"if=pflash,format=raw,unit=0,readonly=on,file={features.bios}",
+            "-drive",
+            f"if=pflash,format=raw,unit=1,file={features.bios_vars}",
+        ]
+    else:
+        cmd += ["-bios", features.bios]
+
+    cmd += [
         "-device",
         f"virtio-net-{features.virtio_suffix},netdev=net0",
         "-netdev",

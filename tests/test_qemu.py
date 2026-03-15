@@ -31,6 +31,25 @@ def sample_features() -> QemuFeatures:
         accel="tcg",
         cpu="max",
         bios="OVMF.fd",
+        bios_vars=None,
+        virtio_suffix="pci",
+        display="gtk",
+        supports_9p=True,
+    )
+
+
+@pytest.fixture
+def sample_features_with_vars(tmp_path: Path) -> QemuFeatures:
+    vars_file = tmp_path / "OVMF_VARS.fd"
+    vars_file.write_bytes(b"")
+    return QemuFeatures(
+        qemu_bin="qemu-system-x86_64",
+        arch="x86_64",
+        machine="q35",
+        accel="kvm:tcg",
+        cpu=None,
+        bios="/usr/share/edk2/ovmf/OVMF_CODE.fd",
+        bios_vars=str(vars_file),
         virtio_suffix="pci",
         display="gtk",
         supports_9p=True,
@@ -155,6 +174,128 @@ def test_pick_cpu(accel: str, expected: str | None) -> None:
     assert qemu._pick_cpu(accel) == expected
 
 
+def test_ensure_linux_vars_copies_template_when_vars_absent(tmp_path: Path, settings: Settings) -> None:
+    template = tmp_path / "OVMF_VARS_template.fd"
+    template.write_bytes(b"varsdata")
+    settings.disk_dir.mkdir(parents=True, exist_ok=True)
+
+    result = qemu._ensure_linux_vars(settings, str(template))
+
+    assert result.exists()
+    assert result.read_bytes() == b"varsdata"
+
+
+def test_ensure_linux_vars_does_not_overwrite_existing_vars(tmp_path: Path, settings: Settings) -> None:
+    template = tmp_path / "OVMF_VARS_template.fd"
+    template.write_bytes(b"template")
+    settings.disk_dir.mkdir(parents=True, exist_ok=True)
+    existing = settings.disk_dir / "OVMF_VARS.fd"
+    existing.write_bytes(b"already_written")
+
+    result = qemu._ensure_linux_vars(settings, str(template))
+
+    assert result.read_bytes() == b"already_written"
+
+
+def test_ensure_linux_vars_returns_path_inside_disk_dir(tmp_path: Path, settings: Settings) -> None:
+    template = tmp_path / "OVMF_VARS_template.fd"
+    template.write_bytes(b"")
+    settings.disk_dir.mkdir(parents=True, exist_ok=True)
+
+    result = qemu._ensure_linux_vars(settings, str(template))
+
+    assert result.parent == settings.disk_dir
+
+
+def test_build_qemu_cmd_uses_bios_flag_when_bios_vars_is_none(
+    settings: Settings,
+    sample_features: QemuFeatures,
+) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features,
+    )
+
+    assert "-bios" in cmd
+    assert cmd[cmd.index("-bios") + 1] == sample_features.bios
+
+
+def test_build_qemu_cmd_omits_bios_flag_when_bios_vars_is_set(
+    settings: Settings,
+    sample_features_with_vars: QemuFeatures,
+) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features_with_vars,
+    )
+
+    assert "-bios" not in cmd
+
+
+def test_build_qemu_cmd_uses_pflash_code_readonly_when_bios_vars_is_set(
+    settings: Settings,
+    sample_features_with_vars: QemuFeatures,
+) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features_with_vars,
+    )
+
+    expected = f"if=pflash,format=raw,unit=0,readonly=on,file={sample_features_with_vars.bios}"
+
+    assert expected in cmd
+
+
+def test_build_qemu_cmd_uses_pflash_vars_writable_when_bios_vars_is_set(
+    settings: Settings,
+    sample_features_with_vars: QemuFeatures,
+) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features_with_vars,
+    )
+
+    expected = f"if=pflash,format=raw,unit=1,file={sample_features_with_vars.bios_vars}"
+
+    assert expected in cmd
+
+
+def test_build_qemu_cmd_pflash_code_is_unit_0_before_vars_unit_1(
+    settings: Settings,
+    sample_features_with_vars: QemuFeatures,
+) -> None:
+    state = State(ssh_port=2222)
+
+    cmd = qemu.build_qemu_cmd(
+        state,
+        settings=settings,
+        mode=qemu.QemuMode.SERVER,
+        features=sample_features_with_vars,
+    )
+
+    drives = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "-drive"]
+    code_idx = next(i for i, d in enumerate(drives) if "unit=0" in d)
+    vars_idx = next(i for i, d in enumerate(drives) if "unit=1" in d)
+
+    assert code_idx < vars_idx
+
+
 def test_build_netdev_arg_always_includes_ssh_forward(settings: Settings) -> None:
     out = qemu.build_netdev_arg(
         hostfwd=[],
@@ -195,6 +336,7 @@ def test_build_share_args_rejects_when_9p_is_not_supported(tmp_path: Path, sampl
         accel=sample_features.accel,
         cpu=sample_features.cpu,
         bios=sample_features.bios,
+        bios_vars=None,
         virtio_suffix=sample_features.virtio_suffix,
         display=sample_features.display,
         supports_9p=False,
@@ -280,6 +422,7 @@ def test_build_qemu_cmd_omits_cpu_when_feature_cpu_is_none(settings: Settings, s
         accel="kvm:tcg",
         cpu=None,
         bios=sample_features.bios,
+        bios_vars=None,
         virtio_suffix=sample_features.virtio_suffix,
         display=sample_features.display,
         supports_9p=sample_features.supports_9p,
@@ -382,6 +525,7 @@ def test_build_qemu_cmd_uses_state_ssh_port_for_builtin_forward(
     )
 
     netdev = cmd[cmd.index("-netdev") + 1]
+
     assert f"hostfwd=tcp:{settings.vm_host}:2299-:22" in netdev
 
 
