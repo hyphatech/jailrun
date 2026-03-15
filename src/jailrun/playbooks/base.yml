@@ -150,3 +150,22 @@
       wait_for_connection:
         delay: 5
         timeout: 60
+
+    - name: Configure ntpd to step on any offset
+      ansible.builtin.lineinfile:
+        path: /etc/ntp.conf
+        line: "tinker panic 0"
+        regexp: '^tinker'
+        insertbefore: BOF
+
+    - name: Enable ntpd
+      ansible.builtin.command: sysrc ntpd_enable="YES"
+      changed_when: false
+
+    - name: Start ntpd
+      ansible.builtin.service:
+        name: ntpd
+        state: started
+
+    - name: Bootstrap release (might take some time ☕️)
+      ansible.builtin.command: bastille bootstrap {{ bsd_version }}-{{ bsd_release_tag }}
