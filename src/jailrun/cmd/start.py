@@ -50,6 +50,10 @@ def _start_vm(
         warn(f"VM is already running (pid {pid}).")
         raise typer.Exit(0)
 
+    vars_path = settings.disk_dir / "OVMF_VARS.fd"
+    if vars_path.exists():
+        vars_path.unlink()
+
     prepare_disk(settings)
 
     needs_base = not settings.state_file.exists()
