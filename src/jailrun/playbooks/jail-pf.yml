@@ -17,7 +17,6 @@
         group: wheel
         mode: "0644"
       loop: "{{ jails | default([]) }}"
-      register: pf_conf_written
 
     - name: Enable pf at boot in jails
       ansible.builtin.command: "bastille sysrc {{ item.private_name }} pf_enable=YES"

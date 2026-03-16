@@ -147,7 +147,7 @@ def _apply_peer(state: State, settings: Settings) -> None:
 
     info("Updating DNS records…")
     run_playbook(
-        "jail-dns.yml",
+        "jail-dns-peers.yml",
         extra_vars={"peers": peers_data},
         settings=settings,
         state=state,
@@ -155,7 +155,7 @@ def _apply_peer(state: State, settings: Settings) -> None:
 
     info("Updating pf firewall rules…")
     run_playbook(
-        "jail-pf.yml",
+        "jail-pf-peers.yml",
         extra_vars={"peers": peers_data},
         settings=settings,
         state=state,

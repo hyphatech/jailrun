@@ -14,15 +14,15 @@
         state: directory
         mode: "0755"
 
-    - name: Get jail states
+    - name: List running jails
       ansible.builtin.command: bastille list -j
-      register: bastille_jails
+      register: jail_list_raw
       changed_when: false
 
     - name: Check if jail is running
       ansible.builtin.set_fact:
         jail_is_running: >-
-          {{ bastille_jails.stdout | from_json
+          {{ jail_list_raw.stdout | from_json
              | selectattr('Name', 'equalto', jail_name)
              | selectattr('State', 'equalto', 'Up')
              | list | length > 0 }}
