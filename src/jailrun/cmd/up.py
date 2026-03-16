@@ -99,7 +99,7 @@ def _up(
 
     run_playbook("vm-mounts.yml", plan=plan, settings=settings, state=new_state)
 
-    run_playbook("vm-dns-bootstrap.yml", plan=plan, settings=settings, state=new_state)
+    peers_data = [p.model_dump() for p in new_state.peers]
 
     provisioned_jails: list[JailPlan] = [
         JailPlan(name=n, release=j.release, ip=j.ip, base=j.base)
@@ -144,6 +144,7 @@ def _up(
         run_playbook(
             "jail-dns.yml",
             plan=cumulative_plan,
+            extra_vars={"peers": peers_data},
             settings=settings,
             state=new_state,
         )
@@ -181,6 +182,7 @@ def _up(
             run_playbook(
                 "jail-pf.yml",
                 plan=provision_plan,
+                extra_vars={"peers": peers_data},
                 settings=settings,
                 state=new_state,
             )

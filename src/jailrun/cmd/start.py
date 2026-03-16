@@ -67,6 +67,7 @@ def _start_vm(
 
     if needs_base or provision:
         run_playbook("base.yml", settings=settings, state=new_state)
+        run_playbook("vm-dns-bootstrap.yml", settings=settings, state=new_state)
         if settings.mesh_network:
             run_playbook(
                 "vm-yggdrasil.yml",

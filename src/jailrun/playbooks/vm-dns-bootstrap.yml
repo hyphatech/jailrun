@@ -8,6 +8,7 @@
     unbound_dir: /var/unbound
     unbound_conf: /var/unbound/unbound.conf
     jrun_include: /var/unbound/conf.d/jrun.conf
+    jrun_domain: jrun
     jrun_dns_ip: "10.17.89.1"
     jrun_acl: "10.17.89.0/24"
     jrun_iface: bridge0
@@ -67,7 +68,9 @@
         force: false
         content: |
           server:
+              interface: 127.0.0.1
               interface: {{ jrun_dns_ip }}
+              access-control: 127.0.0.0/8 allow
               access-control: {{ jrun_acl }} allow
 
           forward-zone:
@@ -95,3 +98,11 @@
       when:
         - unbound_status.rc == 0
         - conf_written.changed or bootstrap_written.changed
+
+    - name: Point VM resolver to local_unbound
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        mode: "0644"
+        content: |
+          search local.{{ jrun_domain }}
+          nameserver 127.0.0.1
