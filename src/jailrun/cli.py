@@ -208,9 +208,19 @@ def status(
 @app.command()
 def pair(
     code: str | None = typer.Argument(None, help="Pairing code (omit to create new)"),
+    list_peers: bool = typer.Option(False, "--list", "-l", help="Show paired instances"),
+    drop: str | None = typer.Option(None, "--drop", help="Remove a paired instance by name"),
 ) -> None:
     """Pair with another jailrun instance over the mesh network."""
     state = load_state(settings.state_file)
+
+    if list_peers:
+        cmd.pair_list(state=state)
+        return
+
+    if drop is not None:
+        cmd.pair_remove(alias=drop, state=state, settings=settings)
+        return
 
     if code is None:
         cmd.pair_create(state=state, settings=settings)

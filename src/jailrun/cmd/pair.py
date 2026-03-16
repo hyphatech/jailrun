@@ -207,3 +207,61 @@ def _pair_join(code: str, state: State, settings: Settings) -> None:
 
     ok(f"Paired with {code} ({len(peer.jails)} jails)")
     _apply_peers(state=state, settings=settings)
+
+
+def pair_list(state: State) -> None:
+    from rich.padding import Padding
+    from rich.table import Table
+    from rich.text import Text
+
+    c = con()
+    c.print()
+
+    if not state.peers:
+        c.print("  [dim]no paired instances[/dim]")
+        c.print()
+        return
+
+    tbl = Table(
+        show_header=True,
+        header_style="dim",
+        box=None,
+        show_edge=False,
+        padding=(0, 3, 0, 0),
+        expand=False,
+        pad_edge=False,
+    )
+    tbl.add_column("name", no_wrap=True)
+    tbl.add_column("peer", style="dim white", no_wrap=True)
+    tbl.add_column("ip", style="dim white", no_wrap=True)
+    tbl.add_column("paired", style="dim white", no_wrap=True)
+
+    for p in state.peers:
+        for j in p.jails:
+            tbl.add_row(
+                Text(j.name, style="bold"),
+                p.alias,
+                j.ygg_address,
+                datetime.fromisoformat(p.paired_at).strftime("%b %d %Y, %H:%M UTC"),
+            )
+
+    c.print(Padding(tbl, pad=(0, 0, 0, 2)))
+    c.print()
+
+
+def pair_remove(alias: str, state: State, settings: Settings) -> None:
+    with lock(settings.state_file):
+        _pair_remove(alias=alias, state=state, settings=settings)
+
+
+def _pair_remove(alias: str, state: State, settings: Settings) -> None:
+    match = [p for p in state.peers if p.alias == alias]
+    if not match:
+        err(f"No peer found with name '{alias}'")
+        raise typer.Exit(1)
+
+    state.peers = [p for p in state.peers if p.alias != alias]
+    save_state(state=state, state_file=settings.state_file)
+
+    ok(f"Removed {alias}")
+    _apply_peers(state=state, settings=settings)

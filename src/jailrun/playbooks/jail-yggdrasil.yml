@@ -86,8 +86,13 @@
       loop: "{{ ygg_status.results }}"
       when: item.rc != 0
 
-    - name: Restart Yggdrasil in jails where already running
-      ansible.builtin.command: "bastille cmd {{ item.item.private_name }} service yggdrasil restart"
+    - name: Stop Yggdrasil in jails where already running
+      ansible.builtin.command: "bastille cmd {{ item.item.private_name }} service yggdrasil stop"
+      loop: "{{ ygg_status.results }}"
+      when: item.rc == 0
+
+    - name: Start Yggdrasil in jails after stop
+      ansible.builtin.command: "bastille cmd {{ item.item.private_name }} service yggdrasil start"
       loop: "{{ ygg_status.results }}"
       when: item.rc == 0
 
