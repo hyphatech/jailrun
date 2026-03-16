@@ -120,7 +120,7 @@
         dest: "{{ bastille_jails_root }}/{{ item.private_name }}/root/etc/resolv.conf"
         mode: "0644"
         content: |
-          search {{ jrun_domain }}
+          search local.{{ jrun_domain }}
           nameserver {{ jrun_nameserver }}
       loop: "{{ jails | default([]) }}"
 

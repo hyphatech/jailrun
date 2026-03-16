@@ -387,6 +387,27 @@ def _preflight_jail_select(
     return list(names)
 
 
+def _preflight_pair(
+    args: list[str],
+    state: State,
+    settings: Settings,
+) -> list[str] | None:
+    if not _is_vm_running(settings) and not _offer_start_vm(state, settings):
+        return None
+
+    if args:
+        return args
+
+    _nl()
+
+    code = questionary.text("Pairing code (leave empty to create new):", style=Q_STYLE).ask()
+
+    if code is None:
+        return None
+
+    return [code.strip()] if code.strip() else []
+
+
 def _preflight(
     click_app: click.Group,
     command: str,
@@ -410,6 +431,8 @@ def _preflight(
             state=state,
             settings=settings,
         )
+    if command == "pair":
+        return _preflight_pair(args=args, state=state, settings=settings)
 
     return args
 

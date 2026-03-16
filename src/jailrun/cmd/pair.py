@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from json import JSONDecodeError
 from typing import Any
 
@@ -7,15 +8,15 @@ from tenacity import retry, retry_if_result, stop_never, wait_fixed
 from jailrun.ansible import run_playbook
 from jailrun.config import save_state
 from jailrun.misc import lock
-from jailrun.network import SSHKwargs, get_ssh_kw, ssh_exec, wait_for_ssh
+from jailrun.network import SSHKwargs, get_ssh_kw, jail_ssh_exec, ssh_exec, wait_for_ssh
 from jailrun.qemu import vm_is_running
-from jailrun.schemas import PeerInfo, State
+from jailrun.schemas import PeerJail, PeerState, State
 from jailrun.serializers import dumps, loads
 from jailrun.settings import Settings
 from jailrun.ui import con, err, info, ok, warn
 
 
-def relay_request(
+def _relay_request(
     ssh_kw: SSHKwargs, *, method: str, url: str, body: dict[str, Any] | None = None
 ) -> dict[str, Any] | None:
     cmd_parts = ["curl", "-s"]
@@ -36,6 +37,31 @@ def relay_request(
         return None
 
 
+def _collect_jail_roster(ssh_kw: SSHKwargs, state: State) -> list[PeerJail]:
+    roster: list[PeerJail] = []
+    for name, jail in state.jails.items():
+        if not jail.ip:
+            continue
+
+        raw = jail_ssh_exec(
+            cmd="yggdrasilctl -json getSelf",
+            jail_ip=jail.ip,
+            **ssh_kw,
+        )
+        if not raw:
+            continue
+
+        try:
+            data = loads(raw)
+            addr = data.get("address", "")
+            if addr:
+                roster.append(PeerJail(name=name, ygg_address=addr))
+        except (JSONDecodeError, KeyError):
+            continue
+
+    return roster
+
+
 def pair_create(state: State, settings: Settings) -> None:
     with lock(settings.state_file):
         _pair_create(state=state, settings=settings)
@@ -52,17 +78,22 @@ def _pair_create(state: State, settings: Settings) -> None:
     with con().status("[dim]Connecting to VM…[/dim]", spinner="dots"):
         wait_for_ssh(**ssh_kw, silent=True)
 
-    raw = ssh_exec(cmd="yggdrasilctl -json getSelf", **ssh_kw)
-    if not raw:
-        err("Cannot reach yggdrasil on VM. Is mesh_network enabled?")
+    with con().status("[dim]Collecting jail addresses…[/dim]", spinner="dots"):
+        roster = _collect_jail_roster(ssh_kw, state)
+
+    if not roster:
+        err("No mesh-enabled jails found. Deploy jails first with: jrun up")
         raise typer.Exit(1)
 
-    pubkey = loads(raw)["key"]
-
     base_url = f"http://[{settings.relay_addr}]:{settings.relay_port}"
-    data = relay_request(ssh_kw, method="POST", url=f"{base_url}/mesh", body={"pubkey": pubkey})
+    data = _relay_request(
+        ssh_kw,
+        method="POST",
+        url=f"{base_url}/pair",
+        body={"jails": [j.model_dump() for j in roster]},
+    )
     if not data or "code" not in data:
-        err("Failed to create mesh on relay.")
+        err("Failed to create pairing on relay.")
         raise typer.Exit(1)
 
     code = data["code"]
@@ -73,43 +104,62 @@ def _pair_create(state: State, settings: Settings) -> None:
     c.print(f"[dim]Tell your peer:[/dim]  jrun pair {code}")
     c.print()
 
-    existing_keys = {p.pubkey for p in state.peers}
-
-    @retry(stop=stop_never, wait=wait_fixed(3), retry=retry_if_result(lambda found: not found))
-    def _poll() -> bool:
-        poll = relay_request(ssh_kw, method="GET", url=f"{base_url}/mesh/{code}?pubkey={pubkey}")
-        if not poll or "peers" not in poll:
-            return False
-        found = False
-        for p in poll["peers"]:
-            if p["pubkey"] not in existing_keys:
-                existing_keys.add(p["pubkey"])
-                state.peers.append(PeerInfo(pubkey=p["pubkey"]))
-                ok(f"Paired with {p['pubkey'][:16]}…")
-                found = True
-        return found
+    @retry(stop=stop_never, wait=wait_fixed(3), retry=retry_if_result(lambda r: r is None))
+    def _poll() -> dict[str, Any] | None:
+        resp = _relay_request(
+            ssh_kw,
+            method="GET",
+            url=f"{base_url}/pair/{code}",
+        )
+        if not resp:
+            return None
+        if resp.get("joined"):
+            return resp
+        return None
 
     try:
-        with c.status("[dim]Waiting for peers…[/dim]", spinner="dots"):
-            _poll()
+        with c.status("[dim]Waiting for peer…[/dim]", spinner="dots"):
+            result = _poll()
     except KeyboardInterrupt:
         c.print()
+        warn("Cancelled.")
+        raise typer.Exit(0) from None
 
-    if state.peers:
-        save_state(state=state, state_file=settings.state_file)
+    if result is None:
+        err("Pairing failed.")
+        raise typer.Exit(1)
 
-        info("Applying yggdrasil configuration…")
-        run_playbook(
-            "vm-yggdrasil.yml",
-            extra_vars={
-                "relay_peer_uri": settings.relay_peer_uri,
-                "relay_pubkey": settings.relay_pubkey,
-                "peer_pubkeys": [p.pubkey for p in state.peers],
-            },
-            settings=settings,
-            state=state,
-        )
-        ok("Done. Peer jails are now reachable.")
+    peer = PeerState(
+        alias=code,
+        direction="init",
+        paired_at=datetime.now(UTC).isoformat(),
+        jails=[PeerJail(**j) for j in result["jails"]],
+    )
+    state.peers.append(peer)
+    save_state(state=state, state_file=settings.state_file)
+
+    ok(f"Paired with {code} ({len(peer.jails)} jails)")
+    _apply_peer(state=state, settings=settings)
+
+
+def _apply_peer(state: State, settings: Settings) -> None:
+    peers_data = [p.model_dump() for p in state.peers]
+
+    info("Updating DNS records…")
+    run_playbook(
+        "jail-dns.yml",
+        extra_vars={"peers": peers_data},
+        settings=settings,
+        state=state,
+    )
+
+    info("Updating pf firewall rules…")
+    run_playbook(
+        "jail-pf.yml",
+        extra_vars={"peers": peers_data},
+        settings=settings,
+        state=state,
+    )
 
 
 def pair_join(code: str, state: State, settings: Settings) -> None:
@@ -128,41 +178,32 @@ def _pair_join(code: str, state: State, settings: Settings) -> None:
     with con().status("[dim]Connecting to VM…[/dim]", spinner="dots"):
         wait_for_ssh(**ssh_kw, silent=True)
 
-    raw = ssh_exec(cmd="yggdrasilctl -json getSelf", **ssh_kw)
-    if not raw:
-        err("Cannot reach yggdrasil on VM. Is mesh_network enabled?")
+    with con().status("[dim]Collecting jail addresses…[/dim]", spinner="dots"):
+        roster = _collect_jail_roster(ssh_kw, state)
+
+    if not roster:
+        err("No mesh-enabled jails found. Deploy jails first with: jrun up")
         raise typer.Exit(1)
 
-    pubkey = loads(raw)["key"]
-
     base_url = f"http://[{settings.relay_addr}]:{settings.relay_port}"
-    data = relay_request(ssh_kw, method="POST", url=f"{base_url}/mesh/{code}", body={"pubkey": pubkey})
+    data = _relay_request(
+        ssh_kw,
+        method="POST",
+        url=f"{base_url}/pair/{code}",
+        body={"jails": [j.model_dump() for j in roster]},
+    )
     if data is None:
         err("Invalid or expired code.")
         raise typer.Exit(1)
 
-    peers = data.get("peers", [])
-    if not peers:
-        warn("No peers found in mesh yet.")
-        raise typer.Exit(0)
-
-    existing_keys = {p.pubkey for p in state.peers}
-    for p in peers:
-        if p["pubkey"] not in existing_keys:
-            state.peers.append(PeerInfo(pubkey=p["pubkey"]))
-            ok(f"Paired with {p['pubkey'][:16]}…")
-
+    peer = PeerState(
+        alias=code,
+        direction="joined",
+        paired_at=datetime.now(UTC).isoformat(),
+        jails=[PeerJail(**j) for j in data["jails"]],
+    )
+    state.peers.append(peer)
     save_state(state=state, state_file=settings.state_file)
 
-    info("Applying yggdrasil configuration…")
-    run_playbook(
-        "vm-yggdrasil.yml",
-        extra_vars={
-            "relay_peer_uri": settings.relay_peer_uri,
-            "relay_pubkey": settings.relay_pubkey,
-            "peer_pubkeys": [p.pubkey for p in state.peers],
-        },
-        settings=settings,
-        state=state,
-    )
-    ok("Done. Peer jails are now reachable.")
+    ok(f"Paired with {code} ({len(peer.jails)} jails)")
+    _apply_peer(state=state, settings=settings)

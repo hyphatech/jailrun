@@ -1,0 +1,9 @@
+# managed by jailrun
+table <mesh_peers> persist { {{ peers | default([]) | map(attribute='jails') | flatten | map(attribute='ygg_address') | join(' ') }} }
+
+pass quick inet all
+
+pass out on ygg0 all
+block in on ygg0 all
+
+pass in on ygg0 inet6 from <mesh_peers>

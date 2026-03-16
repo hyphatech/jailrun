@@ -68,17 +68,15 @@ def _start_vm(
     if needs_base or provision:
         run_playbook("base.yml", settings=settings, state=new_state)
         if settings.mesh_network:
-            if settings.mesh_network:
-                run_playbook(
-                    "vm-yggdrasil.yml",
-                    extra_vars={
-                        "relay_peer_uri": settings.relay_peer_uri,
-                        "relay_pubkey": settings.relay_pubkey,
-                        "peer_pubkeys": [p.pubkey for p in state.peers],
-                    },
-                    settings=settings,
-                    state=state,
-                )
+            run_playbook(
+                "vm-yggdrasil.yml",
+                extra_vars={
+                    "relay_peer_uri": settings.relay_peer_uri,
+                    "relay_pubkey": settings.relay_pubkey,
+                },
+                settings=settings,
+                state=new_state,
+            )
 
     for step in new_state.base.setup.values():
         if step.type == "ansible":

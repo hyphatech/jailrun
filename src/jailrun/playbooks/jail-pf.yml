@@ -1,0 +1,42 @@
+- name: Configure pf firewall in jails
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  vars:
+    bastille_jails_root: /usr/local/bastille/jails
+    jail_pf_conf: /etc/pf.conf
+
+  tasks:
+    - name: Install pf.conf in jails
+      ansible.builtin.template:
+        src: pf-jail.conf.j2
+        dest: "{{ bastille_jails_root }}/{{ item.private_name }}/root{{ jail_pf_conf }}"
+        owner: root
+        group: wheel
+        mode: "0644"
+      loop: "{{ jails | default([]) }}"
+      register: pf_conf_written
+
+    - name: Enable pf at boot in jails
+      ansible.builtin.command: "bastille sysrc {{ item.private_name }} pf_enable=YES"
+      loop: "{{ jails | default([]) }}"
+      changed_when: false
+
+    - name: Check pf status in jails
+      ansible.builtin.command: "bastille cmd {{ item.private_name }} service pf status"
+      loop: "{{ jails | default([]) }}"
+      register: pf_status
+      failed_when: false
+      changed_when: false
+
+    - name: Start pf in jails where not running
+      ansible.builtin.command: "bastille cmd {{ item.item.private_name }} service pf start"
+      loop: "{{ pf_status.results }}"
+      when: item.rc != 0
+
+    - name: Reload pf rules in jails where already running
+      ansible.builtin.command: "bastille cmd {{ item.item.private_name }} pfctl -f {{ jail_pf_conf }}"
+      loop: "{{ pf_status.results }}"
+      when: item.rc == 0

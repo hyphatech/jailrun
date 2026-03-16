@@ -7,6 +7,7 @@
   vars:
     jrun_include: /var/unbound/conf.d/jrun.conf
     jrun_domain: jrun
+    jrun_local_domain: "local.{{ jrun_domain }}"
     jrun_dns_ip: "10.17.89.1"
     jrun_acl: "10.17.89.0/24"
     upstream_dns: "10.0.2.3"
@@ -25,8 +26,13 @@
               local-zone: "{{ jrun_domain }}." static
           {% for j in jails %}
           {% if j.ip %}
-              local-data: "{{ j.name }}.{{ jrun_domain }}. IN A {{ j.ip }}"
+              local-data: "{{ j.name }}.{{ jrun_local_domain }}. IN A {{ j.ip }}"
           {% endif %}
+          {% endfor %}
+          {% for peer in peers | default([]) %}
+          {% for j in peer.jails %}
+              local-data: "{{ j.name }}.{{ peer.alias }}.{{ jrun_domain }}. IN AAAA {{ j.ygg_address }}"
+          {% endfor %}
           {% endfor %}
 
           forward-zone:
