@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/logo.png" alt="jailrun" width="100%" />
-</p>
-
 # Jailrun
 
 Jailrun is a cross-platform orchestration tool for FreeBSD jails. Its CLI, `jrun`, brings FreeBSD to your host system and manages jails inside it — each with its own filesystem, network, and processes. Define your stack in a config file and `jrun` handles the rest.
