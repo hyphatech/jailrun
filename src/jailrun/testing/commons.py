@@ -20,11 +20,9 @@ class Jail:
         jail: str,
         *,
         jail_config: Path,
-        base_config: Path | None = None,
         settings: Settings | None = None,
     ) -> None:
         self._jail_config = jail_config.resolve()
-        self._base_config = base_config.resolve() if base_config else None
         self._settings = settings or default_settings
         self._state: State
         self._jail_ip: str
@@ -60,7 +58,6 @@ class Jail:
             up(
                 config=self._jail_config,
                 state=state,
-                base_config=self._base_config,
                 settings=self._settings,
                 names=[jail],
             )

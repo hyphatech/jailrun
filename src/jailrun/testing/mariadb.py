@@ -13,7 +13,6 @@ class MariaDBJail(Jail):
         jail: str = "hypha-mariadb-test",
         *,
         jail_config: Path,
-        base_config: Path | None = None,
         settings: Settings | None = None,
         user: str = "test",
         password: str = "test",
@@ -24,7 +23,7 @@ class MariaDBJail(Jail):
         self.password = password
         self.dbname = dbname
         self.port = port
-        super().__init__(jail=jail, jail_config=jail_config, base_config=base_config, settings=settings)
+        super().__init__(jail=jail, jail_config=jail_config, settings=settings)
 
     def is_ready(self) -> bool:
         result = jail_ssh_exec(

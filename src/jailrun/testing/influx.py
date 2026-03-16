@@ -15,12 +15,11 @@ class InfluxJail(Jail):
         jail: str = "hypha-influx-test",
         *,
         jail_config: Path,
-        base_config: Path | None = None,
         settings: Settings | None = None,
         port: int = 9086,
     ) -> None:
         self.port = port
-        super().__init__(jail=jail, jail_config=jail_config, base_config=base_config, settings=settings)
+        super().__init__(jail=jail, jail_config=jail_config, settings=settings)
 
     def is_ready(self) -> bool:
         result = jail_ssh_exec(
