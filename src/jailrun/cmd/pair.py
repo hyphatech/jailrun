@@ -139,10 +139,10 @@ def _pair_create(state: State, settings: Settings) -> None:
     save_state(state=state, state_file=settings.state_file)
 
     ok(f"Paired with {code} ({len(peer.jails)} jails)")
-    _apply_peer(state=state, settings=settings)
+    _apply_peers(state=state, settings=settings)
 
 
-def _apply_peer(state: State, settings: Settings) -> None:
+def _apply_peers(state: State, settings: Settings) -> None:
     peers_data = [p.model_dump() for p in state.peers]
 
     info("Updating DNS records…")
@@ -206,4 +206,4 @@ def _pair_join(code: str, state: State, settings: Settings) -> None:
     save_state(state=state, state_file=settings.state_file)
 
     ok(f"Paired with {code} ({len(peer.jails)} jails)")
-    _apply_peer(state=state, settings=settings)
+    _apply_peers(state=state, settings=settings)

@@ -35,21 +35,6 @@
               forward-addr: {{ upstream_dns }}
       register: zone_changed
 
-    - name: Prepare peer records block
-      ansible.builtin.blockinfile:
-        path: "{{ jrun_include }}"
-        marker: "# {mark} JRUN PEERS"
-        insertbefore: "^forward-zone:$"
-        block: |
-          {% for peer in peers | default([]) %}
-          {% for j in peer.jails %}
-          {% if j.ygg_address is defined and j.ygg_address %}
-              local-data: "{{ j.name }}.{{ peer.alias }}.{{ jrun_domain }}. IN AAAA {{ j.ygg_address }}"
-          {% endif %}
-          {% endfor %}
-          {% endfor %}
-      register: peers_changed
-
     - name: Validate local_unbound config
       ansible.builtin.command: local-unbound-checkconf
       changed_when: false
