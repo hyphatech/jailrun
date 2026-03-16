@@ -144,7 +144,6 @@ def _up(
         run_playbook(
             "jail-dns.yml",
             plan=cumulative_plan,
-            extra_vars={"peers": [p.model_dump() for p in new_state.peers]},
             settings=settings,
             state=new_state,
         )
@@ -182,7 +181,6 @@ def _up(
             run_playbook(
                 "jail-pf.yml",
                 plan=provision_plan,
-                extra_vars={"peers": [p.model_dump() for p in new_state.peers]},
                 settings=settings,
                 state=new_state,
             )
