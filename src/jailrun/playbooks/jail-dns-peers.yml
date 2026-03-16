@@ -12,7 +12,8 @@
     - name: Update peers block in DNS config
       ansible.builtin.blockinfile:
         path: "{{ jrun_include }}"
-        marker: "# {mark} jrun-peers"
+        marker: "# {mark} JRUN PEERS"
+        insertbefore: "^forward-zone:$"
         block: |
           {% for peer in peers | default([]) %}
           {% for j in peer.jails %}
