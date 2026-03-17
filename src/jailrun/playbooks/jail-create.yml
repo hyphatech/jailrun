@@ -22,9 +22,16 @@
     - name: Parse existing jail names
       ansible.builtin.set_fact:
         existing_private_names: >-
-          {{ (jail_list_raw.stdout | default('[]') | from_json)
+          {{ (jail_list_raw.stdout | from_json)
             | map(attribute='Name') | list }}
-      when: jail_list_raw.rc == 0
+      when:
+        - jail_list_raw.rc == 0
+        - jail_list_raw.stdout | trim | length > 0
+
+    - name: Default to empty list if no jails
+      ansible.builtin.set_fact:
+        existing_private_names: []
+      when: existing_private_names is not defined
 
     - name: Create missing jails as bridged VNET jails
       ansible.builtin.command: >-
@@ -49,22 +56,9 @@
       failed_when: false
       changed_when: false
 
-    - name: Stop base jail before clone
-      ansible.builtin.command: "bastille stop {{ item.base.private_name }}"
-      loop: "{{ jails | default([]) }}"
-      when:
-        - item.private_name not in existing_private_names
-        - item.base is defined and item.base is not none
-        - item.base.type == "jail"
-      register: stopped_base_result
-      failed_when: false
-      changed_when: >
-        stopped_base_result.rc == 0 and
-        'removed' in (stopped_base_result.stdout | default(''))
-
     - name: Clone jails from base
       ansible.builtin.command: >-
-        bastille clone {{ item.base.private_name }} {{ item.private_name }}
+        bastille clone -a {{ item.base.private_name }} {{ item.private_name }}
         {{ item.ip }}{{ jrun_cidr_suffix }}
       loop: "{{ jails | default([]) }}"
       when:
@@ -76,15 +70,6 @@
         clone_result.rc != 0 and
         'already exists' not in (clone_result.stderr | default(''))
       changed_when: clone_result.rc == 0
-
-    - name: Start base jail again after clone
-      ansible.builtin.command: "bastille start {{ item.item.base.private_name }}"
-      loop: "{{ stopped_base_result.results | default([]) }}"
-      when:
-        - item is not skipped
-        - item.changed | default(false)
-      failed_when: false
-      changed_when: false
 
     - name: Stop newly cloned jails
       ansible.builtin.command: "bastille stop {{ item.item.private_name }}"

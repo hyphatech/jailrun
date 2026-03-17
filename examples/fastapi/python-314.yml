@@ -53,7 +53,7 @@
 
     - name: Install Python {{ python314_ver }} (altinstall)
       ansible.builtin.shell: >
-        make altinstall
+        make altinstall > /root/python_install.log 2>&1
       args:
         chdir: /root/{{ python314_dir }}
         creates: /usr/local/bin/python3.14

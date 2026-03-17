@@ -18,9 +18,17 @@
     - name: Parse running jail names
       ansible.builtin.set_fact:
         running_jails: >-
-          {{ (jail_list_raw.stdout | default('[]') | from_json)
+          {{ (jail_list_raw.stdout | from_json)
              | selectattr('State', 'equalto', 'Up')
              | map(attribute='Name') | list }}
+      when:
+        - jail_list_raw.rc == 0
+        - jail_list_raw.stdout | trim | length > 0
+
+    - name: Default to empty list if no jails running
+      ansible.builtin.set_fact:
+        running_jails: []
+      when: running_jails is not defined
 
     - name: Write pf.conf in jails
       ansible.builtin.template:
