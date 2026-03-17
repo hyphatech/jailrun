@@ -114,7 +114,7 @@ Jails are defined in config files using [UCL](https://github.com/vstakhov/libucl
 Create a file called `web.ucl` in your project directory:
 
 ```
-jail "simple-server" {
+jail "httpserver" {
   forward {
     http { host = 7777; jail = 8080; }
   }
@@ -551,18 +551,6 @@ Jailrun wires together a set of proven, focused tools — each chosen for a reas
 | Filesystem | [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) + [9p](https://wiki.qemu.org/Documentation/9p) | Instant jail clones via ZFS snapshots; host directory sharing via 9p |
 | Networking | [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf) | FreeBSD's packet filter handles port forwarding between host and jails |
 
-The lifecycle is controlled by three base commands:
-
-- `jrun start` provisions FreeBSD on your host in QEMU.
-- `jrun up` reads your config, resolves the dependency graph, and deploys each jail in order:
-  - create (or clone from a base)
-  - mount shared directories
-  - run provisioning playbooks
-  - register jail name as a reachable host for other jails
-  - wire up port forwards
-  - start supervised processes
-- `jrun down` removes a jail and cleans up its mounts, ports, and processes without affecting the rest.
-
 ## Platform support
 
 | Platform | Status |
@@ -576,10 +564,11 @@ The lifecycle is controlled by three base commands:
 
 ## Roadmap
 
-- [ ] **Resource limits.** Set per-jail CPU, memory, and I/O constraints.
+- [x] **Mesh networking.** Connect Jailrun instances in a private mesh network.
+- [ ] **Remote targets.** Deploy jails to remote infrastructure.
 - [ ] **Time machine.** Snapshot any jail at any point and roll back instantly using ZFS.
+- [ ] **Resource limits.** Set per-jail CPU, memory, and I/O constraints.
 - [ ] **Modular UCL.** Compose configs from reusable, shareable modules.
-- [ ] **Remote targets.** Deploy jails to remote infrastructure. Local and remote in one mesh, same config format.
 
 ## Acknowledgments
 

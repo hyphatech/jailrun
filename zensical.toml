@@ -14,7 +14,7 @@ nav = [
   { "Tutorials" = [
     { "Wiring together" = "tutorials/wiring.md" },
     { "Hub playbooks" = "tutorials/hub-playbooks.md" },
-    { "Testing framework" = "tutorials/testing-framework.md" },
+    { "Testing for Python" = "tutorials/testing-framework.md" },
     { "Showcase" = "tutorials/showcase.md" },
   ]},
   { "Reference" = [

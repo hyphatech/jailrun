@@ -8,12 +8,10 @@ State is a JSON file at `~/.jrun/state.json` that records the current reality �
 
 The state tracks:
 
-- **Base configuration** — VM-level setup playbooks, port forwards, and mounts
-- **Jails** — each jail's name, release, IP, base, forwards, mounts, supervised processes, and setup playbooks
+- **Base configuration** — VM-level setup, port forwards, and mounts
+- **Jails** — each jail's name, release, IP, base, forwards, mounts, and supervised processes
 - **QEMU wiring** — the port forwards and shared directories currently passed to the VM process
 - **SSH port** — the port used to reach the VM
-
-State is saved after each jail is deployed, so a failed `jrun up` can be resumed without starting over.
 
 ??? example "Example state.json"
 
@@ -148,4 +146,4 @@ graph LR
   EXEC --> UPDATED["state.json\n(updated)"]
 ```
 
-This is what makes jrun idempotent — running `jrun up` twice with the same config produces no changes the second time. And it's what makes partial deploys safe — if something fails mid-way, the state reflects exactly how far jrun got, and the next run picks up where it left off.
+This is what makes jrun idempotent — running `jrun up` twice with the same config produces no changes the second time. And it's what makes partial deploys safe.

@@ -11,13 +11,6 @@
     ygg_listen_uri: tcp://10.17.89.1:19001
 
   tasks:
-    - name: Validate required relay variables
-      ansible.builtin.assert:
-        that:
-          - relay_peer_uri is defined and relay_peer_uri | length > 0
-          - relay_pubkey is defined and relay_pubkey | length > 0
-        fail_msg: "relay_peer_uri and relay_pubkey must be set"
-
     - name: Install Yggdrasil
       ansible.builtin.package:
         name:

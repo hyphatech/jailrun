@@ -41,7 +41,7 @@ url = "https://github.com/hyphatech/jailrun-hub/blob/v1.0.0/playbooks/nginx/roll
 
 ## Passing variables
 
-`vars` passes variables into the playbook — each Hub playbook documents what it accepts. Works the same way with local playbooks:
+Pass extra variables into the playbook with `vars` — each Hub playbook documents what it accepts. Works the same way with local playbooks:
 
 ```
 setup {

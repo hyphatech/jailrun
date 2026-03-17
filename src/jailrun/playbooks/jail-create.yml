@@ -13,13 +13,13 @@
     jrun_cidr_suffix: "/24"
 
   tasks:
-    - name: List running jails
+    - name: List existing jails
       ansible.builtin.command: bastille list -j
       register: jail_list_raw
       changed_when: false
       failed_when: false
 
-    - name: Parse running jail names
+    - name: Parse existing jail names
       ansible.builtin.set_fact:
         existing_private_names: >-
           {{ (jail_list_raw.stdout | default('[]') | from_json)
@@ -56,13 +56,16 @@
         - item.private_name not in existing_private_names
         - item.base is defined and item.base is not none
         - item.base.type == "jail"
+      register: stopped_base_result
       failed_when: false
-      changed_when: false
+      changed_when: >
+        stopped_base_result.rc == 0 and
+        'removed' in (stopped_base_result.stdout | default(''))
 
-    - name: Clone jails from base as bridged VNET jails
+    - name: Clone jails from base
       ansible.builtin.command: >-
         bastille clone {{ item.base.private_name }} {{ item.private_name }}
-        {{ item.ip }}{{ jrun_cidr_suffix }} {{ jrun_bridge_name }}
+        {{ item.ip }}{{ jrun_cidr_suffix }}
       loop: "{{ jails | default([]) }}"
       when:
         - item.private_name not in existing_private_names
@@ -73,6 +76,15 @@
         clone_result.rc != 0 and
         'already exists' not in (clone_result.stderr | default(''))
       changed_when: clone_result.rc == 0
+
+    - name: Start base jail again after clone
+      ansible.builtin.command: "bastille start {{ item.item.base.private_name }}"
+      loop: "{{ stopped_base_result.results | default([]) }}"
+      when:
+        - item is not skipped
+        - item.changed | default(false)
+      failed_when: false
+      changed_when: false
 
     - name: Stop newly cloned jails
       ansible.builtin.command: "bastille stop {{ item.item.private_name }}"

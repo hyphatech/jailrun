@@ -1,5 +1,5 @@
 {
-  "Peers": ["tcp://{{ relay_peer_uri }}"],
+  "Peers": [{% if relay_peer_uri %}"tcp://{{ relay_peer_uri }}"{% endif %}],
   "InterfacePeers": {},
   "Listen": [
     "{{ ygg_listen_uri }}"

@@ -10,22 +10,9 @@ Launches a guided CLI with autocomplete, command history, and built-in wizards. 
 
 ## Usage
 
-Running `jrun` with no arguments enters the shell. All commands available on the command line are also available inside the shell.
+Running `jrun` with no arguments enters the shell.
 
-```
-$ jrun
-
- ┌─────────┐
- │ jailrun │
- └─────────┘
-
- ? What would you like to do?
- › Start the VM
-   Check status
-   Bring up jails
-   SSH into a jail
-   …
-```
+![jrun shell](../assets/jrun-shell.png)
 
 !!! tip
 

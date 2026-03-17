@@ -61,3 +61,5 @@
     - name: Install pip
       ansible.builtin.shell: >
         /usr/local/bin/python3.14 -m ensurepip --upgrade
+      args:
+          creates: /usr/local/bin/pip3.14

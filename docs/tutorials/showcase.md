@@ -1,12 +1,12 @@
 # Showcase
 
-A few experiments to see what jrun can do beyond the basics.
+A few ways to explore what jrun can do beyond the basics.
 
 ---
 
 ## AstroNvim in a jail
 
-Run a full AstroNvim setup without installing anything on your host.
+Run a full [AstroNvim](https://astronvim.com/) setup without installing anything on your host.
 
 ```
 jail "astronvim" {

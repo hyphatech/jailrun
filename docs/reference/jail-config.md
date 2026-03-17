@@ -182,4 +182,4 @@ setup {
 }
 ```
 
-`vars` passes variables into the playbook. Each Hub playbook documents what it accepts.
+Pass extra variables into the playbook with `vars`. Each Hub playbook documents what it accepts.

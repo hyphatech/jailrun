@@ -63,9 +63,9 @@ Or run `jrun` with no arguments and interactive wizard will guide you through pi
 
 ## What's happening
 
-**Jailrun uses [Ansible](https://docs.ansible.com/) for provisioning** — every `setup` block points to a playbook that runs when the jail is first created. Each step is readable, versionable, and fully yours.
+**Jailrun uses [Ansible](https://docs.ansible.com/) for provisioning** — every `setup` block points to a playbook that runs when the jail is first created.
 
-You can mix remote playbooks from Hub with your own local ones, composing layer by layer. In this config, `postgres-16` uses a Hub playbook while `python-314` and `fastapi-314` use local ones. The `hub://` scheme tells jrun to pull the playbook from [Jailrun Hub](https://github.com/hyphatech/jailrun-hub) — a curated collection of playbooks for common services like PostgreSQL, Redis, Nginx, and more.
+The `hub://` scheme tells jrun to pull the playbook from [Jailrun Hub](https://github.com/hyphatech/jailrun-hub) — a curated collection of playbooks for common services like PostgreSQL, Redis, Nginx, and more. You can mix remote playbooks with your own local ones, composing layer by layer. In this config, `postgres-16` uses a Jailrun Hub playbook while `python-314` and `fastapi-314` use local ones.
 
 Compiling from source can be slow. You do it once in `python-314`, then `fastapi-314` is created as its clone via the `base` block — a fully independent copy ready in milliseconds, using no extra disk space until it diverges.
 
@@ -82,19 +82,7 @@ Compiling from source can be slow. You do it once in `python-314`, then `fastapi
 ```bash
 jrun status
 ```
-
-```
-● VM  running  pid 15604
-
-  uptime     7:10PM  up 15 mins, 0 users, load averages: 1.04, 0.91, 0.85
-  disk       9.9G free of 13G
-  memory     2.0 GB usable / 4.0 GB total
-
-  name                  state   ip            ports           mounts
-  fastapi-314           up      10.17.89.15   tcp/8080→8000   …/examples/fastapi → /srv/app
-  postgres-16           up      10.17.89.14   tcp/6432→5432   —
-  python-314            up      10.17.89.13   —               —
-```
+![jrun status](../assets/jrun-stack.png)
 
 ## Inspect and debug
 

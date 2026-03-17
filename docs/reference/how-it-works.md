@@ -14,11 +14,11 @@ Jailrun is an orchestration layer. It doesn't reinvent any of the underlying too
 | Filesystem | [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) + [9p](https://wiki.qemu.org/Documentation/9p) | Instant jail clones via ZFS snapshots; host directory sharing via 9p |
 | Networking | [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf) | FreeBSD's packet filter handles port forwarding between host and jails |
 
-Every component is transparent — there's nothing proprietary or hidden. You can inspect, modify, and extend any layer.
+Every component is transparent and accessible. You can inspect, modify, and extend any layer.
 
 ## Lifecycle
 
-Three commands control the entire lifecycle:
+Four commands control the entire lifecycle:
 
 ``` mermaid
 graph LR
@@ -41,7 +41,7 @@ Removes a jail and cleans up its mounts, ports, DNS entries, and processes witho
 
 ### `jrun stop`
 
-Shuts down the FreeBSD VM gracefully. All running jails are stopped cleanly before the VM powers off. The VM image and jail state are preserved on disk — `jrun start` will boot from where you left off.
+Shuts down the FreeBSD VM gracefully. The VM image and jail state are preserved on disk — `jrun start` will boot from where you left off.
 
 ## Platform support
 

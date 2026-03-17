@@ -1,4 +1,4 @@
-# Testing framework
+# Testing for Python
 
 Jails integrate naturally with test suites. Run your tests against real services in their own isolated environments — not in-memory substitutes.
 

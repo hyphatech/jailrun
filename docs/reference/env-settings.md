@@ -1,6 +1,6 @@
 # Environment settings
 
-All settings have sensible defaults. Override them with environment variables prefixed with `JRUN_`, or place them in a `.env` file in your project root.
+All settings have sensible defaults. Override them with environment variables or place them in a `.env` file in your project root.
 
 To use a custom env file:
 

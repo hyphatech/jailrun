@@ -2,7 +2,7 @@
 
 ## The problem
 
-Running services locally usually means juggling tools, conflicting dependencies, and setups that silently break each other. Your database wants one version of something, your app wants another, and your host machine absorbs all the damage. It gets worse with every project.
+Running services locally usually means juggling tools, conflicting dependencies, and setups that silently break each other. Your database wants one version of something, your app wants another, and your host machine absorbs all the damage. It only gets worse as projects pile up.
 
 ## How Jailrun solves it
 
@@ -40,7 +40,7 @@ graph TB
 
 ## Declarative configuration
 
-Jailrun is an orchestration tool. You describe the desired state in a config file — which jails to create, what to install, which ports to forward, what processes to run — and jrun brings the system to that state. Add a jail, change a port, remove a service — update the config and run the command again.
+Jailrun is an orchestration tool. You describe the desired state in a config file — which jails to create, what to install, which ports to forward, what processes to run — and jrun brings the system to that state.
 
 Create a file called `web.ucl`:
 
@@ -77,7 +77,9 @@ Deploy the jail:
 jrun up web.ucl
 ```
 
-One command. jrun creates the jail, mounts your code, wires up the ports, and starts the process. If it crashes, it gets restarted automatically.
+With one command, jrun creates the jail, mounts your code, wires up the ports, and starts the process. If the process crashes, it is restarted automatically.
+
+If you change the config later — update a forwarded port, add a new one, mount another directory, or modify a process — just `jrun up` it again.
 
 ## Smoke test
 
@@ -85,7 +87,7 @@ One command. jrun creates the jail, mounts your code, wires up the ports, and st
 curl -sS localhost:7777
 ```
 
-You should see your project files served back. A fully isolated environment, running from a single config file.
+You should see your project files served back.
 
 ## Check status
 
