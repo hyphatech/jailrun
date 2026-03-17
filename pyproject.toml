@@ -30,6 +30,7 @@ dev = [
     "respx>=0.22.0",
     "ruff>=0.15.4",
     "types-pymysql>=1.1.0.20251220",
+    "zensical>=0.0.27",
 ]
 
 [build-system]

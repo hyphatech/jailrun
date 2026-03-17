@@ -1,0 +1,63 @@
+- name: Python 3.14
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    python314_ver: "3.14.3"
+    python314_tgz: "Python-{{ python314_ver }}.tgz"
+    python314_dir: "Python-{{ python314_ver }}"
+    python314_url: "https://www.python.org/ftp/python/{{ python314_ver }}/{{ python314_tgz }}"
+
+  tasks:
+    - name: Install build dependencies
+      ansible.builtin.package:
+        name:
+          - ca_root_nss
+          - git
+          - pkgconf
+          - openssl
+          - libffi
+          - sqlite3
+          - bzip2
+          - ncurses
+          - readline
+          - uv
+          - rust
+        state: present
+
+    - name: Download Python {{ python314_ver }} source
+      ansible.builtin.command: >
+        fetch -o /root/{{ python314_tgz }} {{ python314_url }}
+      args:
+        creates: /root/{{ python314_tgz }}
+
+    - name: Unpack Python {{ python314_ver }}
+      ansible.builtin.command: >
+        tar -xzf /root/{{ python314_tgz }} -C /root
+      args:
+        creates: /root/{{ python314_dir }}/configure
+
+    - name: Configure Python {{ python314_ver }}
+      ansible.builtin.shell: >
+        ./configure --prefix=/usr/local --with-computed-gotos --with-ensurepip=install --enable-shared
+      args:
+        chdir: /root/{{ python314_dir }}
+        creates: /root/{{ python314_dir }}/Makefile
+
+    - name: Compile Python {{ python314_ver }}
+      ansible.builtin.shell: >
+        make -j"$(sysctl -n hw.ncpu)"
+      args:
+        chdir: /root/{{ python314_dir }}
+        creates: /root/{{ python314_dir }}/python
+
+    - name: Install Python {{ python314_ver }} (altinstall)
+      ansible.builtin.shell: >
+        make altinstall
+      args:
+        chdir: /root/{{ python314_dir }}
+        creates: /usr/local/bin/python3.14
+
+    - name: Install pip
+      ansible.builtin.shell: >
+        /usr/local/bin/python3.14 -m ensurepip --upgrade

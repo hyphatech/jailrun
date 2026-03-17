@@ -1,0 +1,70 @@
+[project]
+site_name = "Jailrun"
+site_description = "Orchestration for isolated environments"
+site_author = "Hypha"
+site_url = "https://jail.run/"
+copyright = "© 2026 Hypha Technologies Ltd. All rights reserved."
+
+nav = [
+  { "Home" = "index.md" },
+  { "Get Started" = [
+    { "Installation" = "get-started/installation.md" },
+    { "Quick Start" = "get-started/quickstart.md" },
+  ]},
+  { "Tutorials" = [
+    { "Wiring together" = "tutorials/wiring.md" },
+    { "Hub playbooks" = "tutorials/hub-playbooks.md" },
+    { "Testing framework" = "tutorials/testing-framework.md" },
+    { "Showcase" = "tutorials/showcase.md" },
+  ]},
+  { "Reference" = [
+    { "How it works" = "reference/how-it-works.md" },
+    { "Jail config" = "reference/jail-config.md" },
+    { "Base config" = "reference/base-config.md" },
+    { "Environment settings" = "reference/env-settings.md" },
+    { "State reference" = "reference/state.md" },
+    { "CLI reference" = "reference/cli.md" },
+    { "$ jrun" = "reference/jrun-interactive.md" },
+    { "$ jrun start" = "reference/jrun-start.md" },
+    { "$ jrun stop" = "reference/jrun-stop.md" },
+    { "$ jrun ssh" = "reference/jrun-ssh.md" },
+    { "$ jrun cmd" = "reference/jrun-cmd.md" },
+    { "$ jrun up" = "reference/jrun-up.md" },
+    { "$ jrun pause" = "reference/jrun-pause.md" },
+    { "$ jrun down" = "reference/jrun-down.md" },
+    { "$ jrun status" = "reference/jrun-status.md" },
+    { "$ jrun purge" = "reference/jrun-purge.md" },
+  ]},
+]
+
+repo_url = "https://github.com/hyphatech/jailrun"
+
+[project.theme]
+custom_dir = "docs/overrides"
+language = "en"
+features = [
+  "announce.dismiss",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.code.select",
+  "content.footnote.tooltips",
+  "content.tabs.link",
+  "content.tooltips",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.tabs",
+  "navigation.tabs.sticky",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+logo = "assets/logo.png"
+
+[project.theme.palette]
+scheme = "slate"
+primary = "deep-orange"
+accent = "orange"

@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/logo.png" alt="jailrun" width="100%" />
-</p>
-
 # Jailrun
 
 Jailrun is a cross-platform orchestration tool for FreeBSD jails. Its CLI, `jrun`, brings FreeBSD to your host system and manages jails inside it — each with its own filesystem, network, and processes. Define your stack in a config file and `jrun` handles the rest.
@@ -105,12 +101,6 @@ jrun start
 
 On first run, jrun downloads a FreeBSD image, boots the VM with hardware acceleration (HVF on macOS, KVM on Linux), and sets up SSH for further provisioning.
 
-After provisioning, connect:
-
-```bash
-jrun ssh
-```
-
 Prefer an interactive experience? Run `jrun` with no arguments to enter the shell — guided wizards, autocomplete, and command history all included.
 
 ```bash
@@ -168,13 +158,13 @@ Here's something more realistic: a FastAPI application running on Python 3.14, b
 ```
 # stack.ucl
 
-jail "hypha-python-314" {
+jail "python-314" {
   setup {
     python { type = "ansible"; file = "playbooks/python-314.yml"; }
   }
 }
 
-jail "hypha-postgres" {
+jail "postgres-16" {
   setup {
     postgres { type = "ansible"; file = "playbooks/postgres.yml"; }
   }
@@ -184,9 +174,9 @@ jail "hypha-postgres" {
 }
 
 jail "fastapi-314" {
-  base { type = "jail"; name = "hypha-python-314"; }
+  base { type = "jail"; name = "python-314"; }
 
-  depends ["hypha-postgres"]
+  depends ["postgres-16"]
 
   setup {
     fastapi { type = "ansible"; file = "playbooks/fastapi-314.yml"; }
@@ -220,13 +210,13 @@ jrun up stack.ucl
 
 Here's what's happening:
 
-- **Each `setup` block points to an Ansible playbook** that runs when the jail is first created. `hypha-python-314` compiles Python 3.14 from source. `hypha-postgres` installs and configures PostgreSQL.
+- **Each `setup` block points to an Ansible playbook** that runs when the jail is first created. `python-314` compiles Python 3.14 from source. `postgres-16` installs and configures PostgreSQL.
 
-- **Block `base` clones one jail from another.** Compiling from source might be slow. You do it once in `hypha-python-314`, then `fastapi-314` is created as a ZFS clone — a fully independent copy ready in milliseconds, using no extra disk space until it diverges from the base.
+- **Block `base` clones one jail from another.** Compiling from source might be slow. You do it once in `python-314`, then `fastapi-314` is created as a ZFS clone — a fully independent copy ready in milliseconds, using no extra disk space until it diverges from the base.
 
-- **Block `depends` controls deploy order.** jrun resolves the dependency graph automatically. In this case: `hypha-python-314` first (it's the base), then `hypha-postgres` (it's a dependency), then `fastapi-314` last.
+- **Block `depends` controls deploy order.** jrun resolves the dependency graph automatically. In this case: `python-314` first (it's the base), then `postgres-16` (it's a dependency), then `fastapi-314` last.
 
-- **Jails discover each other by name.** From inside `fastapi-314`, you can `ping hypha-postgres.jrun` — it just works. Use jail names directly in your app's database config.
+- **Jails discover each other by name.** From inside `fastapi-314`, you can `ping postgres-16.local.jrun` — it just works. Use jail names directly in your app's database config.
 
 - **Port forwarding works from your host.** PostgreSQL is reachable at `localhost:6432`. Your FastAPI app is at `localhost:8080`. Healthchecks are built in — the process supervisor monitors it and restarts it if the check fails.
 
@@ -245,20 +235,20 @@ $ jrun status
 
   name                  state   ip            ports           mounts
   fastapi-314           up      10.17.89.15   tcp/8080→8000   …/examples/fastapi → /srv/app
-  hypha-postgres        up      10.17.89.14   tcp/6432→5432   —
-  hypha-python-314      up      10.17.89.13   —               —
+  postgres-16           up      10.17.89.14   tcp/6432→5432   —
+  python-314            up      10.17.89.13   —               —
 ```
 
 Drop into any jail to debug or inspect:
 
 ```bash
-jrun ssh hypha-postgres
+jrun ssh postgres-16
 ```
 
 Run a command inside a jail without opening a shell:
 
 ```bash
-jrun cmd hypha-postgres psql -U postgres -c 'SELECT version()'
+jrun cmd postgres-16 psql -U postgres -c 'SELECT version()'
 ```
 
 ## Using shared playbooks
@@ -268,7 +258,7 @@ Not every playbook needs to be written from scratch. [Jailrun Hub](https://githu
 Point a setup step at a Hub playbook with `url` instead of `file`:
 
 ```
-jail "hypha-nginx" {
+jail "nginx" {
   setup {
     nginx {
       type = "ansible";
@@ -285,7 +275,7 @@ jail "hypha-nginx" {
 The shorthand is equivalent to a full URL:
 
 ```
-jail "hypha-nginx" {
+jail "nginx" {
   setup {
     nginx {
       type = "ansible";
@@ -362,13 +352,13 @@ jrun pause stack.ucl
 This stops the jail and its supervised processes but leaves the state, mounts, and port forwards intact. To stop specific jails:
 
 ```bash
-jrun pause stack.ucl hypha-postgres
+jrun pause stack.ucl postgres-16
 ```
 
 To tear down specific jails:
 
 ```bash
-jrun down stack.ucl hypha-python-314
+jrun down stack.ucl python-314
 ```
 
 Other jails are left untouched. To tear down everything defined in a config:
@@ -486,7 +476,7 @@ jail "myapp" {
       cmd = "gunicorn app:main -b 0.0.0.0:8080";
       dir = "/srv/app";
       env {
-        DATABASE_URL = "postgresql://hypha-postgres/mydb";
+        DATABASE_URL = "postgresql://postgres-16.local.jrun/mydb";
         APP_ENV = "production";
       }
       healthcheck {
