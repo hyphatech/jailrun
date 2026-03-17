@@ -27,6 +27,7 @@ COMMANDS: list[Command] = [
     Command("pause", "Stop jails without destroying them"),
     Command("purge", "Destroy the VM and ALL jails", danger=True),
     Command("status", "Show VM and jail status"),
+    Command("pair", "Connect to another Jailrun"),
 ]
 
 

@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     bsd_arch: Literal["aarch64", "amd64"] = Field(default_factory=current_arch)
 
     mesh_network: bool = True
+    relay_addr: str = ""
+    relay_port: int = 9100
+    relay_peer_uri: str = ""
+    relay_pubkey: str = ""
 
     qemu_memory: str = "4096M"
     qemu_disk_size: str = "20G"

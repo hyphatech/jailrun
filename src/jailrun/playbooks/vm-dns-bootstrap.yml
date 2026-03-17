@@ -8,6 +8,7 @@
     unbound_dir: /var/unbound
     unbound_conf: /var/unbound/unbound.conf
     jrun_include: /var/unbound/conf.d/jrun.conf
+    jrun_domain: jrun
     jrun_dns_ip: "10.17.89.1"
     jrun_acl: "10.17.89.0/24"
     jrun_iface: bridge0
@@ -23,11 +24,14 @@
         jrun_dns_ip not in (jrun_iface_check.stdout | default(''))
 
     - name: Enable local_unbound at boot
-      ansible.builtin.lineinfile:
-        path: /etc/rc.conf
-        regexp: '^local_unbound_enable='
-        line: 'local_unbound_enable="YES"'
-        state: present
+      ansible.builtin.command: sysrc local_unbound_enable="YES"
+      register: local_unbound_enable_rc
+      changed_when: false
+
+    - name: Disable resolv service management of resolv.conf
+      ansible.builtin.command: sysrc resolv_enable="NO"
+      register: resolv_enable_rc
+      changed_when: false
 
     - name: Ensure local_unbound config directory exists
       ansible.builtin.file:
@@ -67,7 +71,9 @@
         force: false
         content: |
           server:
+              interface: 127.0.0.1
               interface: {{ jrun_dns_ip }}
+              access-control: 127.0.0.0/8 allow
               access-control: {{ jrun_acl }} allow
 
           forward-zone:
@@ -95,3 +101,26 @@
       when:
         - unbound_status.rc == 0
         - conf_written.changed or bootstrap_written.changed
+
+    - name: Force DHCP client to use local_unbound
+      ansible.builtin.copy:
+        dest: /etc/dhclient.conf
+        mode: "0644"
+        content: |
+          interface "vtnet0" {
+              supersede domain-name-servers 127.0.0.1;
+              prepend domain-search "local.{{ jrun_domain }}";
+          }
+
+    - name: Stop resolv service for current boot
+      ansible.builtin.command: service resolv stop
+      failed_when: false
+      changed_when: false
+
+    - name: Point VM resolver to local_unbound
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        mode: "0644"
+        content: |
+          search local.{{ jrun_domain }}
+          nameserver 127.0.0.1

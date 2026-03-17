@@ -159,6 +159,18 @@ class QemuShare(BaseModel):
     mount_tag: str
 
 
+class PeerJail(BaseModel):
+    name: str
+    ygg_address: str
+
+
+class PeerState(BaseModel):
+    alias: str
+    direction: Literal["init", "joined"]
+    paired_at: str
+    jails: list[PeerJail] = Field(default_factory=list)
+
+
 class State(BaseModel):
     version: int = 1
     base: BaseState = Field(default_factory=BaseState)
@@ -166,6 +178,7 @@ class State(BaseModel):
     launched_fwds: list[QemuFwd] = Field(default_factory=list)
     launched_shares: list[QemuShare] = Field(default_factory=list)
     ssh_port: int | None = None
+    peers: list[PeerState] = Field(default_factory=list)
 
 
 class JailPlan(BaseModel):

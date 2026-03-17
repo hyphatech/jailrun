@@ -13,23 +13,18 @@
     jrun_cidr_suffix: "/24"
 
   tasks:
-    - name: Collect existing jail names from bastille
+    - name: List running jails
       ansible.builtin.command: bastille list -j
-      register: bastille_list_raw
+      register: jail_list_raw
       changed_when: false
       failed_when: false
 
-    - name: Parse existing private jail names
+    - name: Parse running jail names
       ansible.builtin.set_fact:
         existing_private_names: >-
-          {{ (bastille_list_raw.stdout | default('[]') | from_json)
+          {{ (jail_list_raw.stdout | default('[]') | from_json)
             | map(attribute='Name') | list }}
-      when: bastille_list_raw.rc == 0
-
-    - name: Fallback to empty list if bastille list failed
-      ansible.builtin.set_fact:
-        existing_private_names: []
-      when: existing_private_names is not defined
+      when: jail_list_raw.rc == 0
 
     - name: Create missing jails as bridged VNET jails
       ansible.builtin.command: >-
@@ -120,7 +115,7 @@
         dest: "{{ bastille_jails_root }}/{{ item.private_name }}/root/etc/resolv.conf"
         mode: "0644"
         content: |
-          search {{ jrun_domain }}
+          search local.{{ jrun_domain }}
           nameserver {{ jrun_nameserver }}
       loop: "{{ jails | default([]) }}"
 

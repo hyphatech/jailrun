@@ -9,16 +9,16 @@
     jail_base_packages: "python313 monit"
 
   tasks:
-    - name: Get current jail states
+    - name: List running jails
       ansible.builtin.command: bastille list -j
-      register: jail_states_raw
+      register: jail_list_raw
       changed_when: false
       failed_when: false
 
-    - name: Parse running jail private names
+    - name: Parse running jail names
       ansible.builtin.set_fact:
         running_jail_private_names: >-
-          {{ (jail_states_raw.stdout | default('[]') | from_json)
+          {{ (jail_list_raw.stdout | default('[]') | from_json)
              | selectattr('State', 'equalto', 'Up')
              | map(attribute='Name') | list }}
 
