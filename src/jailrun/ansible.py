@@ -34,7 +34,6 @@ def _run_quiet(cmd: list[str], env: dict[str, str], total: int) -> None:
     if proc.stdout is None:
         raise RuntimeError("Failed to capture ansible-playbook output")
 
-    failed_lines: list[str] = []
     progress = Progress(
         SpinnerColumn(),
         BarColumn(),
@@ -51,12 +50,8 @@ def _run_quiet(cmd: list[str], env: dict[str, str], total: int) -> None:
             m = _TASK_RE.match(line)
             if m:
                 progress.update(task_id, advance=1, description=m.group(1))
-            elif "fatal:" in line or "FAILED!" in line:
-                failed_lines.append(line)
 
     rc = proc.wait()
-    for fail in failed_lines:
-        err(fail)
     if rc != 0:
         raise subprocess.CalledProcessError(rc, cmd)
 

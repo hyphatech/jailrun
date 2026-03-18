@@ -213,13 +213,10 @@ def pick_existing_jails(
             }
         )
 
-    max_name = max(len(j["name"]) for j in rendered)
     choices: list[Choice] = []
 
     for row in rendered:
-        state_col = "up" if row["state"].lower() == "up" else row["state"].lower()
-        label = f"{row['name'].ljust(max_name)}   {state_col}   {row['ip']}"
-        choices.append(Choice(label, value=row["name"]))
+        choices.append(Choice(row['name'], value=row["name"]))
 
     selected = questionary.checkbox(
         prompt,
