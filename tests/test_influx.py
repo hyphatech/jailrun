@@ -9,6 +9,8 @@ from jailrun import ROOT_DIR
 from jailrun.settings import Settings
 from jailrun.testing.influx import InfluxJail
 
+pytestmark = pytest.mark.freebsd_vm
+
 
 @pytest.fixture
 def influx_client(settings: Settings) -> Generator[InfluxDBClient]:

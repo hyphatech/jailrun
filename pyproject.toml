@@ -85,3 +85,6 @@ extend-select = [
 ]
 ignore = ["SIM102", "B008"]
 unfixable = ["F401"]
+
+[tool.pytest.ini_options]
+markers = ["freebsd_vm: requires a live FreeBSD VM"]

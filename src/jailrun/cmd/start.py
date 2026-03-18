@@ -6,17 +6,19 @@ from jailrun.ansible import run_playbook
 from jailrun.cmd.stop import stop_vm
 from jailrun.config import (
     derive_plan,
-    load_base_into_state,
+    derive_qemu_fwds,
+    derive_qemu_shares,
+    parse_config,
+    resolve_base,
     save_state,
-    snapshot_qemu_wiring,
 )
 from jailrun.misc import lock
 from jailrun.network import get_ssh_kw, resolve_ssh_port, wait_for_ssh
 from jailrun.qemu import QemuMode, launch_vm, prepare_disk, vm_is_running
 from jailrun.remote import fetch_remote_playbook
-from jailrun.schemas import LocalSetupStep, RemoteSetupStep, State
+from jailrun.schemas import BaseState, LocalSetupStep, RemoteSetupStep, State
 from jailrun.settings import Settings
-from jailrun.ui import info, warn
+from jailrun.ui import err, info, warn
 
 
 def start(
@@ -59,11 +61,26 @@ def _start_vm(
     needs_base = not settings.state_file.exists()
 
     new_state = state.model_copy(deep=True)
-    new_state = load_base_into_state(base_config, new_state)
 
-    resolve_ssh_port(state=new_state, settings=settings)
+    if base_config is None and new_state.base.is_empty():
+        new_state.base = BaseState()
+
+    if base_config and not base_config.exists():
+        err(f"Base config not found: {base_config}")
+        raise typer.Exit(1)
+
+    if base_config:
+        parsed = parse_config(base_config)
+        if parsed.base:
+            info(f"Loaded base config from {base_config.name}")
+            config_base = base_config.parent.resolve()
+            state.base = resolve_base(parsed.base, config_base)
+
+    new_state.ssh_port = resolve_ssh_port(state=new_state, settings=settings)
+    new_state.launched_fwds = derive_qemu_fwds(new_state)
+    new_state.launched_shares = derive_qemu_shares(new_state)
+
     launch_vm(state=new_state, mode=QemuMode.SERVER, settings=settings)
-    snapshot_qemu_wiring(state=new_state)
     save_state(state=new_state, state_file=settings.state_file)
 
     ssh_kw = get_ssh_kw(settings, new_state)

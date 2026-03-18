@@ -1,8 +1,8 @@
 from jailrun.cmd.down import down as down
 from jailrun.cmd.pair import pair_create as pair_create
-from jailrun.cmd.pair import pair_remove as pair_remove
 from jailrun.cmd.pair import pair_join as pair_join
 from jailrun.cmd.pair import pair_list as pair_list
+from jailrun.cmd.pair import pair_remove as pair_remove
 from jailrun.cmd.pause import pause as pause
 from jailrun.cmd.purge import purge as purge
 from jailrun.cmd.ssh import run_cmd as run_cmd

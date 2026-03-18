@@ -7,6 +7,8 @@ from jailrun import ROOT_DIR
 from jailrun.settings import Settings
 from jailrun.testing.mariadb import MariaDBJail
 
+pytestmark = pytest.mark.freebsd_vm
+
 
 @pytest.fixture
 def mariadb_jail() -> Generator[MariaDBJail]:

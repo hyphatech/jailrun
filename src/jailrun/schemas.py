@@ -146,6 +146,9 @@ class BaseState(BaseModel):
     forwards: dict[str, BaseForwardConfig] = Field(default_factory=dict)
     mounts: dict[str, BaseMountConfig] = Field(default_factory=dict)
 
+    def is_empty(self) -> bool:
+        return not any([self.setup, self.forwards, self.mounts])
+
 
 class QemuFwd(BaseModel):
     proto: Literal["tcp", "udp"]

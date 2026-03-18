@@ -529,9 +529,11 @@ def prepare_disk(settings: Settings) -> None:
     disk_path = settings.disk_dir / Path(image_xz).with_suffix("")
     xz_path = settings.disk_dir / image_xz
 
-    if not disk_path.exists():
-        info("Decompressing image…")
-        subprocess.run(["xz", "-dk", str(xz_path)], check=True)
+    if disk_path.exists():
+        return
+
+    info("Decompressing image…")
+    subprocess.run(["xz", "-dk", str(xz_path)], check=True)
 
     target = parse_size(settings.qemu_disk_size)
     current = disk_size_bytes(disk_path)

@@ -33,7 +33,6 @@ def test_resolve_ssh_port_switches_when_existing_port_is_busy(settings: Settings
         resolved = network.resolve_ssh_port(state, settings=settings)
 
         assert resolved != 2500
-        assert state.ssh_port == resolved
         assert network.is_port_free(resolved, settings.vm_host) is True
 
 

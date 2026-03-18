@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     relay_peer_uri: str = ""
     relay_pubkey: str = ""
 
+    debug: bool = False
+
     qemu_memory: str = "4096M"
     qemu_disk_size: str = "20G"
     qemu_cpus: int | None = None

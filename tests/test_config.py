@@ -407,23 +407,17 @@ def test_derive_qemu_shares_different_hosts(state: schemas.State, tmp_path: Path
     assert len(shares) == 2
 
 
-def test_snapshot_qemu_wiring_populates_state(state: schemas.State) -> None:
-    state.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
-    state.base.mounts = {"m": schemas.BaseMountConfig(host="/tmp/x", target="/mnt/x")}
-    config.snapshot_qemu_wiring(state)
-    assert len(state.launched_fwds) == 1
-    assert len(state.launched_shares) == 1
-
-
 def test_needs_qemu_restart_no_change(state: schemas.State) -> None:
     state.base.forwards = {"f": schemas.BaseForwardConfig(proto="tcp", host=8080, target=80)}
-    config.snapshot_qemu_wiring(state)
+    state.launched_fwds = config.derive_qemu_fwds(state)
+    state.launched_shares = config.derive_qemu_shares(state)
     new_st = state.model_copy(deep=True)
     assert not config.needs_qemu_restart(state, new_st)
 
 
 def test_needs_qemu_restart_new_forward(state: schemas.State) -> None:
-    config.snapshot_qemu_wiring(state)
+    state.launched_fwds = config.derive_qemu_fwds(state)
+    state.launched_shares = config.derive_qemu_shares(state)
     new = state.model_copy(deep=True)
     new.jails = {
         "j1": schemas.JailState(
@@ -436,7 +430,8 @@ def test_needs_qemu_restart_new_forward(state: schemas.State) -> None:
 
 
 def test_needs_qemu_restart_new_mount(state: schemas.State) -> None:
-    config.snapshot_qemu_wiring(state)
+    state.launched_fwds = config.derive_qemu_fwds(state)
+    state.launched_shares = config.derive_qemu_shares(state)
     new = state.model_copy(deep=True)
     new.jails = {
         "j1": schemas.JailState(
@@ -456,9 +451,12 @@ def test_needs_qemu_restart_removed_forward_no_restart(state: schemas.State) -> 
             forwards={"web": schemas.JailForwardConfig(proto="tcp", host=9090, jail=80)},
         )
     }
-    config.snapshot_qemu_wiring(state)
+    state.launched_fwds = config.derive_qemu_fwds(state)
+    state.launched_shares = config.derive_qemu_shares(state)
+
     new = state.model_copy(deep=True)
     new.jails = {}
+
     assert not config.needs_qemu_restart(state, new)
 
 
@@ -606,7 +604,8 @@ def test_save_state_full_roundtrip(state: schemas.State, tmp_path: Path) -> None
             execs={"srv": schemas.ExecConfig(cmd="echo hi", dir="/")},
         )
     }
-    config.snapshot_qemu_wiring(state)
+    state.launched_fwds = config.derive_qemu_fwds(state)
+    state.launched_shares = config.derive_qemu_shares(state)
     config.save_state(state, f)
 
     out = config.load_state(f)
@@ -614,39 +613,3 @@ def test_save_state_full_roundtrip(state: schemas.State, tmp_path: Path) -> None
     assert out.jails["j1"].execs["srv"].cmd == "echo hi"
     assert len(out.launched_fwds) > 0
     assert len(out.launched_shares) > 0
-
-
-def test_load_base_into_state_none_returns_unchanged() -> None:
-    st = schemas.State()
-    result = config.load_base_into_state(None, st)
-    assert result is st
-
-
-def test_load_base_into_state_missing_file(tmp_path: Path) -> None:
-    st = schemas.State()
-    with pytest.raises(typer.Exit):
-        config.load_base_into_state(tmp_path / "missing.ucl", st)
-
-
-def test_load_base_into_state_loads_mounts(tmp_path: Path) -> None:
-    p = tmp_path / "base.ucl"
-    p.write_text("""
-        base {
-            mount {
-                src { host = "."; target = "/home/admin/app"; }
-            }
-        }
-    """)
-    st = schemas.State()
-    result = config.load_base_into_state(p, st)
-    assert "src" in result.base.mounts
-    assert result.base.mounts["src"].target == "/home/admin/app"
-
-
-def test_load_base_into_state_no_base_block(tmp_path: Path) -> None:
-    p = tmp_path / "base.ucl"
-    p.write_text('jail "x" { release = "15.0"; }')
-    st = schemas.State()
-    result = config.load_base_into_state(p, st)
-    assert result.base.mounts == {}
-    assert result.base.forwards == {}

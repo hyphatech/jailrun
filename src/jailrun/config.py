@@ -28,7 +28,7 @@ from jailrun.schemas import (
     State,
 )
 from jailrun.serializers import loads
-from jailrun.ui import err, info
+from jailrun.ui import err
 
 
 def _normalize_host_path(p: str, base: Path) -> str:
@@ -259,11 +259,6 @@ def derive_qemu_shares(state: State) -> list[QemuShare]:
     return sorted(by_host.values(), key=lambda s: s.host)
 
 
-def snapshot_qemu_wiring(state: State) -> None:
-    state.launched_fwds = derive_qemu_fwds(state)
-    state.launched_shares = derive_qemu_shares(state)
-
-
 def needs_qemu_restart(old_state: State, new_state: State) -> bool:
     if new_state.ssh_port is None:
         raise RuntimeError("state.ssh_port is not set")
@@ -338,21 +333,3 @@ def save_state(state: State, state_file: Path) -> None:
     tmp = state_file.with_suffix(".tmp")
     tmp.write_text(state.model_dump_json(indent=2))
     tmp.replace(state_file)
-
-
-def load_base_into_state(base_path: Path | None, state: State) -> State:
-    if base_path is None:
-        state.base = BaseState()
-        return state
-
-    if not base_path.exists():
-        err(f"Base config not found: {base_path}")
-        raise typer.Exit(1)
-
-    parsed = parse_config(base_path)
-    if parsed.base:
-        info(f"Loaded base config from {base_path.name}")
-        config_base = base_path.parent.resolve()
-        state.base = resolve_base(parsed.base, config_base)
-
-    return state

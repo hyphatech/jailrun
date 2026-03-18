@@ -7,6 +7,8 @@ from jailrun import ROOT_DIR
 from jailrun.settings import Settings
 from jailrun.testing.postgres import PostgresJail
 
+pytestmark = pytest.mark.freebsd_vm
+
 
 @pytest.fixture
 def postgres_jail() -> Generator[PostgresJail]:

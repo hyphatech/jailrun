@@ -7,6 +7,8 @@ from jailrun import ROOT_DIR
 from jailrun.settings import Settings
 from jailrun.testing.redis import RedisJail
 
+pytestmark = pytest.mark.freebsd_vm
+
 
 @pytest.fixture
 def redis_jail() -> Generator[RedisJail]:

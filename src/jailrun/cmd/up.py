@@ -6,12 +6,13 @@ from jailrun.ansible import run_playbook
 from jailrun.cmd.stop import stop_vm
 from jailrun.config import (
     derive_plan,
+    derive_qemu_fwds,
+    derive_qemu_shares,
     needs_qemu_restart,
     parse_config,
     resolve_jail,
     resolve_jail_dependencies,
     save_state,
-    snapshot_qemu_wiring,
     sort_jails,
 )
 from jailrun.misc import lock
@@ -80,18 +81,18 @@ def _up(
         warn("QEMU wiring changed — restarting VM…")
         stop_vm(settings)
 
-        resolve_ssh_port(state=new_state, settings=settings)
+        new_state.ssh_port = resolve_ssh_port(state=new_state, settings=settings)
+        new_state.launched_fwds = derive_qemu_fwds(new_state)
+        new_state.launched_shares = derive_qemu_shares(new_state)
+
         launch_vm(state=new_state, mode=QemuMode.SERVER, settings=settings)
-        snapshot_qemu_wiring(state=new_state)
         save_state(state=new_state, state_file=settings.state_file)
 
     ssh_kw = get_ssh_kw(settings, new_state)
     wait_for_ssh(**ssh_kw)
 
-    try:
-        resolve_jail_ips(old_state=state, new_state=new_state, **ssh_kw)
-    finally:
-        save_state(state=new_state, state_file=settings.state_file)
+    resolve_jail_ips(old_state=state, new_state=new_state, **ssh_kw)
+    save_state(state=new_state, state_file=settings.state_file)
 
     plan = derive_plan(state, new_state)
 

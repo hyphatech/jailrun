@@ -7,6 +7,8 @@ from jailrun import ROOT_DIR
 from jailrun.settings import Settings
 from jailrun.testing.mysql import MySQLJail
 
+pytestmark = pytest.mark.freebsd_vm
+
 
 @pytest.fixture
 def mysql_jail() -> Generator[MySQLJail]:

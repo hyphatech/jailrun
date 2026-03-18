@@ -235,11 +235,11 @@ def resolve_jail_ips(
 
 
 def resolve_ssh_port(state: State, *, settings: Settings) -> int:
-    if state.ssh_port is None:
-        state.ssh_port = find_free_port(settings.ssh_port, bind_addr=settings.vm_host)
-    elif not is_port_free(state.ssh_port, bind_addr=settings.vm_host):
-        new_port = find_free_port(state.ssh_port, bind_addr=settings.vm_host)
-        warn(f"Previously used SSH port {state.ssh_port} is now busy — switching to {new_port}…")
-        state.ssh_port = new_port
+    ssh_port = state.ssh_port or settings.ssh_port
 
-    return state.ssh_port
+    if not is_port_free(ssh_port, bind_addr=settings.vm_host):
+        new_port = find_free_port(ssh_port, bind_addr=settings.vm_host)
+        warn(f"SSH port {ssh_port} is now busy — switching to {new_port}…")
+        ssh_port = new_port
+
+    return ssh_port
