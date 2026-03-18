@@ -1,3 +1,7 @@
+---
+icon: material/variable
+---
+
 # Environment settings
 
 All settings have sensible defaults. Override them with environment variables or place them in a `.env` file in your project root.

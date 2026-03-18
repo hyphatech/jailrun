@@ -1,3 +1,7 @@
+---
+icon: material/layers-outline
+---
+
 # How it works
 
 Jailrun is an orchestration layer. It doesn't reinvent any of the underlying tools — it wires together a set of proven, focused components, each chosen for a reason.
@@ -6,6 +10,7 @@ Jailrun is an orchestration layer. It doesn't reinvent any of the underlying too
 
 | Layer | Tool | Role |
 |-------|------|------|
+| OS | [FreeBSD](https://www.freebsd.org) |  Provides the base system, jail isolation, ZFS, pf, and the userland Jailrun builds on |
 | Virtual machine | [QEMU](https://www.qemu.org/) | Runs FreeBSD with hardware acceleration (HVF on macOS, KVM on Linux, TCG on FreeBSD) |
 | Jail management | [Bastille](https://bastillebsd.org/) | Creates, destroys, and manages jail lifecycles |
 | Provisioning | [Ansible](https://docs.ansible.com/) | Runs playbooks to install software inside jails and the VM |
@@ -33,7 +38,7 @@ Boots FreeBSD on your host inside QEMU. On first run it downloads the image and 
 
 ### `jrun up`
 
-Reads your config, resolves the dependency graph, and deploys each jail in order. If the port forwarding or mount configuration changed since the last deploy, jrun automatically restarts the VM to apply the new wiring.
+Reads your config, resolves the dependency graph, and deploys each jail in order. If the port forwarding or mount configuration changed since the last deploy, `jrun` automatically restarts the VM to apply the new wiring.
 
 ### `jrun down`
 
@@ -47,9 +52,9 @@ Shuts down the FreeBSD VM gracefully. The VM image and jail state are preserved 
 
 | Platform | Architecture | Acceleration | Status |
 |----------|-------------|--------------|--------|
-| :fontawesome-brands-apple: macOS | Apple Silicon | HVF | :material-check-circle: Tested |
-| :fontawesome-brands-apple: macOS | Intel | HVF | :material-help-circle-outline: Untested |
-| :fontawesome-brands-linux: Linux | x86_64 | KVM | :material-check-circle: Tested |
-| :fontawesome-brands-linux: Linux | aarch64 | KVM | :material-help-circle-outline: Untested |
-| :fontawesome-brands-freebsd: FreeBSD | x86_64 | TCG | :material-check-circle: Tested |
-| :fontawesome-brands-freebsd: FreeBSD | aarch64 | TCG | :material-help-circle-outline: Untested |
+| :fontawesome-brands-apple: macOS | Apple Silicon | HVF | Tested |
+| :fontawesome-brands-apple: macOS | Intel | HVF | Untested |
+| :fontawesome-brands-linux: Linux | x86_64 | KVM | Tested |
+| :fontawesome-brands-linux: Linux | aarch64 | KVM | Untested |
+| :fontawesome-brands-freebsd: FreeBSD | x86_64 | TCG | Tested |
+| :fontawesome-brands-freebsd: FreeBSD | aarch64 | TCG | Untested |

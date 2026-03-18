@@ -1,6 +1,10 @@
+---
+icon: material/apps
+---
+
 # Hub Playbooks
 
-Jailrun uses [Ansible](https://docs.ansible.com/) for all provisioning — every jail setup is a playbook you can read, modify, and version. But not every playbook needs to be written from scratch.
+Jailrun uses [Ansible](https://docs.ansible.com/) for all provisioning. Every jail setup is a playbook you can read, modify, and version. But not every playbook needs to be written from scratch.
 
 ## Jailrun Hub
 

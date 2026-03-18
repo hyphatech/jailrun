@@ -1,6 +1,11 @@
+---
+icon: material/download-box-outline
+---
+
 # Installation
 
-Jailrun brings FreeBSD to your machine and manages isolated jails inside it — each with its own filesystem, network, and processes. Define your stack in a single config file and bring it up with one command.
+Jailrun brings FreeBSD to your machine and manages isolated jails inside it — each with its own filesystem, network, and processes.
+You can define your stack in a single config file and bring it up with one command.
 
 !!! note "Prerequisites"
 

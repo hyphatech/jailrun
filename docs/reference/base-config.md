@@ -1,3 +1,7 @@
+---
+icon: material/file-code-outline
+---
+
 # Base config
 
 A base config defines VM-level settings — provisioning, shared directories, and port forwards that apply to the FreeBSD VM itself, not to individual jails.

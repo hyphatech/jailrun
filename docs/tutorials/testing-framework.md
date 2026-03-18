@@ -1,10 +1,14 @@
-# Testing for Python
+---
+icon: material/flask-outline
+---
+
+# Testing
 
 Jails integrate naturally with test suites. Run your tests against real services in their own isolated environments — not in-memory substitutes.
 
-## Functional pytest fixtures
+## Test fixtures
 
-Here's an example using a PostgreSQL jail as a pytest fixture:
+Here's an example using a PostgreSQL jail as a `pytest` fixture:
 
 ```python
 from collections.abc import Generator

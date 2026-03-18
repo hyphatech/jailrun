@@ -6,7 +6,7 @@ Boot the FreeBSD VM.
 jrun start
 ```
 
-On first run, jrun downloads a FreeBSD image, boots it with hardware acceleration (HVF on macOS, KVM on Linux, TCG on FreeBSD), and provisions SSH access. Subsequent runs boot instantly from the existing image.
+On first run, jrun downloads a FreeBSD image, boots it with hardware acceleration, and provisions SSH access. Subsequent runs boot instantly from the existing image.
 
 ## Options
 

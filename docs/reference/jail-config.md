@@ -1,3 +1,7 @@
+---
+icon: material/file-code-outline
+---
+
 # Jail config
 
 A jail config file defines one or more jails using [UCL](https://github.com/vstakhov/libucl) — a clean, human-friendly format native to FreeBSD.
@@ -93,7 +97,7 @@ base { type = "jail"; name = "base-jail"; }
 
 ### `depends`
 
-Other jails that must be deployed before this one. jrun resolves the full dependency graph automatically.
+Other jails that must be deployed before this one and `jrun` resolves the full dependency graph automatically.
 
 ```
 depends ["postgres", "redis"]

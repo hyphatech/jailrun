@@ -13,10 +13,10 @@ jrun status
   disk       9.9G free of 13G
   memory     2.0 GB usable / 4.0 GB total
 
-  name                  state   ip            ports           mounts
-  fastapi-314           up      10.17.89.15   tcp/8080→8000   …/examples/fastapi → /srv/app
-  hypha-postgres        up      10.17.89.14   tcp/6432→5432   —
-  hypha-python-314      up      10.17.89.13   —               —
+  name           state    ip            ports           mounts
+  fastapi-314    up       10.17.89.15   tcp/8080→8000   …/examples/fastapi → /srv/app
+  postgres-16    up       10.17.89.14   tcp/6432→5432   —
+  python-314     up       10.17.89.13   —               —
 ```
 
 ## Tree view { #tree }

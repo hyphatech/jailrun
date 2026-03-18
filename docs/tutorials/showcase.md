@@ -1,3 +1,7 @@
+---
+icon: material/star-outline
+---
+
 # Showcase
 
 A few ways to explore what jrun can do beyond the basics.
@@ -49,7 +53,7 @@ jail "fp-astronvim" {
 
 ## Hugo with live reload
 
-A complete Hugo environment inside a jail with live file watching. You edit on your host, Hugo rebuilds inside the jail.
+A complete [Hugo](https://gohugo.io/) environment inside a jail with live file watching. You edit on your host, Hugo rebuilds inside the jail.
 
 Create an empty project directory, then define the jail:
 

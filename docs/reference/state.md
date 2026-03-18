@@ -1,6 +1,10 @@
+---
+icon: material/state-machine
+---
+
 # State reference
 
-Jailrun is declarative — you describe what you want, and jrun figures out how to get there. Under the hood, this works through two concepts: **state** and **plan**.
+Jailrun is declarative — you describe what you want, and `jrun` figures out how to get there. Under the hood, this works through two concepts: **state** and **plan**.
 
 ## State
 

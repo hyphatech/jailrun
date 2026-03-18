@@ -1,3 +1,7 @@
+---
+icon: material/console
+---
+
 # CLI reference
 
 `jrun` is a modern CLI with an interactive shell, command autocomplete, and a minimal, well-thought set of commands. Everything you need, nothing you don't.

@@ -1,20 +1,22 @@
+---
+icon: material/rocket-launch-outline
+---
+
 # Quick start
 
-## The problem
+## Why Jailrun?
 
-Running services locally usually means juggling tools, conflicting dependencies, and setups that silently break each other. Your database wants one version of something, your app wants another, and your host machine absorbs all the damage. It only gets worse as projects pile up.
+Running services locally often means juggling multiple tools, conflicting dependencies, and environments that interfere with each other. One project needs one setup, another needs a different one, and over time your host machine becomes harder to keep clean and predictable.
 
-## How Jailrun solves it
+Jailrun solves this by booting a FreeBSD virtual machine on your host using QEMU with hardware acceleration. Everything runs inside that VM — completely isolated from your host system.
 
-Jailrun boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration. Everything runs inside that VM — completely isolated from your host system. Your machine stays clean.
-
-Inside the VM, Jailrun creates jails — lightweight, isolated environments that each get their own filesystem, network, and processes.
+Inside the VM, Jailrun creates jails — lightweight, isolated environments for running your services.
 
 ## What is a jail?
 
-A jail is a lightweight self-contained environment running inside FreeBSD. Nothing inside a jail can see or touch anything outside of it — and nothing outside can interfere with what's inside.
+A jail is a self-contained environment running inside FreeBSD. Each jail is isolated from the host and from other jails, with its own filesystem, network, and processes.
 
-Jails are a native FreeBSD feature. They're fast to create, cheap to run, and easy to destroy and recreate from scratch. FreeBSD jails are one of the most proven isolation technologies in computing — and jrun makes them accessible from macOS, Linux, and FreeBSD itself.
+Jails are a native FreeBSD feature. They are fast to create, cheap to run, and easy to destroy and recreate from scratch. FreeBSD jails are one of the most proven isolation technologies in computing, and Jailrun makes them accessible from macOS, Linux, and FreeBSD itself.
 
 ``` mermaid
 graph TB
@@ -40,7 +42,7 @@ graph TB
 
 ## Declarative configuration
 
-Jailrun is an orchestration tool. You describe the desired state in a config file — which jails to create, what to install, which ports to forward, what processes to run — and jrun brings the system to that state.
+Jailrun is an orchestration tool. You describe the desired state in a config file — which jails to create, what to install, which ports to forward, what processes to run — and `jrun` brings the system to that state.
 
 Create a file called `web.ucl`:
 
@@ -65,7 +67,7 @@ This declares a jail that mounts your current directory, forwards port 7777 to 8
 
 ## Start and bring it up
 
-Boot the VM (downloads the FreeBSD image and bootstraps on first run):
+Boot the VM (downloads the FreeBSD image and bootstraps on first start):
 
 ```bash
 jrun start
@@ -77,9 +79,9 @@ Deploy the jail:
 jrun up web.ucl
 ```
 
-With one command, jrun creates the jail, mounts your code, wires up the ports, and starts the process. If the process crashes, it is restarted automatically.
+Behind the scenes, jrun creates the jail, mounts your code, wires up the ports, and starts the process. If the process crashes, it is restarted automatically.
 
-If you change the config later — update a forwarded port, add a new one, mount another directory, or modify a process — just `jrun up` it again.
+If you change the config later — like changing a forwarded port or mounting another directory — just `jrun up` it again.
 
 ## Smoke test
 
@@ -105,4 +107,4 @@ Don't want to remember commands? Run `jrun` with no arguments:
 jrun
 ```
 
-This launches an interactive shell with guided wizards, autocomplete, and command history — it walks you through everything jrun can do.
+This launches an interactive shell with guided wizards, autocomplete, and command history — it walks you through everything `jrun` can do.
