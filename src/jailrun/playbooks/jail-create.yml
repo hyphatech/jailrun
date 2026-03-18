@@ -80,6 +80,23 @@
       failed_when: false
       changed_when: false
 
+    - name: Remove Yggdrasil identity from cloned jails
+      ansible.builtin.file:
+        path: "{{ bastille_jails_root }}/{{ item.item.private_name }}/root/usr/local/etc/yggdrasil.key"
+        state: absent
+      loop: "{{ clone_result.results | default([]) }}"
+      when:
+        - item is not skipped
+        - item.changed | default(false)
+
+    - name: Remove SSH keys from cloned jails
+      ansible.builtin.shell: >-
+        rm -f {{ bastille_jails_root }}/{{ item.item.private_name }}/root/etc/ssh/ssh_host_*
+      loop: "{{ clone_result.results | default([]) }}"
+      when:
+        - item is not skipped
+        - item.changed | default(false)
+
     - name: Check sysvipc for all jails
       ansible.builtin.command: "bastille config {{ item.private_name }} get allow.sysvipc"
       loop: "{{ jails | default([]) }}"
