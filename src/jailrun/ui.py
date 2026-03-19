@@ -19,7 +19,6 @@ COMMANDS: list[Command] = [
     Command("cmd", "Execute a command inside a jail"),
     Command("up", "Create or update jails from config"),
     Command("down", "Stop and destroy jails", danger=True),
-    Command("pause", "Stop jails without destroying them"),
     Command("snapshot", "Manage jail snapshots"),
     Command("purge", "Destroy the VM and ALL jails", danger=True),
     Command("status", "Show VM and jail status"),

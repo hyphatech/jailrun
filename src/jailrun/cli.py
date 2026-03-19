@@ -174,22 +174,6 @@ def down(
 
 
 @app.command()
-def pause(
-    names: list[str] | None = typer.Argument(
-        None,
-        help="Jail names to pause",
-    ),
-) -> None:
-    """Stop running jails without destroying them."""
-    if not names:
-        warn("Jail names required. Run 'jrun' for interactive mode.")
-        raise typer.Exit(1)
-
-    state = load_state(settings.state_file)
-    cmd.pause(state=state, settings=settings, names=names)
-
-
-@app.command()
 def purge(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
 ) -> None:

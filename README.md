@@ -343,18 +343,6 @@ To redeploy a single jail after changing its config:
 jrun up stack.ucl fastapi-314
 ```
 
-To stop jails without destroying them:
-
-```bash
-jrun pause stack.ucl
-```
-
-This stops the jail and its supervised processes but leaves the state, mounts, and port forwards intact. To stop specific jails:
-
-```bash
-jrun pause stack.ucl postgres-16
-```
-
 To tear down specific jails:
 
 ```bash
@@ -430,8 +418,6 @@ Your tests run against a real PostgreSQL in its own jail, not an in-memory subst
 | `jrun cmd <name> <executable> [args]` | Run a command inside a jail |
 | `jrun up <config>`                    | Create or update all jails in a config |
 | `jrun up <config> <name...>`          | Deploy specific jails (dependencies included automatically) |
-| `jrun pause`                          | Interactively select existing jails to stop without destroying them |
-| `jrun pause <name...>`                | Stop specific existing jails without destroying them |
 | `jrun down`                           | Interactively select existing jails to destroy |
 | `jrun down <name...>`                 | Destroy specific jails |
 | `jrun status`                         | Show VM and jail status |

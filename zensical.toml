@@ -25,7 +25,6 @@ nav = [
     { "$ jrun cmd" = "reference/jrun-cmd.md" },
     { "$ jrun up" = "reference/jrun-up.md" },
     { "$ jrun down" = "reference/jrun-down.md" },
-    { "$ jrun pause" = "reference/jrun-pause.md" },
     { "$ jrun snapshot" = "reference/jrun-snapshot.md" },
     { "$ jrun purge" = "reference/jrun-purge.md" },
     { "$ jrun status" = "reference/jrun-status.md" },

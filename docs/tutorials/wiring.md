@@ -104,4 +104,4 @@ jrun cmd postgres-16 psql -U postgres -c 'SELECT version()'
 
 ## Update and tear down
 
-See [CLI reference](../reference/cli.md) for the full list of commands to redeploy, pause, and tear down jails.
+See [CLI reference](../reference/cli.md) for the full list of commands.

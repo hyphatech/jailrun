@@ -19,8 +19,6 @@ icon: material/console
 | [`jrun cmd`](jrun-cmd.md) | Run a command inside a jail |
 | [`jrun up`](jrun-up.md) | Create or update all jails in a config |
 | [`jrun up <config> <name...>`](jrun-up.md#specific) | Deploy specific jails (dependencies included automatically) |
-| [`jrun pause`](jrun-pause.md) | Interactively select existing jails to stop without destroying them |
-| [`jrun pause <name...>`](jrun-pause.md#specific) | Stop specific existing jails without destroying them |
 | [`jrun down`](jrun-down.md) | Interactively select existing jails to destroy |
 | [`jrun down <name...>`](jrun-down.md#specific) | Destroy specific jails |
 | [`jrun status`](jrun-status.md) | Show VM and jail status |

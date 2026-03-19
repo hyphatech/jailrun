@@ -462,7 +462,7 @@ def _preflight_jail_select(
         warn("No jails in state.")
         return None
 
-    prompt_map = {"down": "Destroy which jails?", "pause": "Pause which jails?"}
+    prompt_map = {"down": "Destroy which jails?"}
     names = pick_existing_jails(state=state, settings=settings, prompt=prompt_map[command])
 
     if not names:
@@ -577,7 +577,7 @@ def _preflight(
         return _preflight_ssh(click_app=click_app, args=args, state=state, settings=settings)
     if command == "cmd":
         return _preflight_cmd(click_app=click_app, args=args, state=state, settings=settings)
-    if command in ("down", "pause"):
+    if command == "down":
         return _preflight_jail_select(
             click_app=click_app,
             command=command,
