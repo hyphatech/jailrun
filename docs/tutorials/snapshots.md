@@ -52,13 +52,13 @@ Snapshots don't track processes or network state. They capture the filesystem. I
 
 ## Commands
  
-| Command | Description |
-|---------|-------------|
-| [`jrun snapshot create <jail>`](../reference/jrun-snapshot.md) | Snapshot with auto timestamp |
-| [`jrun snapshot create <jail> <n>`](../reference/jrun-snapshot.md#named) | Snapshot with a name |
-| [`jrun snapshot list <jail>`](../reference/jrun-snapshot.md#list) | List snapshots |
-| [`jrun snapshot rollback <jail> <n>`](../reference/jrun-snapshot.md#rollback) | Rollback to a snapshot |
-| [`jrun snapshot delete <jail> <n>`](../reference/jrun-snapshot.md#delete) | Delete a snapshot |
+| Command                                                                       | Description                  |
+|-------------------------------------------------------------------------------|------------------------------|
+| [`jrun snapshot create <jail>`](../reference/jrun-snapshot.md)                | Snapshot with auto timestamp |
+| [`jrun snapshot create <jail> <n>`](../reference/jrun-snapshot.md#named)      | Snapshot with a name         |
+| [`jrun snapshot list <jail>`](../reference/jrun-snapshot.md#list)             | List snapshots               |
+| [`jrun snapshot rollback <jail> <n>`](../reference/jrun-snapshot.md#rollback) | Rollback to a snapshot       |
+| [`jrun snapshot delete <jail> <n>`](../reference/jrun-snapshot.md#delete)     | Delete a snapshot            |
 
 ## Bonus: Introduction to ZFS
 

@@ -405,24 +405,29 @@ Your tests run against a real PostgreSQL in its own jail, not an in-memory subst
 
 ## Commands
 
-| Command                               | Description |
-|---------------------------------------|-------------|
-| `jrun`                                | Interactive shell |
-| `jrun start`                          | Boot the VM (downloads FreeBSD on first run) |
-| `jrun start --base <config>`          | Boot the VM with a base config applied |
-| `jrun start --provision`              | Re-run base provisioning on an already-booted VM |
-| `jrun start --mode graphic`           | Boot the VM with a graphical QEMU display |
-| `jrun stop`                           | Shut down the VM gracefully |
-| `jrun ssh`                            | SSH into the VM |
-| `jrun ssh <name>`                     | SSH directly into a jail |
-| `jrun cmd <name> <executable> [args]` | Run a command inside a jail |
-| `jrun up <config>`                    | Create or update all jails in a config |
-| `jrun up <config> <name...>`          | Deploy specific jails (dependencies included automatically) |
-| `jrun down`                           | Interactively select existing jails to destroy |
-| `jrun down <name...>`                 | Destroy specific jails |
-| `jrun status`                         | Show VM and jail status |
-| `jrun status --tree`                  | Show VM and jail status as a tree |
-| `jrun purge`                          | Stop and destroy the VM with all jails |
+| Command                                | Description                                      |
+|----------------------------------------|--------------------------------------------------|
+| `jrun`                                 | Interactive shell                                |
+| `jrun start`                           | Boot the VM (downloads FreeBSD on first run)     |
+| `jrun start --base <config>`           | Boot the VM with a base config applied           |
+| `jrun start --provision`               | Re-run base provisioning on an already-booted VM |
+| `jrun start --mode graphic`            | Boot the VM with a graphical QEMU display        |
+| `jrun stop`                            | Shut down the VM gracefully                      |
+| `jrun ssh`                             | SSH into the VM                                  |
+| `jrun ssh <name>`                      | SSH directly into a jail                         |
+| `jrun cmd <name> <executable> [args]`  | Run a command inside a jail                      |
+| `jrun up <config>`                     | Create or update all jails in a config           |
+| `jrun up <config> <name...>`           | Deploy specific jails                            |
+| `jrun down`                            | Interactively select existing jails to destroy   |
+| `jrun down <name...>`                  | Destroy specific jails                           |
+| `jrun status`                          | Show VM and jail status                          |
+| `jrun status --tree`                   | Show VM and jail status as a tree                |
+| `jrun snapshot create <jail>`          | Create a snapshot with auto-generated name       |
+| `jrun snapshot create <jail> <name>`   | Create a named snapshot                          |
+| `jrun snapshot list <jail>`            | List snapshots for a jail                        |
+| `jrun snapshot rollback <jail> <name>` | Rollback a jail to a snapshot                    |
+| `jrun snapshot delete <jail> <name>`   | Delete a snapshot                                |
+| `jrun purge`                           | Stop and destroy the VM with all jails           |
 
 ## Config reference
 
@@ -515,38 +520,39 @@ base {
 
 All settings have sensible defaults. Override them with environment variables if you need to.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `JRUN_SSH_PORT` | `2222` | Host port for VM SSH |
-| `JRUN_BSD_VERSION` | `15.0` | FreeBSD version |
-| `JRUN_BSD_ARCH` | auto-detected | Architecture (`aarch64` or `amd64`) |
-| `JRUN_QEMU_MEMORY` | `4096M` | VM memory |
-| `JRUN_QEMU_DISK_SIZE` | `20G` | VM disk size |
+| Variable              | Default       | Description                         |
+|-----------------------|---------------|-------------------------------------|
+| `JRUN_SSH_PORT`       | `2222`        | Host port for VM SSH                |
+| `JRUN_BSD_VERSION`    | `15.0`        | FreeBSD version                     |
+| `JRUN_BSD_ARCH`       | auto-detected | Architecture (`aarch64` or `amd64`) |
+| `JRUN_QEMU_MEMORY`    | `4096M`       | VM memory                           |
+| `JRUN_QEMU_DISK_SIZE` | `20G`         | VM disk size                        |
 
 ## How Jailrun works
 
 Jailrun wires together a set of proven, focused tools — each chosen for a reason.
 
-| Layer | Tool | What it does |
-|-------|------|--------------|
-| Virtual machine | [QEMU](https://www.qemu.org/) | Runs FreeBSD with hardware acceleration (HVF on macOS, KVM on Linux) |
-| Jail management | [Bastille](https://bastillebsd.org/) | Creates, destroys, and manages jail lifecycles |
-| Provisioning | [Ansible](https://docs.ansible.com/) | Runs playbooks to install software inside jails and the VM |
-| Configuration | [UCL](https://github.com/vstakhov/libucl) | Human-friendly config format, native to FreeBSD |
-| Process supervision | [monit](https://mmonit.com/monit/) | Monitors processes inside jails, restarts on failure, runs healthchecks |
-| Filesystem | [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) + [9p](https://wiki.qemu.org/Documentation/9p) | Instant jail clones via ZFS snapshots; host directory sharing via 9p |
-| Networking | [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf) | FreeBSD's packet filter handles port forwarding between host and jails |
+| Layer               | Tool                                                                                                  | What it does                                                                          |
+|---------------------|-------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| OS                  | [FreeBSD](https://www.freebsd.org)                                                                    | Provides the base system, jail isolation, ZFS, pf, and the userland Jailrun builds on |
+| Virtual machine     | [QEMU](https://www.qemu.org/)                                                                         | Runs FreeBSD with hardware acceleration (HVF on macOS, KVM on Linux)                  |
+| Jail management     | [Bastille](https://bastillebsd.org/)                                                                  | Creates, destroys, and manages jail lifecycles                                        |
+| Provisioning        | [Ansible](https://docs.ansible.com/)                                                                  | Runs playbooks to install software inside jails and the VM                            |
+| Configuration       | [UCL](https://github.com/vstakhov/libucl)                                                             | Human-friendly config format, native to FreeBSD                                       |
+| Process supervision | [monit](https://mmonit.com/monit/)                                                                    | Monitors processes inside jails, restarts on failure, runs healthchecks               |
+| Filesystem          | [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) + [9p](https://wiki.qemu.org/Documentation/9p) | Instant jail clones via ZFS snapshots; host directory sharing via 9p                  |
+| Networking          | [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf)                              | FreeBSD's packet filter handles port forwarding between host and jails                |
 
 ## Platform support
 
-| Platform | Status |
-|----------|--------|
-| macOS Apple Silicon | Tested (HVF acceleration) |
-| macOS Intel | Should work (HVF), untested |
-| Linux x86_64 | Tested (KVM acceleration) |
-| Linux aarch64 | Should work (KVM), untested |
-| FreeBSD x86_64 | Tested (TCG emulation) |
-| FreeBSD aarch64 | Should work (TCG emulation), untested |
+| Platform            | Status                                |
+|---------------------|---------------------------------------|
+| macOS Apple Silicon | Tested (HVF acceleration)             |
+| macOS Intel         | Should work (HVF), untested           |
+| Linux x86_64        | Tested (KVM acceleration)             |
+| Linux aarch64       | Should work (KVM), untested           |
+| FreeBSD x86_64      | Tested (TCG emulation)                |
+| FreeBSD aarch64     | Should work (TCG emulation), untested |
 
 ## Roadmap
 
