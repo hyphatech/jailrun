@@ -5,6 +5,10 @@ from jailrun.cmd.pair import pair_list as pair_list
 from jailrun.cmd.pair import pair_remove as pair_remove
 from jailrun.cmd.pause import pause as pause
 from jailrun.cmd.purge import purge as purge
+from jailrun.cmd.snapshot import snapshot_create as snapshot_create
+from jailrun.cmd.snapshot import snapshot_delete as snapshot_delete
+from jailrun.cmd.snapshot import snapshot_list as snapshot_list
+from jailrun.cmd.snapshot import snapshot_rollback as snapshot_rollback
 from jailrun.cmd.ssh import run_cmd as run_cmd
 from jailrun.cmd.ssh import ssh as ssh
 from jailrun.cmd.start import start as start

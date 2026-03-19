@@ -3,11 +3,6 @@ jail "hypha-haproxy" {
     tcp_proxy {
       type = "ansible";
       url  = "hub://haproxy/rolling";
-      vars {
-        HAPROXY_TCP_MAPPINGS = "
-          8080 httpserver.18-pulse-lilac.jrun 8080
-        ";
-      }
     }
   }
   forward {

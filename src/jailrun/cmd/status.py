@@ -232,8 +232,8 @@ def _jail_labels(j: JailRow) -> tuple[Text, Text]:
 
 def render_table(data: StatusInfo) -> None:
     c = con()
-    c.print()
 
+    c.print()
     c.print(
         Text.assemble(
             ("  ● ", "bold green"),
@@ -251,11 +251,13 @@ def render_table(data: StatusInfo) -> None:
 
     if data["uptime"]:
         vitals.add_row("uptime", data["uptime"].strip())
+
     if data["disk_free"] and data["disk_total"]:
         vitals.add_row(
             "disk",
             Text.assemble((data["disk_free"], "bold green"), (f" free of {data['disk_total']}", "dim white")),
         )
+
     if data["mem_total"] is not None and data["mem_usable"] is not None:
         vitals.add_row(
             "memory",
@@ -264,6 +266,7 @@ def render_table(data: StatusInfo) -> None:
                 (f" usable / {data['mem_total']:.1f} GB total", "dim white"),
             ),
         )
+
     c.print(Padding(vitals, pad=(0, 0, 0, 2)))
     c.print()
 
@@ -317,6 +320,7 @@ def render_tree(data: StatusInfo) -> None:
 
     if data["uptime"]:
         root.add(Text.assemble(("uptime  ", "dim cyan"), data["uptime"].strip()))
+
     if data["disk_free"] and data["disk_total"]:
         root.add(
             Text.assemble(
@@ -325,6 +329,7 @@ def render_tree(data: StatusInfo) -> None:
                 (f" free of {data['disk_total']}", "dim white"),
             )
         )
+
     if data["mem_total"] is not None and data["mem_usable"] is not None:
         root.add(
             Text.assemble(

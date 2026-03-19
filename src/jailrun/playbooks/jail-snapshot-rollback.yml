@@ -1,0 +1,33 @@
+- name: Rollback jail to snapshot
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  vars:
+    bastille_jails_root: /usr/local/bastille/jails
+
+  tasks:
+    - name: Resolve ZFS dataset for jail
+      ansible.builtin.command: >-
+        zfs list -H -o name {{ bastille_jails_root }}/{{ snapshot_jail }}
+      register: zfs_dataset
+      changed_when: false
+      failed_when: zfs_dataset.rc != 0
+
+    - name: Stop jail before rollback
+      ansible.builtin.command: "bastille stop {{ snapshot_jail }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Rollback root filesystem
+      ansible.builtin.command: >-
+        zfs rollback -r {{ zfs_dataset.stdout | trim }}/root@{{ snapshot_name }}
+
+    - name: Rollback jail config
+      ansible.builtin.command: >-
+        zfs rollback -r {{ zfs_dataset.stdout | trim }}@{{ snapshot_name }}
+
+    - name: Start jail after rollback
+      ansible.builtin.command: "bastille start {{ snapshot_jail }}"
+      changed_when: false

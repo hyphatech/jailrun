@@ -14,7 +14,7 @@ from jailrun import cmd, shell
 from jailrun.config import load_state
 from jailrun.qemu import QemuMode
 from jailrun.settings import settings
-from jailrun.ui import COMMANDS, Q_STYLE, con, warn
+from jailrun.ui import COMMANDS, Q_STYLE, con, nl, warn
 
 
 def _get_version() -> str:
@@ -87,6 +87,8 @@ def _confirm_destructive(action: str, target: str, *, yes: bool) -> None:
         default=False,
         style=Q_STYLE,
     ).ask()
+
+    nl()
 
     if not answer:
         warn("Aborted.")
@@ -226,6 +228,49 @@ def pair(
         cmd.pair_create(state=state, settings=settings)
     else:
         cmd.pair_join(code=code, state=state, settings=settings)
+
+
+snapshot_app = typer.Typer(help="Manage ZFS snapshots for jails.")
+app.add_typer(snapshot_app, name="snapshot")
+
+
+@snapshot_app.command(name="create")
+def snapshot_create(
+    jail_name: str = typer.Argument(..., help="Jail name"),
+    name: str | None = typer.Argument(None, help="Snapshot name (default: timestamp)"),
+) -> None:
+    """Create a ZFS snapshot of a jail."""
+    state = load_state(settings.state_file)
+    cmd.snapshot_create(state=state, settings=settings, jail_name=jail_name, name=name)
+
+
+@snapshot_app.command(name="list")
+def snapshot_list(
+    jail_name: str = typer.Argument(..., help="Jail name"),
+) -> None:
+    """List ZFS snapshots for a jail."""
+    state = load_state(settings.state_file)
+    cmd.snapshot_list(state=state, settings=settings, jail_name=jail_name)
+
+
+@snapshot_app.command(name="rollback")
+def snapshot_rollback(
+    jail_name: str = typer.Argument(..., help="Jail name"),
+    name: str = typer.Argument(..., help="Snapshot name to rollback to"),
+) -> None:
+    """Rollback a jail to a ZFS snapshot."""
+    state = load_state(settings.state_file)
+    cmd.snapshot_rollback(state=state, settings=settings, jail_name=jail_name, name=name)
+
+
+@snapshot_app.command(name="delete")
+def snapshot_delete(
+    jail_name: str = typer.Argument(..., help="Jail name"),
+    name: str = typer.Argument(..., help="Snapshot name to delete"),
+) -> None:
+    """Delete a ZFS snapshot from a jail."""
+    state = load_state(settings.state_file)
+    cmd.snapshot_delete(state=state, settings=settings, jail_name=jail_name, name=name)
 
 
 def _version_callback(value: bool) -> None:

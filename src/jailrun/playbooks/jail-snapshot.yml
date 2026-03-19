@@ -1,0 +1,25 @@
+- name: Snapshot a jail
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  vars:
+    bastille_jails_root: /usr/local/bastille/jails
+
+  tasks:
+    - name: Resolve ZFS dataset for jail
+      ansible.builtin.command: >-
+        zfs list -H -o name {{ bastille_jails_root }}/{{ snapshot_jail }}
+      register: zfs_dataset
+      changed_when: false
+      failed_when: zfs_dataset.rc != 0
+
+    - name: Create ZFS snapshot
+      ansible.builtin.command: >-
+        zfs snapshot -r {{ zfs_dataset.stdout | trim }}@{{ snapshot_name }}
+      register: snap_result
+      failed_when: >
+        snap_result.rc != 0 and
+        'dataset already exists' not in (snap_result.stderr | default(''))
+      changed_when: snap_result.rc == 0

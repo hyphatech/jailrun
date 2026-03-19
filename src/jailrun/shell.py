@@ -1,5 +1,6 @@
 import shlex
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import click
@@ -15,13 +16,13 @@ from questionary import Choice, Separator
 from rich.table import Table
 from rich.text import Text
 
-from jailrun import cmd
+from jailrun import cmd, ucl
 from jailrun.cmd.status import RawJail, get_bastille_jails
 from jailrun.network import get_ssh_kw
 from jailrun.qemu import QemuMode, vm_is_running
 from jailrun.schemas import State
 from jailrun.settings import Settings
-from jailrun.ui import COMMANDS, Q_STYLE, con, pick_config, pick_jails_from_config, warn
+from jailrun.ui import COMMANDS, Q_STYLE, con, nl, warn
 
 _SHELL_COMMANDS = [
     ("help", "Show available commands", False),
@@ -51,22 +52,37 @@ def _invoke(click_app: click.Group, argv: list[str]) -> None:
     except SystemExit:
         pass
     except click.exceptions.Abort:
-        _nl()
+        nl()
     except click.exceptions.UsageError as exc:
-        con().print(f"\n  [bold red]error:[/bold red] {exc}\n")
+        nl()
+        con().print(f"  [bold red]error:[/bold red] {exc}")
+        nl()
 
 
 def _build_completer(click_app: click.Group) -> NestedCompleter:
     completions: dict[str, Any] = {}
     for name, sub in click_app.commands.items():
-        opts = {
-            opt: None
-            for param in sub.params
-            if isinstance(param, click.Option)
-            for opt in param.opts
-            if opt.startswith("--")
-        }
-        completions[name] = opts or None
+        if isinstance(sub, click.Group):
+            sub_completions: dict[str, Any] = {}
+            for sub_name, sub_cmd in sub.commands.items():
+                opts = {
+                    opt: None
+                    for param in sub_cmd.params
+                    if isinstance(param, click.Option)
+                    for opt in param.opts
+                    if opt.startswith("--")
+                }
+                sub_completions[sub_name] = opts or None
+            completions[name] = sub_completions
+        else:
+            opts = {
+                opt: None
+                for param in sub.params
+                if isinstance(param, click.Option)
+                for opt in param.opts
+                if opt.startswith("--")
+            }
+            completions[name] = opts or None
 
     completions["help"] = None
     completions["?"] = None
@@ -111,19 +127,11 @@ def _print_welcome(version: str) -> None:
     c.print()
 
 
-def _print_help() -> None:
+def print_help() -> None:
     c = con()
     c.print()
     c.print(_command_table(include_shell_extras=True))
     c.print()
-
-
-def _nl() -> None:
-    con().print()
-
-
-def _aborted() -> None:
-    warn("Aborted.")
 
 
 def _fetch_live_jails(state: State, settings: Settings) -> list[RawJail]:
@@ -132,6 +140,55 @@ def _fetch_live_jails(state: State, settings: Settings) -> list[RawJail]:
         return get_bastille_jails(**ssh_kw)
     except Exception:  # noqa: BLE001
         return []
+
+
+def _parse_jail_names_from_ucl(config: Path) -> list[str]:
+    ucl_config = ucl.load_file(str(config))
+    if "jail" not in ucl_config:
+        return []
+
+    return list(ucl_config["jail"].keys())
+
+
+def pick_jails_from_config(config: Path) -> list[str] | None:
+    names = _parse_jail_names_from_ucl(config)
+
+    scope = questionary.select(
+        "Target which jails?",
+        choices=[
+            c
+            for c in [
+                Choice("All jails", value="__all__"),
+                Choice("Choose specific…", value="__pick__") if names else None,
+                Separator(),
+                Choice("Cancel", value="__cancel__"),
+            ]
+            if c is not None
+        ],
+        style=Q_STYLE,
+    ).ask()
+
+    nl()
+
+    if scope is None or scope == "__cancel__":
+        raise typer.Abort()
+    if scope == "__all__":
+        return None
+
+    choices = [Choice(n, value=n, checked=False) for n in names]
+
+    selected = questionary.checkbox(
+        "Select jails:",
+        choices=choices,
+        style=Q_STYLE,
+    ).ask()
+
+    nl()
+
+    if selected is None or not selected:
+        raise typer.Abort()
+
+    return list(selected)
 
 
 def pick_existing_jail(
@@ -146,8 +203,6 @@ def pick_existing_jail(
 
     private_to_public = {str(j.private_name): name for name, j in state.jails.items()}
 
-    _nl()
-
     choices: list[Choice] = []
     if jails:
         rendered: list[dict[str, str]] = []
@@ -161,11 +216,8 @@ def pick_existing_jail(
                 }
             )
 
-        max_name = max(len(j["name"]) for j in rendered)
         for row in rendered:
-            state_col = "up" if row["state"].lower() == "up" else row["state"].lower()
-            label = f"{row['name'].ljust(max_name)}   {state_col}   {row['ip']}"
-            choices.append(Choice(label, value=row["name"]))
+            choices.append(Choice(row["name"], value=row["name"]))
 
         choices.append(Separator())
 
@@ -173,9 +225,10 @@ def pick_existing_jail(
         choices += [Choice("Host VM", value="__host__"), Separator()]
 
     choices.append(Choice("Cancel", value="__cancel__"))
-    chosen = questionary.select(prompt, choices=choices, style=Q_STYLE).ask()
 
-    _nl()
+    nl()
+    chosen = questionary.select(prompt, choices=choices, style=Q_STYLE).ask()
+    nl()
 
     if chosen in (None, "__cancel__"):
         raise typer.Abort()
@@ -194,8 +247,6 @@ def pick_existing_jails(
 ) -> list[str]:
     with con().status("[dim]Fetching jail list…[/dim]", spinner="dots"):
         jails = _fetch_live_jails(state=state, settings=settings)
-
-    _nl()
 
     if not jails:
         raise typer.Abort()
@@ -216,20 +267,56 @@ def pick_existing_jails(
     choices: list[Choice] = []
 
     for row in rendered:
-        choices.append(Choice(row['name'], value=row["name"]))
+        choices.append(Choice(row["name"], value=row["name"]))
 
+    nl()
     selected = questionary.checkbox(
         prompt,
         choices=choices,
         style=Q_STYLE,
     ).ask()
-
-    _nl()
+    nl()
 
     if selected is None:
         raise typer.Abort()
 
     return list(selected)
+
+
+def pick_config() -> Path:
+    candidates = sorted(Path(".").glob("**/*.ucl"))
+
+    if candidates:
+        choices: list[Choice] = [Choice(str(p), value=p) for p in candidates]
+        choices += [
+            Separator(),
+            Choice("Enter path manually…", value="__manual__"),
+            Choice("Cancel", value="__cancel__"),
+        ]
+        chosen = questionary.select(
+            "Select jail config:",
+            choices=choices,
+            style=Q_STYLE,
+        ).ask()
+
+        nl()
+
+        if chosen is None or chosen == "__cancel__":
+            raise typer.Abort()
+
+        if chosen == "__manual__":
+            raw = questionary.path("Path to config (.ucl):", style=Q_STYLE).ask()
+            if not raw:
+                raise typer.Abort()
+            return Path(raw)
+
+        return Path(chosen)
+
+    raw = questionary.path("Path to jail config (.ucl):", style=Q_STYLE).ask()
+    if not raw:
+        raise typer.Abort()
+
+    return Path(raw)
 
 
 def _is_vm_running(settings: Settings) -> bool:
@@ -238,9 +325,9 @@ def _is_vm_running(settings: Settings) -> bool:
 
 
 def _offer_start_vm(state: State, settings: Settings) -> bool:
-    _nl()
+    nl()
     answer = questionary.confirm("VM is not running. Boot it now?", default=True, style=Q_STYLE).ask()
-    _nl()
+    nl()
 
     if not answer:
         return False
@@ -254,13 +341,13 @@ def _preflight_start(args: list[str]) -> list[str] | None:
     if args:
         return args
 
-    _nl()
+    nl()
 
     want_base = questionary.confirm("Use a custom base.ucl config?", default=False, style=Q_STYLE).ask()
     if want_base is None:
         return None
 
-    _nl()
+    nl()
 
     if not want_base:
         return args
@@ -269,7 +356,7 @@ def _preflight_start(args: list[str]) -> list[str] | None:
     if raw is None:
         return None
 
-    _nl()
+    nl()
 
     return ["--base", raw] if raw else args
 
@@ -290,9 +377,9 @@ def _preflight_up(
     if not _is_vm_running(settings) and not _offer_start_vm(state, settings):
         return None
 
-    _nl()
-
+    nl()
     con().print("[bold cyan]Jail wizard[/bold cyan]  [dim]starting interactive mode…[/dim]")
+    nl()
 
     config = pick_config()
     names = pick_jails_from_config(config)
@@ -346,12 +433,12 @@ def _preflight_cmd(
     if not raw:
         return None
 
-    _nl()
+    nl()
 
     try:
         extra = shlex.split(raw)
     except ValueError:
-        con().print("\n  [bold red]error:[/bold red] invalid quoting\n")
+        con().print("  [bold red]error:[/bold red] invalid quoting")
         return None
 
     return [jail_name, *extra]
@@ -395,7 +482,7 @@ def _preflight_pair(
     if args:
         return args
 
-    _nl()
+    nl()
 
     code = questionary.text("Pairing code (leave empty to create new):", style=Q_STYLE).ask()
 
@@ -403,6 +490,76 @@ def _preflight_pair(
         return None
 
     return [code.strip()] if code.strip() else []
+
+
+def _preflight_snapshot(
+    args: list[str],
+    state: State,
+    settings: Settings,
+) -> list[str] | None:
+    if len(args) >= 2 and args[0] in ("create", "list", "rollback", "delete"):
+        return args
+
+    if not _is_vm_running(settings) and not _offer_start_vm(state, settings):
+        return None
+
+    action = args[0] if args and args[0] in ("create", "list", "rollback", "delete") else None
+    remaining = args[1:] if action else args
+
+    nl()
+
+    if action is None:
+        action = questionary.select(
+            "Action:",
+            choices=[
+                Choice("List snapshots", value="list"),
+                Choice("Create snapshot", value="create"),
+                Choice("Rollback to snapshot", value="rollback"),
+                Choice("Delete snapshot", value="delete"),
+                Separator(),
+                Choice("Cancel", value="__cancel__"),
+            ],
+            style=Q_STYLE,
+        ).ask()
+
+        if action in (None, "__cancel__"):
+            return None
+
+    jail_name = remaining[0] if remaining else None
+    snap_name = remaining[1] if len(remaining) > 1 else None
+
+    if jail_name is None:
+        jail_name = pick_existing_jail(state, settings, prompt="Which jail:", allow_host=False)
+        if jail_name is None:
+            return None
+
+    if action == "list":
+        return [action, jail_name]
+
+    if action == "create":
+        if snap_name is None:
+            raw = questionary.text("Snapshot name (empty for timestamp):", style=Q_STYLE).ask()
+            nl()
+            if raw is None:
+                return None
+
+            snap_name = raw.strip() or None
+
+        result = [action, jail_name]
+        if snap_name:
+            result.append(snap_name)
+
+        return result
+
+    if snap_name is None:
+        raw = questionary.text("Snapshot name:", style=Q_STYLE).ask()
+        nl()
+        if raw is None or not raw.strip():
+            return None
+
+        snap_name = raw.strip()
+
+    return [action, jail_name, snap_name]
 
 
 def _preflight(
@@ -430,6 +587,8 @@ def _preflight(
         )
     if command == "pair":
         return _preflight_pair(args=args, state=state, settings=settings)
+    if command == "snapshot":
+        return _preflight_snapshot(args=args, state=state, settings=settings)
 
     return args
 
@@ -448,20 +607,22 @@ def _dispatch(
         return False
 
     if c == "help":
-        _print_help()
+        print_help()
         return True
 
     if c not in click_app.commands:
+        nl()
         con().print(
-            f"\n  [bold red]unknown command:[/bold red] [cyan]{c}[/cyan]"
-            "  —  type [bold]?[/bold] for help or Tab to browse\n"
+            f"  [bold red]unknown command:[/bold red] [cyan]{c}[/cyan]"
+            "  —  type [bold]?[/bold] for help or Tab to browse"
         )
+        nl()
         return True
 
     argv = _preflight(click_app=click_app, command=c, args=inline_args, state=state_loader(), settings=settings)
 
     if argv is None:
-        _aborted()
+        warn("Aborted.")
         return True
 
     _invoke(click_app, [c, *argv])
@@ -503,17 +664,22 @@ def run(
         try:
             raw = session.prompt(HTML("<ansicyan><b>jrun</b></ansicyan> <ansibrightblack>›</ansibrightblack> "))
         except KeyboardInterrupt:
-            con().print()
-            con().print("[dim]  Bye![/dim]\n")
+            nl()
+            con().print("[dim]  Bye![/dim]")
+            nl()
             break
         except EOFError:
-            con().print("[dim]\n  Bye![/dim]\n")
+            nl()
+            con().print("[dim]  Bye![/dim]")
+            nl()
             break
 
         try:
             parts = shlex.split(raw)
         except ValueError:
-            con().print("\n  [bold red]error:[/bold red] invalid quoting\n")
+            nl()
+            con().print("  [bold red]error:[/bold red] invalid quoting")
+            nl()
             continue
 
         if not parts:
@@ -532,9 +698,13 @@ def run(
         except (typer.Exit, typer.Abort):
             keep_going = True
         except Exception as exc:  # noqa: BLE001
-            con().print(f"\n  [bold red]error:[/bold red] {exc}\n")
+            nl()
+            con().print(f"  [bold red]error:[/bold red] {exc}")
+            nl()
             keep_going = True
 
         if not keep_going:
-            con().print("[dim]  Bye.[/dim]\n")
+            nl()
+            con().print("[dim]  Bye.[/dim]")
+            nl()
             break
