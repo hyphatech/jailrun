@@ -15,7 +15,7 @@ from jailrun.schemas import QemuFwd, QemuShare, State
 from jailrun.serializers import loads
 from jailrun.settings import Settings
 from jailrun.templates import build_jinja_env
-from jailrun.ui import info, ok
+from jailrun.ui import info, nl, ok
 
 
 @dataclass(frozen=True)
@@ -514,7 +514,9 @@ def launch_vm(state: State, *, mode: QemuMode, settings: Settings) -> int | None
     except subprocess.TimeoutExpired:
         pass
 
+    nl()
     ok(f"VM started on {settings.vm_host}:{state.ssh_port} (pid {proc.pid}).")
+
     return proc.pid
 
 

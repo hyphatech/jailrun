@@ -11,12 +11,6 @@ nav = [
     { "Installation" = "get-started/installation.md" },
     { "Quick Start" = "get-started/quickstart.md" },
   ]},
-  { "Tutorials" = [
-    { "Wiring together" = "tutorials/wiring.md" },
-    { "Hub playbooks" = "tutorials/hub-playbooks.md" },
-    { "Testing" = "tutorials/testing-framework.md" },
-    { "Showcase" = "tutorials/showcase.md" },
-  ]},
   { "Reference" = [
     { "How it works" = "reference/how-it-works.md" },
     { "Jail config" = "reference/jail-config.md" },
@@ -30,10 +24,18 @@ nav = [
     { "$ jrun ssh" = "reference/jrun-ssh.md" },
     { "$ jrun cmd" = "reference/jrun-cmd.md" },
     { "$ jrun up" = "reference/jrun-up.md" },
-    { "$ jrun pause" = "reference/jrun-pause.md" },
     { "$ jrun down" = "reference/jrun-down.md" },
-    { "$ jrun status" = "reference/jrun-status.md" },
+    { "$ jrun pause" = "reference/jrun-pause.md" },
+    { "$ jrun snapshot" = "reference/jrun-snapshot.md" },
     { "$ jrun purge" = "reference/jrun-purge.md" },
+    { "$ jrun status" = "reference/jrun-status.md" },
+  ]},
+  { "Tutorials" = [
+    { "Wiring together" = "tutorials/wiring.md" },
+    { "Hub playbooks" = "tutorials/hub-playbooks.md" },
+    { "Snapshots" = "tutorials/snapshots.md" },
+    { "Testing" = "tutorials/testing-framework.md" },
+    { "Showcase" = "tutorials/showcase.md" },
   ]},
   { "Resources" = [
     { "Resources" = "resources/resources.md" },
@@ -68,6 +70,7 @@ features = [
   "search.highlight",
 ]
 logo = "assets/logo.png"
+favicon = "assets/favicon.png"
 
 [project.theme.palette]
 scheme = "slate"

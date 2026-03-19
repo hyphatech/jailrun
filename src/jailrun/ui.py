@@ -44,7 +44,7 @@ def err(msg: str) -> None:
 
 
 def info(msg: str) -> None:
-    con().print(f"[dim]{msg}[/dim]\n")
+    con().print(f"[dim]> {msg}[/dim]")
 
 
 def nl() -> None:

@@ -4,7 +4,7 @@ from pathlib import Path
 from jailrun.cmd.stop import stop_vm
 from jailrun.misc import lock
 from jailrun.settings import Settings
-from jailrun.ui import info, ok
+from jailrun.ui import info, nl, ok
 
 
 def purge(settings: Settings) -> None:
@@ -33,4 +33,5 @@ def _purge(settings: Settings) -> None:
 
             info(f"Removed {p.name}")
 
+    nl()
     ok("Purge complete.")

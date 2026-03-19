@@ -25,4 +25,9 @@ icon: material/console
 | [`jrun down <name...>`](jrun-down.md#specific) | Destroy specific jails |
 | [`jrun status`](jrun-status.md) | Show VM and jail status |
 | [`jrun status --tree`](jrun-status.md#tree) | Show VM and jail status as a tree |
+| [`jrun snapshot create <jail>`](jrun-snapshot.md) | Create a snapshot with auto-generated name |
+| [`jrun snapshot create <jail> <name>`](jrun-snapshot.md#named) | Create a named snapshot |
+| [`jrun snapshot list <jail>`](jrun-snapshot.md#list) | List snapshots for a jail |
+| [`jrun snapshot rollback <jail> <name>`](jrun-snapshot.md#rollback) | Rollback a jail to a snapshot |
+| [`jrun snapshot delete <jail> <name>`](jrun-snapshot.md#delete) | Delete a snapshot |
 | [`jrun purge`](jrun-purge.md) | Stop and destroy the VM with all jails |
