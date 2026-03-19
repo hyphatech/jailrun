@@ -1,6 +1,6 @@
 [project]
 name = "jailrun"
-version = "0.6.1"
+version = "0.7.0"
 description = "Cross-platform orchestration for FreeBSD jails"
 readme = "README.md"
 license = "BSD-3-Clause"
