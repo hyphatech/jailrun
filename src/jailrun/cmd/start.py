@@ -94,6 +94,7 @@ def _start_vm(
                 "vm-yggdrasil.yml",
                 extra_vars={
                     "relay_peer_uri": settings.relay_peer_uri,
+                    "relay_peer_port": settings.relay_peer_port,
                     "relay_pubkey": settings.relay_pubkey,
                 },
                 settings=settings,

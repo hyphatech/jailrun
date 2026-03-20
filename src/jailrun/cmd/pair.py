@@ -85,11 +85,10 @@ def _pair_create(state: State, settings: Settings) -> None:
         err("No mesh-enabled jails found. Deploy jails first with: jrun up")
         raise typer.Exit(1)
 
-    base_url = f"http://[{settings.relay_addr}]:{settings.relay_port}"
     data = _relay_request(
         ssh_kw,
         method="POST",
-        url=f"{base_url}/pair",
+        url=f"https://{settings.relay_peer_uri}/pair",
         body={"jails": [j.model_dump() for j in roster]},
     )
     if not data or "code" not in data:
@@ -109,7 +108,7 @@ def _pair_create(state: State, settings: Settings) -> None:
         resp = _relay_request(
             ssh_kw,
             method="GET",
-            url=f"{base_url}/pair/{code}",
+            url=f"https://{settings.relay_peer_uri}/pair/{code}",
         )
         if not resp:
             return None
@@ -185,11 +184,10 @@ def _pair_join(code: str, state: State, settings: Settings) -> None:
         err("No mesh-enabled jails found. Deploy jails first with: jrun up")
         raise typer.Exit(1)
 
-    base_url = f"http://[{settings.relay_addr}]:{settings.relay_port}"
     data = _relay_request(
         ssh_kw,
         method="POST",
-        url=f"{base_url}/pair/{code}",
+        url=f"https://{settings.relay_peer_uri}/pair/{code}",
         body={"jails": [j.model_dump() for j in roster]},
     )
     if data is None:

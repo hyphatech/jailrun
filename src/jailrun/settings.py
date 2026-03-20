@@ -35,10 +35,9 @@ class Settings(BaseSettings):
     bsd_arch: Literal["aarch64", "amd64"] = Field(default_factory=current_arch)
 
     mesh_network: bool = True
-    relay_addr: str = ""
-    relay_port: int = 9100
-    relay_peer_uri: str = ""
-    relay_pubkey: str = ""
+    relay_peer_uri: str = "relay.jail.run"
+    relay_peer_port: int = 37100
+    relay_pubkey: str = "3468e255ce164f8c2003b4dd965bd577f0e4e628df439b0cc38b167ab31996ee"
 
     debug: bool = False
 
