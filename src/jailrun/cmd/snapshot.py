@@ -20,7 +20,7 @@ def snapshot_exists(ssh_kw: SSHKwargs, private_name: str, name: str) -> bool:
             f"doas zfs list -t snapshot -H -o name "
             f"$(doas zfs list -H -o name /usr/local/bastille/jails/{private_name})@{name}"
         ),
-        **ssh_kw,
+        ssh_kw=ssh_kw,
     )
     return bool(raw and raw.strip())
 
@@ -44,7 +44,7 @@ def snapshot_create(
     snap_name = name or datetime.now(tz=UTC).strftime("%Y-%m-%d_%H-%M-%S")
 
     ssh_kw = get_ssh_kw(settings=settings, state=state)
-    wait_for_ssh(**ssh_kw)
+    wait_for_ssh(ssh_kw)
 
     run_playbook(
         "jail-snapshot.yml",
@@ -75,14 +75,14 @@ def snapshot_list(
     private_name = str(state.jails[jail_name].private_name)
 
     ssh_kw = get_ssh_kw(settings=settings, state=state)
-    wait_for_ssh(**ssh_kw)
+    wait_for_ssh(ssh_kw)
 
     raw = ssh_exec(
         cmd=(
             f"doas zfs list -t snapshot -H -o name,used,creation "
             f"$(doas zfs list -H -o name /usr/local/bastille/jails/{private_name})"
         ),
-        **ssh_kw,
+        ssh_kw=ssh_kw,
     )
 
     c = con()
@@ -142,7 +142,7 @@ def snapshot_rollback(
     private_name = str(state.jails[jail_name].private_name)
 
     ssh_kw = get_ssh_kw(settings=settings, state=state)
-    wait_for_ssh(**ssh_kw)
+    wait_for_ssh(ssh_kw)
 
     if not snapshot_exists(ssh_kw, private_name, name):
         err(f"Snapshot '{name}' not found for '{jail_name}'.")
@@ -190,7 +190,7 @@ def snapshot_delete(
     private_name = str(state.jails[jail_name].private_name)
 
     ssh_kw = get_ssh_kw(settings=settings, state=state)
-    wait_for_ssh(**ssh_kw)
+    wait_for_ssh(ssh_kw)
 
     if not snapshot_exists(ssh_kw, private_name, name):
         err(f"Snapshot '{name}' not found for '{jail_name}'.")

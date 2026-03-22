@@ -2,7 +2,7 @@ check process {{ item.jail }}-{{ item.name }} with pidfile /var/run/{{ item.jail
   group jrun
   start program = "/bin/sh -c 'export PATH=/usr/local/bin:/usr/bin:/bin; \
 {% for key, value in (item.env | default({})).items() %}
-    export {{ key }}={{ value | quote }}; \
+    export {{ key }}="{{ value }}"; \
 {% endfor %}
     cd {{ item.dir }} && \
     /usr/sbin/daemon \

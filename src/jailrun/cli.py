@@ -11,6 +11,8 @@ from rich.text import Text
 from typer.core import TyperGroup
 
 from jailrun import cmd, shell
+from jailrun.cmd.status import resolve_scopes
+from jailrun.cmd.status.types import ALL_SCOPES
 from jailrun.config import load_state
 from jailrun.qemu import QemuMode
 from jailrun.settings import settings
@@ -184,11 +186,35 @@ def purge(
 
 @app.command()
 def status(
+    jail_name: str | None = typer.Argument(None, help="Jail name for detail view."),
     tree: bool = typer.Option(False, "--tree", "-t", help="Show as tree instead of table."),
+    show: list[str] | None = typer.Option(None, "--show", "-s", help="Extra columns: ip, services, all."),
+    live: bool = typer.Option(False, "--live", "-l", help="Live service monitor with sparklines (requires jail name)."),
 ) -> None:
-    """Show VM and jail status."""
+    """Show VM and jail status. Pass a jail name for detail view."""
+
+    if live and not jail_name:
+        warn("--live requires a jail name: jrun status <jail_name> --live")
+        raise typer.Exit(1)
+
+    if show:
+        valid = {*ALL_SCOPES, "all"}
+        bad = [s for s in show if s.lower().strip() not in valid]
+        if bad:
+            con().print(f"  [bold red]error:[/bold red] unknown --show value: {', '.join(bad)}")
+            con().print(f"  [dim]available: {', '.join(sorted(valid))}[/dim]")
+            nl()
+            raise typer.Exit(1)
+
     state = load_state(settings.state_file)
-    cmd.status(state=state, settings=settings, tree=tree)
+    cmd.status(
+        state=state,
+        settings=settings,
+        jail_name=jail_name,
+        tree=tree,
+        live=live,
+        scopes=resolve_scopes(show),
+    )
 
 
 @app.command()

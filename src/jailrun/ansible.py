@@ -104,12 +104,7 @@ def run_playbook(
     }
 
     if jail_name and jail_ip:
-        proxy = proxy_cmd(
-            private_key=ssh_kw["private_key"],
-            ssh_host=ssh_kw["ssh_host"],
-            ssh_user=ssh_kw["ssh_user"],
-            ssh_port=ssh_kw["ssh_port"],
-        )
+        proxy = proxy_cmd(ssh_kw)
         vars.update(
             {
                 "ansible_host": jail_ip,

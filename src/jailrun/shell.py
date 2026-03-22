@@ -17,7 +17,8 @@ from rich.table import Table
 from rich.text import Text
 
 from jailrun import cmd, ucl
-from jailrun.cmd.status import RawJail, get_bastille_jails
+from jailrun.cmd.status.collect import get_bastille_jails
+from jailrun.cmd.status.types import ALL_SCOPES, RawJail
 from jailrun.network import get_ssh_kw
 from jailrun.qemu import QemuMode, vm_is_running
 from jailrun.schemas import State
@@ -56,6 +57,10 @@ def _invoke(click_app: click.Group, argv: list[str]) -> None:
     except click.exceptions.UsageError as exc:
         nl()
         con().print(f"  [bold red]error:[/bold red] {exc}")
+        msg = str(exc)
+        if "'--show'" in msg or "'-s'" in msg:
+            opts = ", ".join([*ALL_SCOPES, "all"])
+            con().print(f"  [dim]available: {opts}[/dim]")
         nl()
 
 
@@ -137,7 +142,7 @@ def print_help() -> None:
 def _fetch_live_jails(state: State, settings: Settings) -> list[RawJail]:
     try:
         ssh_kw = get_ssh_kw(state=state, settings=settings)
-        return get_bastille_jails(**ssh_kw)
+        return get_bastille_jails(ssh_kw)
     except Exception:  # noqa: BLE001
         return []
 

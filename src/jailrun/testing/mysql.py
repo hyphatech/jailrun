@@ -29,7 +29,7 @@ class MySQLJail(Jail):
         result = jail_ssh_exec(
             "mysqladmin -u root ping",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings, self._state),
+            ssh_kw=get_ssh_kw(self._settings, self._state),
         )
         return result is not None
 
@@ -37,12 +37,12 @@ class MySQLJail(Jail):
         jail_ssh_exec(
             f"mysql -u root -e 'DROP DATABASE IF EXISTS `{self.dbname}`'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings, self._state),
+            ssh_kw=get_ssh_kw(self._settings, self._state),
         )
         jail_ssh_exec(
             f"mysql -u root -e 'CREATE DATABASE `{self.dbname}`'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings, self._state),
+            ssh_kw=get_ssh_kw(self._settings, self._state),
         )
         return self
 
@@ -55,5 +55,5 @@ class MySQLJail(Jail):
         jail_ssh_exec(
             f"mysql -u root -e 'DROP DATABASE IF EXISTS `{self.dbname}`'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings, self._state),
+            ssh_kw=get_ssh_kw(self._settings, self._state),
         )

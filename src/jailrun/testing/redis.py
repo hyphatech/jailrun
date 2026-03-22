@@ -25,7 +25,7 @@ class RedisJail(Jail):
         result = jail_ssh_exec(
             "redis-cli ping",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings, self._state),
+            ssh_kw=get_ssh_kw(self._settings, self._state),
         )
         return result is not None and "PONG" in result
 

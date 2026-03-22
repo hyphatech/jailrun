@@ -27,7 +27,7 @@ class PostgresJail(Jail):
         result = jail_ssh_exec(
             f"su -m {self.user} -c 'psql -c \"SELECT 1\"'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings, self._state),
+            ssh_kw=get_ssh_kw(self._settings, self._state),
         )
         return result is not None
 
@@ -35,12 +35,12 @@ class PostgresJail(Jail):
         jail_ssh_exec(
             f"su -m {self.user} -c 'psql -c \"DROP DATABASE IF EXISTS {self.dbname}\"'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings, self._state),
+            ssh_kw=get_ssh_kw(self._settings, self._state),
         )
         jail_ssh_exec(
             f"su -m {self.user} -c 'psql -c \"CREATE DATABASE {self.dbname}\"'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings, self._state),
+            ssh_kw=get_ssh_kw(self._settings, self._state),
         )
         return self
 
@@ -53,5 +53,5 @@ class PostgresJail(Jail):
         jail_ssh_exec(
             f"su -m {self.user} -c 'psql -c \"DROP DATABASE IF EXISTS {self.dbname}\"'",
             jail_ip=self._jail_ip,
-            **get_ssh_kw(self._settings, self._state),
+            ssh_kw=get_ssh_kw(self._settings, self._state),
         )

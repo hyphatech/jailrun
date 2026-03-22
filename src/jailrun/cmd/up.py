@@ -89,9 +89,9 @@ def _up(
         save_state(state=new_state, state_file=settings.state_file)
 
     ssh_kw = get_ssh_kw(settings, new_state)
-    wait_for_ssh(**ssh_kw)
+    wait_for_ssh(ssh_kw)
 
-    resolve_jail_ips(old_state=state, new_state=new_state, **ssh_kw)
+    resolve_jail_ips(old_state=state, new_state=new_state, ssh_kw=ssh_kw)
     save_state(state=new_state, state_file=settings.state_file)
 
     plan = derive_plan(state, new_state)

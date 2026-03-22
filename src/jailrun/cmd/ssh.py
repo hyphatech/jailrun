@@ -18,7 +18,7 @@ def ssh(state: State, settings: Settings, jail_name: str | None = None) -> None:
         raise typer.Exit(1)
 
     ssh_kw = get_ssh_kw(settings, state)
-    wait_for_ssh(**ssh_kw)
+    wait_for_ssh(ssh_kw)
 
     if jail_name:
         if jail_name not in state.jails:
@@ -30,9 +30,9 @@ def ssh(state: State, settings: Settings, jail_name: str | None = None) -> None:
             err(f"Jail '{jail_name}' has no IP assigned.")
             raise typer.Exit(1)
 
-        command = jail_ssh_cmd(args=[], jail_ip=jail_ip, tty=True, **ssh_kw)
+        command = jail_ssh_cmd(args=[], jail_ip=jail_ip, tty=True, ssh_kw=ssh_kw)
     else:
-        command = ssh_cmd(args=[], tty=True, **ssh_kw)
+        command = ssh_cmd(args=[], tty=True, ssh_kw=ssh_kw)
 
     subprocess.run(command, check=False)
 
@@ -45,7 +45,7 @@ def run_cmd(state: State, settings: Settings, jail_name: str, cmd: list[str]) ->
         raise typer.Exit(1)
 
     ssh_kw = get_ssh_kw(settings, state)
-    wait_for_ssh(**ssh_kw)
+    wait_for_ssh(ssh_kw)
 
     if jail_name not in state.jails:
         err(f"Jail '{jail_name}' not found in state.")
@@ -57,7 +57,7 @@ def run_cmd(state: State, settings: Settings, jail_name: str, cmd: list[str]) ->
         raise typer.Exit(1)
 
     remote_cmd = [shlex.join(cmd)]
-    command = jail_ssh_cmd(args=remote_cmd, jail_ip=jail_ip, tty=True, **ssh_kw)
+    command = jail_ssh_cmd(args=remote_cmd, jail_ip=jail_ip, tty=True, ssh_kw=ssh_kw)
 
     result = subprocess.run(command, check=False)
     if result.returncode != 0:

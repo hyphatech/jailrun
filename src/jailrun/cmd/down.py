@@ -46,7 +46,7 @@ def _down(state: State, *, settings: Settings, names: list[str] | None = None) -
     plan = derive_plan(state, new_state)
 
     ssh_kw = get_ssh_kw(settings, state)
-    wait_for_ssh(**ssh_kw, silent=True)
+    wait_for_ssh(ssh_kw, silent=True)
 
     run_playbook("jail-forwards.yml", plan=plan, settings=settings, state=new_state)
 

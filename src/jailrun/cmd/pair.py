@@ -27,7 +27,7 @@ def _relay_request(
 
     cmd_parts.append(f'"{url}"')
 
-    raw = ssh_exec(cmd=" ".join(cmd_parts), **ssh_kw)
+    raw = ssh_exec(cmd=" ".join(cmd_parts), ssh_kw=ssh_kw)
     if not raw:
         return None
     try:
@@ -46,7 +46,7 @@ def _collect_jail_roster(ssh_kw: SSHKwargs, state: State) -> list[PeerJail]:
         raw = jail_ssh_exec(
             cmd="yggdrasilctl -json getSelf",
             jail_ip=jail.ip,
-            **ssh_kw,
+            ssh_kw=ssh_kw,
         )
         if not raw:
             continue
@@ -76,7 +76,7 @@ def _pair_create(state: State, settings: Settings) -> None:
     ssh_kw = get_ssh_kw(settings, state)
 
     with con().status("[dim]Connecting to VM…[/dim]", spinner="dots"):
-        wait_for_ssh(**ssh_kw, silent=True)
+        wait_for_ssh(ssh_kw, silent=True)
 
     with con().status("[dim]Collecting jail addresses…[/dim]", spinner="dots"):
         roster = _collect_jail_roster(ssh_kw, state)
@@ -175,7 +175,7 @@ def _pair_join(code: str, state: State, settings: Settings) -> None:
     ssh_kw = get_ssh_kw(settings, state)
 
     with con().status("[dim]Connecting to VM…[/dim]", spinner="dots"):
-        wait_for_ssh(**ssh_kw, silent=True)
+        wait_for_ssh(ssh_kw, silent=True)
 
     with con().status("[dim]Collecting jail addresses…[/dim]", spinner="dots"):
         roster = _collect_jail_roster(ssh_kw, state)

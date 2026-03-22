@@ -84,7 +84,7 @@ def _start_vm(
     save_state(state=new_state, state_file=settings.state_file)
 
     ssh_kw = get_ssh_kw(settings, new_state)
-    wait_for_ssh(**ssh_kw)
+    wait_for_ssh(ssh_kw)
 
     if needs_base or provision:
         run_playbook("base.yml", settings=settings, state=new_state)

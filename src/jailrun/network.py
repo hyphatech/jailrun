@@ -72,54 +72,50 @@ def ensure_vm_key(private_key: Path, public_key: Path) -> str:
     return public_key.read_text().strip()
 
 
-def ssh_cmd(
-    args: list[str], *, private_key: Path, ssh_host: str, ssh_user: str, ssh_port: int, tty: bool = False
-) -> list[str]:
+def ssh_cmd(args: list[str], *, ssh_kw: SSHKwargs, tty: bool = False) -> list[str]:
     return [
         "ssh",
         "-i",
-        str(private_key),
+        str(ssh_kw["private_key"]),
         "-p",
-        str(ssh_port),
+        str(ssh_kw["ssh_port"]),
         *(["-t"] if tty else []),
         *SSH_OPTS,
-        f"{ssh_user}@{ssh_host}",
+        f"{ssh_kw['ssh_user']}@{ssh_kw['ssh_host']}",
         *args,
     ]
 
 
-def proxy_cmd(*, private_key: Path, ssh_user: str, ssh_host: str, ssh_port: int) -> str:
-    return f"ssh -i {private_key} -p {ssh_port} {' '.join(SSH_OPTS)} -W %h:%p {ssh_user}@{ssh_host}"
+def proxy_cmd(ssh_kw: SSHKwargs) -> str:
+    return (
+        f"ssh -i {ssh_kw['private_key']} -p {ssh_kw['ssh_port']} "
+        f"{' '.join(SSH_OPTS)} -W %h:%p {ssh_kw['ssh_user']}@{ssh_kw['ssh_host']}"
+    )
 
 
 def jail_ssh_cmd(
     args: list[str],
     *,
     jail_ip: str,
-    private_key: Path,
-    ssh_host: str,
-    ssh_user: str,
-    ssh_port: int,
+    ssh_kw: SSHKwargs,
     tty: bool = False,
 ) -> list[str]:
     return [
         "ssh",
         "-i",
-        str(private_key),
+        str(ssh_kw["private_key"]),
         *(["-t"] if tty else []),
         *SSH_OPTS,
         "-o",
-        f"ProxyCommand={proxy_cmd(private_key=private_key, ssh_host=ssh_host, ssh_user=ssh_user, ssh_port=ssh_port)}",
+        f"ProxyCommand={proxy_cmd(ssh_kw)}",
         f"root@{jail_ip}",
         *args,
     ]
 
 
-def ssh_exec(
-    cmd: str, *, private_key: Path, ssh_user: str, ssh_host: str, ssh_port: int, timeout: int = 30
-) -> str | None:
+def ssh_exec(cmd: str, *, ssh_kw: SSHKwargs, timeout: int = 30) -> str | None:
     result = subprocess.run(
-        ssh_cmd(args=[f"doas {cmd}"], private_key=private_key, ssh_host=ssh_host, ssh_user=ssh_user, ssh_port=ssh_port),
+        ssh_cmd(args=[f"doas {cmd}"], ssh_kw=ssh_kw),
         capture_output=True,
         text=True,
         timeout=timeout,
@@ -128,17 +124,12 @@ def ssh_exec(
     return output if output else None
 
 
-def jail_ssh_exec(
-    cmd: str, *, jail_ip: str, private_key: Path, ssh_user: str, ssh_host: str, ssh_port: int, timeout: int = 30
-) -> str | None:
+def jail_ssh_exec(cmd: str, *, jail_ip: str, ssh_kw: SSHKwargs, timeout: int = 30) -> str | None:
     result = subprocess.run(
         jail_ssh_cmd(
             args=[cmd],
             jail_ip=jail_ip,
-            private_key=private_key,
-            ssh_host=ssh_host,
-            ssh_user=ssh_user,
-            ssh_port=ssh_port,
+            ssh_kw=ssh_kw,
         ),
         capture_output=True,
         text=True,
@@ -148,7 +139,7 @@ def jail_ssh_exec(
     return output if output else None
 
 
-def wait_for_ssh(*, private_key: Path, ssh_user: str, ssh_host: str, ssh_port: int, silent: bool = False) -> None:
+def wait_for_ssh(ssh_kw: SSHKwargs, silent: bool = False) -> None:
     status_ctx = con().status("[dim]Waiting for connection…[/dim]", spinner="dots") if not silent else None
 
     def _before_sleep(s: Any) -> None:
@@ -163,7 +154,7 @@ def wait_for_ssh(*, private_key: Path, ssh_user: str, ssh_host: str, ssh_port: i
     )
     def _probe() -> int:
         return subprocess.run(
-            ssh_cmd(args=["true"], private_key=private_key, ssh_host=ssh_host, ssh_user=ssh_user, ssh_port=ssh_port),
+            ssh_cmd(args=["true"], ssh_kw=ssh_kw),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         ).returncode
@@ -183,7 +174,10 @@ def wait_for_ssh(*, private_key: Path, ssh_user: str, ssh_host: str, ssh_port: i
 
 
 def resolve_jail_ips(
-    old_state: State, new_state: State, *, private_key: Path, ssh_user: str, ssh_host: str, ssh_port: int
+    old_state: State,
+    new_state: State,
+    *,
+    ssh_kw: SSHKwargs,
 ) -> None:
     taken: set[str] = set()
     for jail in new_state.jails.values():
@@ -207,10 +201,7 @@ def resolve_jail_ips(
     with con().status("[dim]Probing free IP range…[/dim]", spinner="dots"):
         raw = ssh_exec(
             cmd=f"fping -u -A -g -i 1 -t 100 -r 0 {SWEEP_START} {SWEEP_END}",
-            private_key=private_key,
-            ssh_host=ssh_host,
-            ssh_user=ssh_user,
-            ssh_port=ssh_port,
+            ssh_kw=ssh_kw,
         )
 
     if not raw:
