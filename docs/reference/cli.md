@@ -31,4 +31,8 @@ icon: material/console
 | [`jrun snapshot list <jail>`](jrun-snapshot.md#list)                | List snapshots for a jail                                   |
 | [`jrun snapshot rollback <jail> <name>`](jrun-snapshot.md#rollback) | Rollback a jail to a snapshot                               |
 | [`jrun snapshot delete <jail> <name>`](jrun-snapshot.md#delete)     | Delete a snapshot                                           |
+| [`jrun pair`](jrun-pair.md)                                         | Create a pairing and get a code                             |
+| [`jrun pair <code>`](jrun-pair.md#join)                             | Join a pairing using a peer's code                          |
+| [`jrun pair --list`](jrun-pair.md#list)                             | List current pairings                                       |
+| [`jrun pair --drop <code>`](jrun-pair.md#drop)                     | Remove a pairing and revoke access                          |
 | [`jrun purge`](jrun-purge.md)                                       | Stop and destroy the VM with all jails                      |

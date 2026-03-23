@@ -30,6 +30,7 @@ nav = [
     { "$ jrun snapshot" = "reference/jrun-snapshot.md" },
     { "$ jrun purge" = "reference/jrun-purge.md" },
     { "$ jrun status" = "reference/jrun-status.md" },
+    { "$ jrun pair" = "reference/jrun-pair.md" },
   ]},
   { "Tutorials" = [
     { "Wiring together" = "tutorials/wiring.md" },

@@ -354,6 +354,10 @@ Full documentation is available at [jail.run](https://jail.run/).
 | `jrun snapshot list <jail>`                                         | List snapshots for a jail                                   |
 | `jrun snapshot rollback <jail> <name>`                              | Rollback a jail to a snapshot                               |
 | `jrun snapshot delete <jail> <name>`                                | Delete a snapshot                                           |
+| `jrun pair`                                                         | Create a mesh pairing and get a code                        |
+| `jrun pair <code>`                                                  | Join a pairing using a peer's code                          |
+| `jrun pair --list`                                                  | List current pairings                                       |
+| `jrun pair --drop <code>`                                           | Remove a pairing and revoke access                          |
 | `jrun purge`                                                        | Stop and destroy the VM with all jails                      |
 
 ## Config reference
@@ -447,16 +451,16 @@ base {
 
 Jailrun wires together a set of proven, focused tools — each chosen for a reason.
 
-| Layer               | Tool                                                                                                  | What it does                                                                          |
-|---------------------|-------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| OS                  | [FreeBSD](https://www.freebsd.org)                                                                    | Provides the base system, jail isolation, ZFS, pf, and the userland Jailrun builds on |
-| Virtual machine     | [QEMU](https://www.qemu.org/)                                                                         | Runs FreeBSD with hardware acceleration (HVF on macOS, KVM on Linux)                  |
-| Jail management     | [Bastille](https://bastillebsd.org/)                                                                  | Creates, destroys, and manages jail lifecycles                                        |
-| Provisioning        | [Ansible](https://docs.ansible.com/)                                                                  | Runs playbooks to install software inside jails and the VM                            |
-| Configuration       | [UCL](https://github.com/vstakhov/libucl)                                                             | Human-friendly config format, native to FreeBSD                                       |
-| Process supervision | [monit](https://mmonit.com/monit/)                                                                    | Monitors processes inside jails, restarts on failure, runs healthchecks               |
-| Filesystem          | [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) + [9p](https://wiki.qemu.org/Documentation/9p) | Instant jail clones via ZFS snapshots; host directory sharing via 9p                  |
-| Networking          | [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf)                              | FreeBSD's packet filter handles port forwarding between host and jails                |
+| Layer               | Tool                                                                                                                         | What it does                                                                           |
+|---------------------|------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| OS                  | [FreeBSD](https://www.freebsd.org)                                                                                           | Provides the base system, jail isolation, ZFS, pf, and the userland Jailrun builds on  |
+| Virtual machine     | [QEMU](https://www.qemu.org/)                                                                                                | Runs FreeBSD with hardware acceleration (HVF on macOS, KVM on Linux)                   |
+| Jail management     | [Bastille](https://bastillebsd.org/)                                                                                         | Creates, destroys, and manages jail lifecycles                                         |
+| Provisioning        | [Ansible](https://docs.ansible.com/)                                                                                         | Runs playbooks to install software inside jails and the VM                             |
+| Configuration       | [UCL](https://github.com/vstakhov/libucl)                                                                                    | Human-friendly config format, native to FreeBSD                                        |
+| Process supervision | [monit](https://mmonit.com/monit/)                                                                                           | Monitors processes inside jails, restarts on failure, runs healthchecks                |
+| Filesystem          | [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) + [9p](https://wiki.qemu.org/Documentation/9p)                        | Instant jail clones via ZFS snapshots; host directory sharing via 9p                   |
+| Networking          | [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf) + [Yggdrasil](https://yggdrasil-network.github.io/) | Packet filter for port forwarding and access control; encrypted mesh between instances |
 
 ## Platform support
 

@@ -8,16 +8,16 @@ Jailrun is an orchestration layer. It doesn't reinvent any of the underlying too
 
 ## The stack
 
-| Layer               | Tool                                                                                                  | Role                                                                                  |
-|---------------------|-------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| OS                  | [FreeBSD](https://www.freebsd.org)                                                                    | Provides the base system, jail isolation, ZFS, pf, and the userland Jailrun builds on |
-| Virtual machine     | [QEMU](https://www.qemu.org/)                                                                         | Runs FreeBSD with hardware acceleration (HVF on macOS, KVM on Linux, TCG on FreeBSD)  |
-| Jail management     | [Bastille](https://bastillebsd.org/)                                                                  | Creates, destroys, and manages jail lifecycles                                        |
-| Provisioning        | [Ansible](https://docs.ansible.com/)                                                                  | Runs playbooks to install software inside jails and the VM                            |
-| Configuration       | [UCL](https://github.com/vstakhov/libucl)                                                             | Human-friendly config format, native to FreeBSD                                       |
-| Process supervision | [monit](https://mmonit.com/monit/)                                                                    | Monitors processes inside jails, restarts on failure, runs healthchecks               |
-| Filesystem          | [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) + [9p](https://wiki.qemu.org/Documentation/9p) | Instant jail clones via ZFS snapshots; host directory sharing via 9p                  |
-| Networking          | [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf)                              | FreeBSD's packet filter handles port forwarding between host and jails                |
+| Layer               | Tool                                                                                                                         | Role                                                                                   |
+|---------------------|------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| OS                  | [FreeBSD](https://www.freebsd.org)                                                                                           | Provides the base system, jail isolation, ZFS, pf, and the userland Jailrun builds on  |
+| Virtual machine     | [QEMU](https://www.qemu.org/)                                                                                                | Runs FreeBSD with hardware acceleration (HVF on macOS, KVM on Linux, TCG on FreeBSD)   |
+| Jail management     | [Bastille](https://bastillebsd.org/)                                                                                         | Creates, destroys, and manages jail lifecycles                                         |
+| Provisioning        | [Ansible](https://docs.ansible.com/)                                                                                         | Runs playbooks to install software inside jails and the VM                             |
+| Configuration       | [UCL](https://github.com/vstakhov/libucl)                                                                                    | Human-friendly config format, native to FreeBSD                                        |
+| Process supervision | [monit](https://mmonit.com/monit/)                                                                                           | Monitors processes inside jails, restarts on failure, runs healthchecks                |
+| Filesystem          | [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) + [9p](https://wiki.qemu.org/Documentation/9p)                        | Instant jail clones via ZFS snapshots; host directory sharing via 9p                   |
+| Networking          | [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf) + [Yggdrasil](https://yggdrasil-network.github.io/) | Packet filter for port forwarding and access control; encrypted mesh between instances |
 
 Every component is transparent and accessible. You can inspect, modify, and extend any layer.
 

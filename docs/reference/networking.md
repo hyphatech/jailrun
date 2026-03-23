@@ -44,9 +44,11 @@ The VM's resolver is configured with `search local.jrun`, so short names like `p
 
 DNS records are updated automatically on every `jrun up` and `jrun down`.
 
+When Jailrun instances are [paired over the mesh](mesh.md), remote jails also get DNS records in the form `<jail-name>.<pair-code>.jrun`, so you can reach them by name.
+
 ## Firewall
 
-[pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf) is FreeBSD's built-in packet filter — it handles firewalling, NAT, and traffic redirection. Jailrun uses it at two levels: the VM and each individual jail. The default policy blocks all unsolicited inbound traffic.
+FreeBSD's built-in packet filter [pf](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf) handles firewalling, NAT, and traffic redirection. Jailrun uses it at two levels: the VM and each individual jail. The default policy blocks all unsolicited inbound traffic.
 
 The VM's pf handles NAT for outbound jail traffic and port-forwarding rules generated from `forward` blocks. Each jail also runs its own pf instance, configured and started automatically during deploy.
 
