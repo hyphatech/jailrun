@@ -1,6 +1,6 @@
 # Jailrun
 
-Jailrun is a cross-platform orchestration tool for FreeBSD jails. Its CLI, `jrun`, brings FreeBSD to your host system and manages jails inside it — each with its own filesystem, network, and processes. Define your stack in a config file and `jrun` handles the rest.
+Jailrun is a cross-platform orchestration tool for FreeBSD jails. Describe your services in a config file — what to run, what to install, which ports to forward — and `jrun` brings the system to that state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration. Everything runs inside that VM, completely isolated from your host system.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/screenshot.png" alt="screenshot" width="100%" />
@@ -8,13 +8,9 @@ Jailrun is a cross-platform orchestration tool for FreeBSD jails. Its CLI, `jrun
 
 ## What is a jail?
 
-A jail is a self-contained environment running inside FreeBSD. Nothing inside a jail can see or touch anything outside of it — and nothing outside can interfere with what's inside.
+A jail is a self-contained environment running inside FreeBSD. Each jail is isolated from the host and from other jails, with its own filesystem, network, and processes.
 
-Jails are a native FreeBSD feature. They're fast to create, cheap to run, and easy to destroy and recreate from scratch. FreeBSD jails are one of the most proven isolation technologies in computing — and jrun makes them accessible from macOS, Linux, and FreeBSD itself.
-
-## ZFS
-
-Jailrun uses [ZFS](https://docs.freebsd.org/en/books/handbook/zfs/) as the backing filesystem for all jails, making snapshots instant and free on disk.
+Jails are a native FreeBSD feature. They are fast to create, cheap to run, and easy to destroy and recreate from scratch. FreeBSD jails are one of the most proven isolation technologies in computing, and Jailrun makes them accessible from macOS, Linux, and FreeBSD itself.
 
 ## Install
 
@@ -99,7 +95,7 @@ Bring FreeBSD to your system:
 jrun start
 ```
 
-On first run, jrun downloads a FreeBSD image, boots the VM with hardware acceleration (HVF on macOS, KVM on Linux), and sets up SSH for further provisioning.
+On first run, jrun downloads the FreeBSD image and bootstraps the base system.
 
 Prefer an interactive experience? Run `jrun` with no arguments to enter the shell — guided wizards, autocomplete, and command history all included.
 
@@ -114,7 +110,7 @@ Jails are defined in config files using [UCL](https://github.com/vstakhov/libucl
 Create a file called `web.ucl` in your project directory:
 
 ```
-jail "httpserver" {
+jail "http-server" {
   forward {
     http { host = 7777; jail = 8080; }
   }
@@ -188,7 +184,7 @@ jail "fastapi-314" {
     src { host = "."; jail = "/srv/app"; }
   }
   exec {
-    httpserver {
+    uvicorn {
       cmd = "python3.14 -m uvicorn app:app --reload";
       dir = "/srv/app";
       healthcheck {
@@ -227,16 +223,16 @@ Check on everything:
 ```bash
 $ jrun status
 
-  ● VM  running  pid 15604
+  ● VM  running  on 127.0.0.1:2222  (pid 98136)
 
   uptime     7:10PM  up 15 mins, 0 users, load averages: 1.04, 0.91, 0.85
   disk       9.9G free of 13G
   memory     2.0 GB usable / 4.0 GB total
 
-  name                  state   ip            ports           mounts
-  fastapi-314           up      10.17.89.15   tcp/8080→8000   …/examples/fastapi → /srv/app
-  postgres-16           up      10.17.89.14   tcp/6432→5432   —
-  python-314            up      10.17.89.13   —               —
+  name           state    ports           mounts
+  fastapi-314    up       tcp/8080→8000   …/examples/fastapi → /srv/app
+  postgres-16    up       tcp/6432→5432   —
+  python-314     up       —               —
 ```
 
 Drop into any jail to debug or inspect:
@@ -307,34 +303,6 @@ setup {
 }
 ```
 
-## Running a graphical desktop
-
-Jailrun isn't limited to headless services. You can provision a full FreeBSD desktop and launch the VM with a QEMU graphical window — useful for running GUI applications in a clean, isolated environment.
-
-Create a `base.ucl` at the VM level:
-
-```
-# base.ucl
-
-base {
-  setup {
-    desktop {
-      type = "ansible";
-      url  = "hub://xfce/rolling";
-      vars { X_RESOLUTION = "1920x1080"; }
-    }
-  }
-}
-```
-
-Apply the base config and boot with a graphical display:
-
-```bash
-jrun start --base base.ucl --mode graphic
-```
-
-QEMU opens a window with an XFCE desktop running inside FreeBSD — full mouse and keyboard support, with hardware acceleration. A [KDE Plasma](https://github.com/hyphatech/jailrun-hub/tree/main/playbooks/kde/rolling) variant is also available in Jailrun Hub.
-
 ## Updating and tearing down
 
 To redeploy a single jail after changing its config:
@@ -346,88 +314,47 @@ jrun up stack.ucl fastapi-314
 To tear down specific jails:
 
 ```bash
-jrun down stack.ucl python-314
+jrun down python-314
 ```
 
-Other jails are left untouched. To tear down everything defined in a config:
+Other jails are left untouched. To interactively select jails to destroy:
 
 ```bash
-jrun down stack.ucl
+jrun down
 ```
 
-## Testing with jails
+## Documentation
 
-Jails integrate naturally with test suites. Here's an example of a pytest fixture that brings up a PostgreSQL jail before your tests and cleans it up afterward:
-
-```python
-from collections.abc import Generator
-
-import psycopg
-import pytest
-
-from jailrun import ROOT_DIR
-from jailrun.settings import Settings
-from jailrun.testing.postgres import PostgresJail
-
-
-@pytest.fixture
-def postgres_jail() -> Generator[PostgresJail]:
-    with PostgresJail("hypha-postgres-test", jail_config=ROOT_DIR / "tests" / "postgres.ucl") as jail:
-        yield jail
-
-
-@pytest.fixture
-def postgres_conn(settings: Settings, postgres_jail: PostgresJail) -> Generator[psycopg.Connection]:
-    with psycopg.connect(
-        host=settings.vm_host, port=postgres_jail.port, dbname=postgres_jail.dbname, user=postgres_jail.user
-    ) as conn:
-        yield conn
-
-
-def test_insert_and_query(postgres_conn: psycopg.Connection) -> None:
-    with postgres_conn.cursor() as cur:
-        cur.execute("CREATE TABLE users (id serial, name text)")
-        cur.execute("INSERT INTO users (name) VALUES ('alice')")
-        row = cur.execute("SELECT name FROM users WHERE name = 'alice'").fetchone()
-        assert row
-
-        [value] = row
-        assert value == "alice"
-
-
-def test_empty_after_cleanup(postgres_conn: psycopg.Connection) -> None:
-    with postgres_conn.cursor() as cur:
-        tables = cur.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public'").fetchall()
-        assert tables == []
-```
-
-Your tests run against a real PostgreSQL in its own jail, not an in-memory substitute. Jailrun includes ready-to-use testing fixtures for PostgreSQL, Redis, InfluxDB, MariaDB, and MySQL.
+Full documentation is available at [jail.run](https://jail.run/).
 
 ## Commands
 
-| Command                                | Description                                      |
-|----------------------------------------|--------------------------------------------------|
-| `jrun`                                 | Interactive shell                                |
-| `jrun start`                           | Boot the VM (downloads FreeBSD on first run)     |
-| `jrun start --base <config>`           | Boot the VM with a base config applied           |
-| `jrun start --provision`               | Re-run base provisioning on an already-booted VM |
-| `jrun start --mode graphic`            | Boot the VM with a graphical QEMU display        |
-| `jrun stop`                            | Shut down the VM gracefully                      |
-| `jrun ssh`                             | SSH into the VM                                  |
-| `jrun ssh <name>`                      | SSH directly into a jail                         |
-| `jrun cmd <name> <executable> [args]`  | Run a command inside a jail                      |
-| `jrun up <config>`                     | Create or update all jails in a config           |
-| `jrun up <config> <name...>`           | Deploy specific jails                            |
-| `jrun down`                            | Interactively select existing jails to destroy   |
-| `jrun down <name...>`                  | Destroy specific jails                           |
-| `jrun status`                          | Show VM and jail status                          |
-| `jrun status --tree`                   | Show VM and jail status as a tree                |
-| `jrun snapshot create <jail>`          | Create a snapshot with auto-generated name       |
-| `jrun snapshot create <jail> <name>`   | Create a named snapshot                          |
-| `jrun snapshot list <jail>`            | List snapshots for a jail                        |
-| `jrun snapshot rollback <jail> <name>` | Rollback a jail to a snapshot                    |
-| `jrun snapshot delete <jail> <name>`   | Delete a snapshot                                |
-| `jrun purge`                           | Stop and destroy the VM with all jails           |
+| Command                                                             | Description                                                 |
+|---------------------------------------------------------------------|-------------------------------------------------------------|
+| `jrun`                                                              | Interactive shell                                           |
+| `jrun start`                                                        | Boot the VM (downloads FreeBSD on first run)                |
+| `jrun start --base <config>`                                        | Boot the VM with a base config applied                      |
+| `jrun start --provision`                                            | Re-run base provisioning on an already-booted VM            |
+| `jrun start --mode graphic`                                         | Boot the VM with a graphical QEMU display                   |
+| `jrun stop`                                                         | Shut down the VM gracefully                                 |
+| `jrun ssh`                                                          | SSH into the VM                                             |
+| `jrun ssh <n>`                                                      | SSH directly into a jail                                    |
+| `jrun cmd`                                                          | Run a command inside a jail                                 |
+| `jrun up`                                                           | Create or update all jails in a config                      |
+| `jrun up <config> <name...>`                                        | Deploy specific jails (dependencies included automatically) |
+| `jrun down`                                                         | Interactively select existing jails to destroy              |
+| `jrun down <name...>`                                               | Destroy specific jails                                      |
+| `jrun status`                                                       | Show VM and jail status                                     |
+| `jrun status --show <col>`                                          | Add extra columns: `ip`, `services`, `all`                  |
+| `jrun status --tree`                                                | Render status as a tree                                     |
+| `jrun status <jail>`                                                | Full detail view for a single jail                          |
+| `jrun status <jail> --live`                                         | Live service monitor with sparklines                        |
+| `jrun snapshot create <jail>`                                       | Create a snapshot with auto-generated name                  |
+| `jrun snapshot create <jail> <name>`                                | Create a named snapshot                                     |
+| `jrun snapshot list <jail>`                                         | List snapshots for a jail                                   |
+| `jrun snapshot rollback <jail> <name>`                              | Rollback a jail to a snapshot                               |
+| `jrun snapshot delete <jail> <name>`                                | Delete a snapshot                                           |
+| `jrun purge`                                                        | Stop and destroy the VM with all jails                      |
 
 ## Config reference
 
@@ -467,7 +394,7 @@ jail "myapp" {
       cmd = "gunicorn app:main -b 0.0.0.0:8080";
       dir = "/srv/app";
       env {
-        DATABASE_URL = "postgresql://postgres-16.local.jrun/mydb";
+        DATABASE_URL = "postgresql://postgres-16.local.jrun:5432/mydb";
         APP_ENV = "production";
       }
       healthcheck {
@@ -498,7 +425,7 @@ jail "myapp" {
 
 ### Base config
 
-Optional VM-level config for customizing the base system. Passed to `jrun start` and `jrun up` via the `--base` flag.
+Optional VM-level config for customizing the base system. Passed to `jrun start` via the `--base` flag.
 
 ```
 # base.ucl
@@ -515,18 +442,6 @@ base {
   }
 }
 ```
-
-## Environment variables
-
-All settings have sensible defaults. Override them with environment variables if you need to.
-
-| Variable              | Default       | Description                         |
-|-----------------------|---------------|-------------------------------------|
-| `JRUN_SSH_PORT`       | `2222`        | Host port for VM SSH                |
-| `JRUN_BSD_VERSION`    | `15.0`        | FreeBSD version                     |
-| `JRUN_BSD_ARCH`       | auto-detected | Architecture (`aarch64` or `amd64`) |
-| `JRUN_QEMU_MEMORY`    | `4096M`       | VM memory                           |
-| `JRUN_QEMU_DISK_SIZE` | `20G`         | VM disk size                        |
 
 ## How Jailrun works
 
@@ -557,10 +472,9 @@ Jailrun wires together a set of proven, focused tools — each chosen for a reas
 ## Roadmap
 
 - [x] **Mesh networking.** Connect Jailrun instances in a private mesh network.
+- [x] **Time machine.** Snapshot any jail at any point and roll back instantly using ZFS.
 - [ ] **Remote targets.** Deploy jails to remote infrastructure.
-- [ ] **Time machine.** Snapshot any jail at any point and roll back instantly using ZFS.
 - [ ] **Resource limits.** Set per-jail CPU, memory, and I/O constraints.
-- [ ] **Modular UCL.** Compose configs from reusable, shareable modules.
 
 ## Acknowledgments
 

@@ -19,14 +19,13 @@ def resolve_scopes(show: list[str] | None) -> frozenset[Scope]:
     result: set[Scope] = set()
 
     for raw in show:
-        for item in raw.split(","):
-            item_lower = item.lower().strip()
-            if not item_lower:
-                continue
-            if item_lower == "all":
-                return frozenset(ALL_SCOPES)
-            if item_lower in ALL_SCOPES:
-                result.add(item_lower)  # type: ignore[arg-type]
+        item = raw.lower().strip()
+        if not item:
+            continue
+        if item == "all":
+            return frozenset(ALL_SCOPES)
+        if item in ALL_SCOPES:
+            result.add(item)  # type: ignore[arg-type]
 
     return frozenset(result)
 

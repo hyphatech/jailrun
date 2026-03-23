@@ -1,4 +1,4 @@
-jail "httpserver" {
+jail "http-server" {
   forward {
     http { host = 7777; jail = 8080; }
   }

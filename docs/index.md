@@ -5,6 +5,6 @@ hide:
   - toc
 ---
 
-# Jailrun
+# Sane orchestration for isolated environments
 
-Orchestration for isolated environments.
+A radically simple and coherent way to run your stack. Powered by FreeBSD.

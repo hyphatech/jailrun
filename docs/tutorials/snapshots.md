@@ -20,17 +20,11 @@ Without snapshots, a bad upgrade, a broken config, or a corrupted database means
 
 Snapshot before anything risky — a package upgrade, a config change, a wild experiment:
 
-```bash
-jrun snapshot create mydb before-upgrade
-jrun ssh mydb
-# upgrade packages, edit configs, try things, break things
-```
+![jrun status](../assets/snapshots/jrun-snapshots-create.png)
 
-Everything works? The snapshot costs you nothing. Something broke?
+Everything works? The snapshot costs you nothing. Something broke? Rollback anytime.
 
-```bash
-jrun snapshot rollback mydb before-upgrade
-```
+![jrun status](../assets/snapshots/jrun-snapshots-done.png)
 
 The jail is back to exactly where it was, as if nothing happened.
 

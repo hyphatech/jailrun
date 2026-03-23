@@ -37,7 +37,7 @@ def _print_help(version: str) -> None:
 
     c.print(logo)
     c.print()
-    c.print(Text("  Effortless orchestration for FreeBSD jails", style="dim white"))
+    c.print(Text("  Sane orchestration for isolated environments", style="dim white"))
     c.print()
 
     tbl = Table.grid(padding=(0, 4))

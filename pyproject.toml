@@ -1,7 +1,7 @@
 [project]
 name = "jailrun"
-version = "0.7.0"
-description = "Cross-platform orchestration for FreeBSD jails"
+version = "0.8.0"
+description = "Sane orchestration for isolated environments"
 readme = "README.md"
 license = "BSD-3-Clause"
 requires-python = ">=3.13"

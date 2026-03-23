@@ -88,7 +88,7 @@ The state tracks:
             }
           },
           "execs": {
-            "httpserver": {
+            "uvicorn": {
               "cmd": "python3.14 -m uvicorn app:app --reload",
               "dir": "/srv/app",
               "env": {},

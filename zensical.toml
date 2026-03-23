@@ -1,6 +1,6 @@
 [project]
 site_name = "Jailrun"
-site_description = "Orchestration for isolated environments"
+site_description = "Sane orchestration for isolated environments"
 site_author = "Hypha"
 site_url = "https://jail.run/"
 copyright = "© 2026 Hypha Technologies Ltd. All rights reserved."
@@ -15,6 +15,7 @@ nav = [
     { "How it works" = "reference/how-it-works.md" },
     { "Jail config" = "reference/jail-config.md" },
     { "Base config" = "reference/base-config.md" },
+    { "Networking" = "reference/networking.md" },
     { "Environment settings" = "reference/env-settings.md" },
     { "State reference" = "reference/state.md" },
     { "CLI reference" = "reference/cli.md" },

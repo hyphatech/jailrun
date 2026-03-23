@@ -19,5 +19,5 @@ jrun ssh <name>
 Opens an SSH session directly inside a running jail.
 
 ```bash
-jrun ssh hypha-postgres
+jrun ssh postgres-16
 ```

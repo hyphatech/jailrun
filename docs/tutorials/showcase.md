@@ -6,9 +6,7 @@ icon: material/star-outline
 
 A few ways to explore what jrun can do beyond the basics.
 
----
-
-## AstroNvim in a jail
+## Jailed AstroNvim
 
 Run a full [AstroNvim](https://astronvim.com/) setup without installing anything on your host.
 
@@ -49,9 +47,7 @@ jail "fp-astronvim" {
 }
 ```
 
----
-
-## Hugo with live reload
+## Jailed Hugo
 
 A complete [Hugo](https://gohugo.io/) environment inside a jail with live file watching. You edit on your host, Hugo rebuilds inside the jail.
 
@@ -86,7 +82,32 @@ jrun up hugo.ucl
 
 Open `http://localhost:1313` — edit files on your host, Hugo picks up changes instantly.
 
----
+## Jailed I2P
+
+Run your own [I2P](https://geti2p.net) proxy using [i2pd](https://i2pd.website/), a lightweight C++ implementation of the I2P router:
+
+```
+jail "hypha-i2pd" {
+  setup {
+    i2pd {
+      type = "ansible";
+      url  = "hub://i2pd/rolling";
+    }
+  }
+  forward {
+    i2pd-http-proxy { host = 4444; jail = 4444; }
+    i2pd-socks      { host = 4447; jail = 4447; }
+    i2pd-console    { host = 7070; jail = 7070; }
+  }
+}
+```
+
+Configure your browser to use manual proxy settings — HTTP proxy `localhost` on port `4444`, with "Also use this proxy for HTTPS" checked. The web console is available at `http://127.0.0.1:7070`.
+
+This routes all browser traffic through i2pd and only `.i2p` addresses will resolve.
+
+!!! tip
+    Use a dedicated browser profile to keep regular browsing unaffected.
 
 ## Boot into XFCE
 

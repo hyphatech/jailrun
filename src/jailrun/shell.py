@@ -124,7 +124,7 @@ def _print_welcome(version: str) -> None:
 
     c.print(logo)
     c.print()
-    c.print(Text("  Effortless orchestration for FreeBSD jails", style="dim white"))
+    c.print(Text("  Sane orchestration for isolated environments", style="dim white"))
     c.print()
     c.print(_command_table(include_shell_extras=False))
     c.print()
@@ -231,9 +231,7 @@ def pick_existing_jail(
 
     choices.append(Choice("Cancel", value="__cancel__"))
 
-    nl()
     chosen = questionary.select(prompt, choices=choices, style=Q_STYLE).ask()
-    nl()
 
     if chosen in (None, "__cancel__"):
         raise typer.Abort()
@@ -527,6 +525,8 @@ def _preflight_snapshot(
             style=Q_STYLE,
         ).ask()
 
+        nl()
+
         if action in (None, "__cancel__"):
             return None
 
@@ -539,6 +539,7 @@ def _preflight_snapshot(
             return None
 
     if action == "list":
+        nl()
         return [action, jail_name]
 
     if action == "create":

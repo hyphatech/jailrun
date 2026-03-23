@@ -22,7 +22,10 @@ icon: material/console
 | [`jrun down`](jrun-down.md)                                         | Interactively select existing jails to destroy              |
 | [`jrun down <name...>`](jrun-down.md#specific)                      | Destroy specific jails                                      |
 | [`jrun status`](jrun-status.md)                                     | Show VM and jail status                                     |
-| [`jrun status --tree`](jrun-status.md#tree)                         | Show VM and jail status as a tree                           |
+| [`jrun status --show <col>`](jrun-status.md#extra-columns)          | Add extra columns: `ip`, `services`, `all`                  |
+| [`jrun status --tree`](jrun-status.md#tree-view)                    | Render status as a tree                                     |
+| [`jrun status <jail>`](jrun-status.md#jail-detail)                  | Full detail view for a single jail                          |
+| [`jrun status <jail> --live`](jrun-status.md#live-monitor)          | Live service monitor with sparklines                        |
 | [`jrun snapshot create <jail>`](jrun-snapshot.md)                   | Create a snapshot with auto-generated name                  |
 | [`jrun snapshot create <jail> <name>`](jrun-snapshot.md#named)      | Create a named snapshot                                     |
 | [`jrun snapshot list <jail>`](jrun-snapshot.md#list)                | List snapshots for a jail                                   |

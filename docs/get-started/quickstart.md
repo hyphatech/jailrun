@@ -8,9 +8,7 @@ icon: material/rocket-launch-outline
 
 Running services locally often means juggling multiple tools, conflicting dependencies, and environments that interfere with each other. One project needs one setup, another needs a different one, and over time your host machine becomes harder to keep clean and predictable.
 
-Jailrun solves this by booting a FreeBSD virtual machine on your host using QEMU with hardware acceleration. Everything runs inside that VM — completely isolated from your host system.
-
-Inside the VM, Jailrun creates jails — lightweight, isolated environments for running your services.
+Jailrun lets you describe your services in a config file — what to run, what to install, which ports to forward — and `jrun` brings the system to that state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration. Everything runs inside that VM, completely isolated from your host system.
 
 ## What is a jail?
 
@@ -40,14 +38,12 @@ graph TB
   JRUN --> VM
 ```
 
-## Declarative configuration
-
-Jailrun is an orchestration tool. You describe the desired state in a config file — which jails to create, what to install, which ports to forward, what processes to run — and `jrun` brings the system to that state.
+## Start and bring it up
 
 Create a file called `web.ucl`:
 
 ```
-jail "httpserver" {
+jail "http-server" {
   forward {
     http { host = 7777; jail = 8080; }
   }
@@ -65,23 +61,21 @@ jail "httpserver" {
 
 This declares a jail that mounts your current directory, forwards port 7777 to 8080, and runs a supervised Python HTTP server inside.
 
-## Start and bring it up
-
-Boot the VM (downloads the FreeBSD image and bootstraps on first start):
+Launch the interactive shell:
 
 ```bash
-jrun start
+jrun
 ```
 
-Deploy the jail:
+From here, select **start** to boot the VM. On first run it downloads the FreeBSD image and bootstraps the base system:
 
-```bash
-jrun up web.ucl
-```
+![jrun start](../assets/jrun-start.png)
 
-Behind the scenes, jrun creates the jail, mounts your code, wires up the ports, and starts the process. If the process crashes, it is restarted automatically.
+Once the VM is running, select **up** and pick your config file to deploy the jail. Jailrun creates the jail, mounts your code, wires up the ports, and starts the supervised processes.
 
-If you change the config later — like changing a forwarded port or mounting another directory — just `jrun up` it again.
+![jrun deploy](../assets/jrun-deploy.png)
+
+If you change the config later — like changing a forwarded port or mounting another directory — just run **up** again.
 
 ## Smoke test
 
@@ -93,18 +87,14 @@ You should see your project files served back.
 
 ## Check status
 
-```bash
-jrun status
-```
+Select **status** from the shell:
 
 ![jrun status](../assets/jrun-status.png)
 
 ## Interactive shell
 
-Don't want to remember commands? Run `jrun` with no arguments:
+The interactive shell provides guided wizards, autocomplete, and command history — it walks you through everything `jrun` can do.
 
-```bash
-jrun
-```
+!!! tip
 
-This launches an interactive shell with guided wizards, autocomplete, and command history — it walks you through everything `jrun` can do.
+    If you prefer scripting or already know the command you need, every action is also available directly — e.g. `jrun start`, `jrun up web.ucl`, `jrun status`. See [CLI reference](../reference/cli.md) for the full list.

@@ -4,13 +4,10 @@ icon: material/download-box-outline
 
 # Installation
 
-Jailrun brings FreeBSD to your machine and manages isolated jails inside it — each with its own filesystem, network, and processes.
-You can define your stack in a single config file and bring it up with one command.
+Jailrun runs on macOS (Apple Silicon and Intel), Linux (x86_64 and aarch64), and FreeBSD (x86_64 and aarch64).
+On macOS, Homebrew handles all dependencies automatically. On Linux and FreeBSD, install the system dependencies first.
 
-!!! note "Prerequisites"
-
-    Jailrun runs on macOS (Apple Silicon and Intel), Linux (x86_64 and aarch64), and FreeBSD (x86_64 and aarch64).
-    On macOS, Homebrew handles all dependencies automatically. On Linux and FreeBSD, install the system dependencies first.
+!!! note "VM"
 
     Jailrun uses [QEMU](https://www.qemu.org/) to run a FreeBSD virtual machine on your host. QEMU provides hardware-accelerated virtualisation via HVF on macOS, KVM on Linux, and TCG emulation on FreeBSD.
 

@@ -43,7 +43,7 @@ jail "fastapi-314" {
     src { host = "."; jail = "/srv/app"; }
   }
   exec {
-    httpserver {
+    uvicorn {
       cmd = "python3.14 -m uvicorn app:app --reload";
       dir = "/srv/app";
       healthcheck {
@@ -59,11 +59,13 @@ jail "fastapi-314" {
 
 ## Bring it up
 
+Launch the interactive shell and select **up**, then pick `stack.ucl`:
+
 ```bash
-jrun up stack.ucl
+jrun
 ```
 
-Or run `jrun` with no arguments and the wizard will guide you through picking the config file.
+![jrun up](../assets/wiring/jrun-wiring-running.png)
 
 ## What's happening
 
@@ -75,7 +77,7 @@ Compiling from source can be slow. You do it once in `python-314`, then `fastapi
 
 **Deploy order is controlled by `depends`.** Jailrun resolves the dependency graph automatically. In this case: `python-314` first (it's the base), then `postgres-16` (it's a dependency), then `fastapi-314` last.
 
-**Jails discover each other by name.** From inside `fastapi-314`, try `ping postgres-16.local.jrun` — it just works. You can use fully qualified jail hostnames directly in your app’s database config.
+**Jails discover each other by name.** From inside `fastapi-314`, try `ping postgres-16.local.jrun` — it just works. You can use fully qualified jail hostnames directly in your app's database config.
 
 **Port forwarding works from your host.** PostgreSQL is reachable at `localhost:6432`. FastAPI at `localhost:8080`. Healthchecks are built in — the process supervisor monitors each service and restarts it if the check fails.
 
@@ -83,25 +85,28 @@ Compiling from source can be slow. You do it once in `python-314`, then `fastapi
 
 ## Check status
 
-```bash
-jrun status
-```
-![jrun status](../assets/jrun-stack.png)
+Select **status** from the shell:
+
+![jrun status](../assets/wiring/jrun-wiring-status.png)
 
 ## Inspect and debug
 
-Drop into any jail:
+Select **ssh** and pick a jail to drop into:
 
-```bash
-jrun ssh postgres-16
-```
+![jrun ssh](../assets/wiring/jrun-wiring-ssh.png)
 
-Or run a command without opening a shell:
+Or select **cmd** to run a one-off command without opening a shell:
 
-```bash
-jrun cmd postgres-16 psql -U postgres -c 'SELECT version()'
-```
+![jrun cmd](../assets/wiring/jrun-wiring-cmd.png)
 
 ## Update and tear down
 
-See [CLI reference](../reference/cli.md) for the full list of commands.
+You can tear down any jail at any time with **down** — it removes the jail and cleans up its mounts, ports, and DNS entries without affecting the rest of the stack:
+
+![jrun down](../assets/wiring/jrun-wiring-down.png)
+
+If you change the config, run **up** again. It won't recreate jails from scratch if they exist already, only the parts that differ from the current state will be applied.
+
+!!! tip
+
+    See [CLI reference](../reference/cli.md) for the full list of commands.

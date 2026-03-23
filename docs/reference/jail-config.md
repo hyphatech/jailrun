@@ -40,7 +40,7 @@ jail "myapp" {
       cmd = "gunicorn app:main -b 0.0.0.0:8080";
       dir = "/srv/app";
       env {
-        DATABASE_URL = "postgresql://hypha-postgres/mydb";
+        DATABASE_URL = "postgresql://postgres-16.local.jrun:5432/mydb";
         APP_ENV = "production";
       }
       healthcheck {
@@ -144,7 +144,7 @@ Environment variables for the process.
 
 ```
 env {
-  DATABASE_URL = "postgresql://hypha-postgres/mydb";
+  DATABASE_URL = "postgresql://postgres-16.local.jrun:5432/mydb";
   APP_ENV = "production";
 }
 ```
