@@ -6,9 +6,9 @@ icon: material/rocket-launch-outline
 
 ## Why Jailrun?
 
-Running services locally often means juggling multiple tools, conflicting dependencies, and environments that interfere with each other. One project needs one setup, another needs a different one, and over time your host machine becomes harder to keep clean and predictable.
+A typical application is not a single service but a set — an API with a reverse proxy, a database, a cache — all need to be properly wired together over a shared network. But services running on the same base system is a fragile setup. They may depend on different versions of a library, compete for ports, or interfere with each other's configuration, leading to a growing pile of messy state. How do you isolate them?
 
-Jailrun lets you describe your services in a declarative config file, and brings the system to that state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration.
+Jailrun lets you describe your services in a declarative config file and brings the system to the desired state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration to provision each service in its own jail, and exposes a set of powerful tools to wire and manage them.
 
 ## What is a jail?
 

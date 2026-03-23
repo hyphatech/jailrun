@@ -7,7 +7,7 @@ icon: material/download-box-outline
 Jailrun runs on macOS (Apple Silicon and Intel), Linux (x86_64 and aarch64), and FreeBSD (x86_64 and aarch64).
 On macOS, Homebrew handles all dependencies automatically. On Linux and FreeBSD, install the system dependencies first.
 
-!!! note "VM"
+!!! note "Virtualization"
 
     Jailrun uses [QEMU](https://www.qemu.org/) to run a FreeBSD virtual machine on your host. QEMU provides hardware-accelerated virtualisation via HVF on macOS, KVM on Linux, and TCG emulation on FreeBSD.
 

@@ -64,7 +64,7 @@ jrun status fastapi-314 --tree
 
 ## Live monitor
 
-Watch service metrics in real time with braille sparklines:
+Watch service metrics in real time with CPU and memory sparklines:
 
 ```bash
 jrun status fastapi-314 --live

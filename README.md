@@ -1,6 +1,6 @@
 # Jailrun
 
-Jailrun is a cross-platform orchestration tool for FreeBSD jails. Describe your services in a declarative config file, and Jailrun brings the system to that state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration.
+Jailrun lets you describe your services in a declarative config file and brings the system to the desired state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration to provision each service in its own jail, and exposes a set of powerful tools to wire and manage them.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/screenshot.png" alt="screenshot" width="100%" />
