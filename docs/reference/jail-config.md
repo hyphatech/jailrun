@@ -164,7 +164,7 @@ healthcheck {
 
 ### `setup`
 
-[Ansible](https://docs.ansible.com/) playbooks for provisioning, run in order when the jail is first created. You can mix local playbooks with [Jailrun Hub](https://github.com/hyphatech/jailrun-hub) playbooks.
+[Ansible](https://docs.ansible.com/) playbooks for provisioning, run in order when the jail is first created. You can mix local playbooks with [Jailrun Hub](https://hub.jail.run) playbooks.
 
 Local playbook:
 

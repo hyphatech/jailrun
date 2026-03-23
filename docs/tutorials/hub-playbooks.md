@@ -8,7 +8,7 @@ Jailrun uses [Ansible](https://docs.ansible.com/) for all provisioning. Every ja
 
 ## Jailrun Hub
 
-[Jailrun Hub](https://github.com/hyphatech/jailrun-hub) is a curated collection of ready-to-use playbooks for common services — PostgreSQL, Redis, Nginx, Imagor, and more. Point a setup step at a Hub playbook using the `hub://` shorthand:
+[Jailrun Hub](https://hub.jail.run) is a curated collection of ready-to-use playbooks for common services — PostgreSQL, Redis, Nginx, Imagor, and more. Point a setup step at a Hub playbook using the `hub://` shorthand:
 
 ```
 jail "hypha-nginx" {

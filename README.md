@@ -249,7 +249,7 @@ jrun cmd postgres-16 psql -U postgres -c 'SELECT version()'
 
 ## Using shared playbooks
 
-Not every playbook needs to be written from scratch. [Jailrun Hub](https://github.com/hyphatech/jailrun-hub) is a curated collection of ready-to-use playbooks for common services — Redis, Nginx, PostgreSQL, and more.
+Not every playbook needs to be written from scratch. [Jailrun Hub](https://hub.jail.run) is a curated collection of ready-to-use playbooks for common services — Redis, Nginx, PostgreSQL, and more.
 
 Point a setup step at a Hub playbook with `url` instead of `file`:
 

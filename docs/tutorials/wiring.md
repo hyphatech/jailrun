@@ -71,7 +71,7 @@ jrun
 
 **Jailrun uses [Ansible](https://docs.ansible.com/) for provisioning** — every `setup` block points to a playbook that runs when the jail is first created.
 
-The `hub://` scheme tells jrun to pull the playbook from [Jailrun Hub](https://github.com/hyphatech/jailrun-hub) — a curated collection of playbooks for common services like PostgreSQL, Redis, Nginx, and more. You can mix remote playbooks with your own local ones, composing layer by layer. In this config, `postgres-16` uses a Jailrun Hub playbook while `python-314` and `fastapi-314` use local ones.
+The `hub://` scheme tells jrun to pull the playbook from [Jailrun Hub](https://hub.jail.run) — a curated collection of playbooks for common services like PostgreSQL, Redis, Nginx, and more. You can mix remote playbooks with your own local ones, composing layer by layer. In this config, `postgres-16` uses a Jailrun Hub playbook while `python-314` and `fastapi-314` use local ones.
 
 Compiling from source can be slow. You do it once in `python-314`, then `fastapi-314` is created as its clone via the `base` block — a fully independent copy, ready instantly and using no extra disk space until it diverges.
 

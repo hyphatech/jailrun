@@ -127,4 +127,4 @@ base {
 jrun start --base base.ucl --mode graphic
 ```
 
-A few minutes later — a full XFCE desktop running inside FreeBSD. A [KDE Plasma](https://github.com/hyphatech/jailrun-hub/tree/main/playbooks/kde/rolling) variant is also available in Jailrun Hub.
+A few minutes later — a full XFCE desktop running inside FreeBSD. A [KDE Plasma](https://github.com/hyphatech/jailrun-hub/tree/main/playbooks/kde/rolling) variant is also available in [Jailrun Hub](https://hub.jail.run).

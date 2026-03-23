@@ -45,7 +45,7 @@ setup {
 }
 ```
 
-Playbooks run in the order they're defined. You can mix local playbooks with [Jailrun Hub](https://github.com/hyphatech/jailrun-hub) playbooks, same as with jail configs.
+Playbooks run in the order they're defined. You can mix local playbooks with [Jailrun Hub](https://hub.jail.run) playbooks, same as with jail configs.
 
 To re-run VM provisioning:
 
