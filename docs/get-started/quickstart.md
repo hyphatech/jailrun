@@ -8,7 +8,7 @@ icon: material/rocket-launch-outline
 
 Running services locally often means juggling multiple tools, conflicting dependencies, and environments that interfere with each other. One project needs one setup, another needs a different one, and over time your host machine becomes harder to keep clean and predictable.
 
-Jailrun lets you describe your services in a config file — what to run, what to install, which ports to forward — and `jrun` brings the system to that state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration. Everything runs inside that VM, completely isolated from your host system.
+Jailrun lets you describe your services in a declarative config file, and brings the system to that state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration.
 
 ## What is a jail?
 

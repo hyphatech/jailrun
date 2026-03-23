@@ -1,6 +1,6 @@
 # Jailrun
 
-Jailrun is a cross-platform orchestration tool for FreeBSD jails. Describe your services in a config file — what to run, what to install, which ports to forward — and `jrun` brings the system to that state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration. Everything runs inside that VM, completely isolated from your host system.
+Jailrun is a cross-platform orchestration tool for FreeBSD jails. Describe your services in a declarative config file, and Jailrun brings the system to that state. Under the hood, it boots a FreeBSD virtual machine on your host using QEMU with hardware acceleration.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/hyphatech/jailrun/main/screenshot.png" alt="screenshot" width="100%" />
@@ -38,9 +38,9 @@ sudo dnf install qemu-system-x86 genisoimage ansible
 sudo pacman -S qemu-full cdrtools ansible
 ```
 
-Install Python 3.13+ using your operating system’s package manager or preferred installation method.
+Install Python 3.13+ using your operating system's package manager or preferred installation method.
 
-Install uv using your distribution’s package manager if available, or via the official installer:
+Install uv using your distribution's package manager if available, or via the official installer:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -81,7 +81,7 @@ To install jrun directly from the latest source on main:
 uv tool install --python 3.13 "git+https://github.com/hyphatech/jailrun.git@main"
 ```
 
-If jrun is not found after installation, make sure uv’s user bin directory is on your PATH:
+If jrun is not found after installation, make sure uv's user bin directory is on your PATH:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
@@ -145,7 +145,7 @@ Test it:
 curl -sS localhost:7777
 ```
 
-One config file, one command and you can safely interact with your app from the host.
+One config file, one command, and you can safely interact with your app from the host.
 
 ## A real-world stack
 
@@ -295,7 +295,7 @@ url = "hub://nginx/rolling@v1.0.0";
 url = "https://github.com/hyphatech/jailrun-hub/blob/v1.0.0/playbooks/nginx/rolling/playbook.yml";
 ```
 
-`vars` passes variables into the playbook — each playbook documents what it accepts. Works the same way with local playbooks:
+Use `vars` to pass variables into the playbook — each playbook documents what it accepts. Works the same way with local ones:
 
 ```
 setup {
