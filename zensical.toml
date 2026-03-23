@@ -16,6 +16,7 @@ nav = [
     { "Jail config" = "reference/jail-config.md" },
     { "Base config" = "reference/base-config.md" },
     { "Networking" = "reference/networking.md" },
+    { "Mesh" = "reference/mesh.md" },
     { "Environment settings" = "reference/env-settings.md" },
     { "State reference" = "reference/state.md" },
     { "CLI reference" = "reference/cli.md" },
