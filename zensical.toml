@@ -78,3 +78,15 @@ favicon = "assets/favicon.png"
 scheme = "slate"
 primary = "deep-orange"
 accent = "orange"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/hyphatech/jailrun"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/mastodon"
+link = "https://mastodon.social/@hyphatech"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/linkedin"
+link = "https://www.linkedin.com/company/hypha-technologies/"
