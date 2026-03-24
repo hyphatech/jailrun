@@ -56,7 +56,7 @@ On macOS, Homebrew handles all dependencies automatically. On Linux and FreeBSD,
     Install system dependencies:
 
     ```bash
-    sudo pkg install qemu edk2-qemu-x64 uv rust cdrtools python313
+    pkg install qemu edk2-qemu-x64 uv rust cdrtools python313
     ```
 
     Some Python dependencies may not have prebuilt wheels on FreeBSD and may need to be compiled locally, so `rust` is required.

@@ -44,9 +44,16 @@ nav = [
     { "Posts" = "resources/posts.md" },
     { "Videos" = "resources/videos.md" },
   ]},
+  { "Commercial" = [
+    { "You're Overpaying" = "commercial/cloud.md" },
+    { "Services" = "commercial/services.md" },
+    { "FAQ" = "commercial/faq.md" },
+  ]},
 ]
 
 repo_url = "https://github.com/hyphatech/jailrun"
+
+extra_css = ["stylesheets/extra.css"]
 
 [project.theme]
 custom_dir = "docs/overrides"
