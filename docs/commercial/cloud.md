@@ -114,7 +114,7 @@ If any of this describes your situation, the conversation is worth having.
     Standalone — take it and act on it however you like, with whoever you like.
     The fee is deducted if you proceed to implementation.
 
-    **From £500**
+    **From £750**
 
 -   :material-server: **Implementation**
 
@@ -136,7 +136,7 @@ If any of this describes your situation, the conversation is worth having.
     anything that needs attention. If you'd rather run it yourselves, the
     documentation is written for that too.
 
-    **From £250 / month**
+    **From £300 / month**
 
 -   :material-handshake-outline: **Bespoke engagement**
 
