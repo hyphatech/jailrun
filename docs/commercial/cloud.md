@@ -25,11 +25,10 @@ nobody stopped to question it.
 
 !!! example "Case study"
 
-    [37signals](https://37signals.com) — the company behind Basecamp and HEY
-    — [left the cloud](https://basecamp.com/cloud-exit) in 2022 and saved
-    $7 million over two years, with $10 million more projected over the next
-    five. Their co-founder David Heinemeier Hansson has written extensively
-    about it. Worth reading.
+    [37signals](https://37signals.com) — the company behind Basecamp and HEY —
+    [left the cloud](https://basecamp.com/cloud-exit) in 2023 and now saves
+    millions per year. Their co-founder David Heinemeier Hansson has written
+    extensively about it. Worth reading.
 
 <div class="avatar-row">
   <img src="../../assets/ava.jpg" alt="Avatar" class="avatar">
@@ -156,9 +155,8 @@ If any of this describes your situation, the conversation is worth having.
 
 A typical small production stack on AWS — an application server, managed
 Postgres, Redis, a load balancer, S3 for storage — runs to £300–1,500 per
-month before anyone makes a mistake. Add meaningful egress traffic and it
-climbs further; AWS charges per gigabyte out, and it adds up faster than
-most teams expect.
+month. Add meaningful egress traffic and it climbs further: AWS charges
+per gigabyte out, and it adds up faster than most teams expect.
 
 The equivalent on two bare-metal servers runs to £100–200 per month, with
 unmetered traffic included as standard. For companies with significant egress
