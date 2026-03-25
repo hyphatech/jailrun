@@ -4,7 +4,108 @@ icon: material/star-outline
 
 # Showcase
 
-A few ways to explore what jrun can do beyond the basics.
+A few fun ways to explore what Jailrun can do beyond the basics.
+
+## Jailed Matrix Server
+
+Jailrun's built-in [mesh network](../reference/mesh) support makes it easy to self-host a [Matrix](https://matrix.org/) server
+directly on your laptop, letting you set up genuinely encrypted direct messaging with anyone worldwide — no boundaries, no middlemen.
+
+Decide who will run the Matrix server in Jailrun and bring it up:
+
+```
+jail "matrix-server" {
+  setup {
+    continuwuity {
+      type = "ansible";
+      file  = "examples/labs/matrix.yml";
+      vars {
+        CONTINUWUITY_SERVER_NAME    = "matrix.local";
+        CONTINUWUITY_ADMIN_USER     = "admin";
+        CONTINUWUITY_ADMIN_PASSWORD = "admin";
+      }
+    }
+  }
+  forward {
+    client { host = 6167; jail = 6167; }
+  }
+  exec {
+    build {
+      cmd = "/usr/local/bin/conduwuit --config /usr/local/etc/continuwuity/conduwuit.toml";
+    }
+  }
+}
+```
+
+```bash
+jrun up matrix-server.ucl
+```
+
+The server name can be anything you like — no real domain required.
+
+Meanwhile, the other peer prepares a proxy jail for pairing:
+
+```
+jail "matrix-proxy" {
+  setup {
+    tcp_proxy {
+      type = "ansible";
+      url  = "hub://haproxy/rolling";
+    }
+  }
+}
+```
+
+```bash
+jrun up matrix-proxy.ucl
+```
+
+Once both jails are provisioned, create a new mesh session on the server side:
+
+```
+jrun pair
+
+Code:  18-pulse-lilac
+Tell your peer:  jrun pair 18-pulse-lilac
+```
+
+Share the code with your peer through any convenient channel. On their side:
+
+```
+jrun pair 18-pulse-lilac
+```
+
+After the pairing is established, they can list paired jails to get the connection details needed for the config update:
+
+```
+jrun pair --list
+
+  name            peer             ip                                       paired
+  matrix-server   18-pulse-lilac   200:557d:60a2:4549:188e:c376:ce00:4a6b   Mar 24 2026, 23:06 UTC
+```
+
+Then define port forwarding from the remote jail to the local one, and from the local jail to the host, so the Matrix client on the host can reach it:
+
+```
+jail "matrix-proxy" {
+  setup {
+    tcp_proxy {
+      type = "ansible";
+      url  = "hub://haproxy/rolling";
+      vars {
+        HAPROXY_TCP_MAPPINGS = "
+          6167 matrix-server.18-pulse-lilac.jrun 6167
+        ";
+      }
+    }
+  }
+  forward {
+    client { host = 6167; jail = 6167; }
+  }
+}
+```
+
+Congrats! Both of you can now connect to your own Matrix server using Element, Fractal, or any other compatible client for secure messaging.
 
 ## Jailed AstroNvim
 
@@ -54,11 +155,11 @@ A complete [Hugo](https://gohugo.io/) environment inside a jail with live file w
 Create an empty project directory, then define the jail:
 
 ```
-jail "hugoplate" {
+jail "hugo" {
   setup {
     hugo {
       type = "ansible";
-      url  = "hub://hugoplate/0.157";
+      url  = "hub://hugo/0.157";
       vars { HUGO_SITE_DIR = "/srv/project"; }
     }
   }
