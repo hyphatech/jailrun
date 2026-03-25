@@ -1,0 +1,13 @@
+jail "i2pd-router" {
+  setup {
+    i2pd {
+      type = "ansible";
+      url  = "hub://i2pd/rolling";
+    }
+  }
+  forward {
+    i2pd-http-proxy { host = 4444; jail = 4444; }
+    i2pd-socks      { host = 4447; jail = 4447; }
+    i2pd-console    { host = 7070; jail = 7070; }
+  }
+}

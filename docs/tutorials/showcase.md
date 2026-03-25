@@ -105,7 +105,7 @@ jail "matrix-proxy" {
 }
 ```
 
-Congrats! Both of you can now connect to your own Matrix server using Element, Fractal, or any other compatible client for secure messaging.
+Congrats! Both of you can now connect to your own Matrix server at `http://localhost:6167` using Element, Fractal, or any other compatible client for secure messaging.
 
 ## Jailed AstroNvim
 
