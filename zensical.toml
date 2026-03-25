@@ -45,8 +45,8 @@ nav = [
     { "Videos" = "resources/videos.md" },
   ]},
   { "Commercial" = [
-    { "You're Overpaying" = "commercial/cloud.md" },
-    { "Services" = "commercial/services.md" },
+    { "Leave the Cloud" = "commercial/cloud.md" },
+    { "The Offer" = "commercial/offer.md" },
     { "FAQ" = "commercial/faq.md" },
   ]},
 ]

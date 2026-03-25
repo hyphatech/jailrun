@@ -2,7 +2,7 @@
 icon: material/clipboard-list-outline
 ---
 
-# Services
+# The Offer
 
 This is how an engagement works, from first contact to running infrastructure.
 Each step is agreed before the next one begins — you're not committing to
@@ -16,10 +16,9 @@ Before anything else, we talk. A 30-minute conversation where we look at your
 current setup and you tell me what's driving the pain — the bill, the
 complexity, an inherited mess, or something else entirely.
 
-I'll tell you honestly whether I think a migration makes sense for your
-situation. If it doesn't — if your stack is too small, too specific, or
-simply not a good fit — I'll say so and we part ways without obligation.
-No pitch, no follow-up pressure.
+I'll tell you honestly whether I think a migration makes sense for your situation.
+If it doesn't — if your stack is too specific, or simply not worth it —
+I'll say so and we part ways without obligation. No pitch, no follow-up pressure.
 
 [Book via Calendly :octicons-arrow-right-24:](https://calendly.com/roman-hypha/call-with-roman){ .md-button .md-button--primary }
 
@@ -38,7 +37,6 @@ whoever you like.
 - [x] Your current architecture — what's running, where, and why
 - [x] Your monthly bill broken down by service
 - [x] What you actually need vs what you're paying for
-- [x] Where egress costs are quietly inflating your invoice
 
 **What you receive:**
 
@@ -58,15 +56,13 @@ The audit fee is deducted from implementation if you proceed.
 
 ## :material-server: Implementation
 
-If the audit makes sense and you want to proceed, we agree on scope and price
-— which comes directly from the audit. You know exactly what you're getting
-before any work begins.
+If you want to proceed, we agree on scope and price before any work begins.
 
 **What's included in every implementation:**
 
 - [x] Bare metal server provisioning — you hold the contracts directly
 - [x] FreeBSD installation and hardening
-- [x] Full application stack in FreeBSD jails, provisioned with Ansible
+- [x] Your services running in jails
 - [x] Networking, firewall, and reverse proxy configuration
 - [x] ZFS-based automated backups with tested restore procedure
 - [x] Blue/green deployment for zero-downtime releases
@@ -94,7 +90,7 @@ running cleanly — that's what this is.
 - [x] OS and package updates applied and tested
 - [x] Security patches within 24 hours of release
 - [x] Monitoring review and alert response during business hours
-- [x] Direct line to me — not a ticket queue
+- [x] Direct line
 
 Rolling monthly contract. No minimum term — cancel with 30 days notice.
 
@@ -116,8 +112,3 @@ custom price, direct conversation.
 ## :material-currency-gbp: A note on pricing
 
 All prices are fixed. You will not receive an invoice you didn't expect.
-
-The audit is designed to cost less than one month of what you'll save. If
-the numbers don't work out that way for your situation, I'll say so before
-taking your money. The audit exists to give you a clear picture, not to lock
-you into anything.

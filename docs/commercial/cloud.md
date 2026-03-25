@@ -1,8 +1,8 @@
 ---
-icon: material/currency-gbp
+icon: material/exit-run
 ---
  
-# You're Overpaying
+# Leave the Cloud
 
 Modern infrastructure is massively overcomplicated and expensive. Not because
 it has to be — because the people selling it need it to be. They create a
