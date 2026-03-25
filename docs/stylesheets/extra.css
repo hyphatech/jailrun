@@ -2,7 +2,7 @@
   position: relative;
   display: flex;
   justify-content: center;
-  border-top: 1px solid #fefefe;
+  border-top: .05rem solid var(--md-default-fg-color--lightest);
   margin: 4rem 0;
 }
 
@@ -15,7 +15,7 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  outline: 1px solid #fefefe;
+  outline: 1px solid var(--md-default-bg-color);
 }
 
 .hero {
