@@ -31,8 +31,6 @@ nobody stopped to question it.
     five. Their co-founder David Heinemeier Hansson has written extensively
     about it. Worth reading.
 
----
-
 <div class="avatar-row">
   <img src="../../assets/ava.jpg" alt="Avatar" class="avatar">
 </div>

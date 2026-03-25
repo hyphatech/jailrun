@@ -1,16 +1,21 @@
-.avatar {
-  display: block;
-  width: 6rem;
-  height: 6rem;
-  border-radius: 50%;
-  object-fit: cover;
-  margin: 0 auto;
-}
-
 .avatar-row {
+  position: relative;
   display: flex;
   justify-content: center;
-  padding: 1rem;
+  border-top: 1px solid #fefefe;
+  margin: 4rem 0;
+}
+
+.avatar {
+  display: block;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  outline: 1px solid #fefefe;
 }
 
 .hero {
