@@ -1,0 +1,2 @@
+jrun_mount_root: /mnt/jrun
+fstab_path: /etc/fstab

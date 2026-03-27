@@ -1,0 +1,33 @@
+- name: Build jail IP map
+  ansible.builtin.set_fact:
+    jail_ip_map: "{{ jail_ip_map | default({}) | combine({ item.name: item.ip }) }}"
+  loop: "{{ jails | default([]) }}"
+
+- name: Ensure PF anchor directory exists
+  ansible.builtin.file:
+    path: /etc/pf.anchors
+    state: directory
+    owner: root
+    group: wheel
+    mode: "0755"
+
+- name: Render jrun PF redirect rules
+  ansible.builtin.template:
+    src: pf-anchor.conf.j2
+    dest: "{{ jrun_pf_anchor_file }}"
+    owner: root
+    group: wheel
+    mode: "0644"
+  register: pf_rdr_written
+
+- name: Validate main PF config
+  ansible.builtin.command: pfctl -nf /etc/pf.conf
+  changed_when: false
+
+- name: Validate jrun anchor rules
+  ansible.builtin.command: pfctl -a jrun/managed -nf {{ jrun_pf_anchor_file }}
+  changed_when: false
+
+- name: Load jrun anchor rules
+  ansible.builtin.command: pfctl -a jrun/managed -f {{ jrun_pf_anchor_file }}
+  changed_when: false

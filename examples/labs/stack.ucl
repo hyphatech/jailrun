@@ -1,0 +1,24 @@
+jail "core" {}
+
+jail "ipfs" {
+  base { type = "jail"; name = "core"; }
+
+  setup {
+    ipfs {
+      type = "ansible";
+      url  = "hub://ipfs/0.40";
+    }
+  }
+  forward {
+    swarm   { host = 5001; jail = 4001; }
+    gateway { host = 9090; jail = 8080; }
+  }
+  exec {
+    ipfs {
+      cmd = "ipfs daemon";
+      env {
+        IPFS_PATH = "/var/db/ipfs/.ipfs";
+      }
+    }
+  }
+}

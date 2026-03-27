@@ -1,0 +1,344 @@
+- name: Ensure pkg repo directory exists
+  ansible.builtin.file:
+    path: /usr/local/etc/pkg/repos
+    state: directory
+    mode: "0755"
+
+- name: Set pkg repos
+  ansible.builtin.template:
+    src: repos.conf.j2
+    dest: /usr/local/etc/pkg/repos/FreeBSD.conf
+    mode: "0644"
+
+- name: Refresh pkg repos
+  ansible.builtin.command: pkg update -f
+  register: pkg_update
+  changed_when: false
+  retries: 3
+  delay: 10
+  until: pkg_update.rc == 0
+
+- name: Install base packages
+  ansible.builtin.package:
+    name:
+      - btop
+      - fping
+      - curl
+      - zstd
+    state: present
+
+- name: Set VM-optimized kernel tunables
+  ansible.builtin.lineinfile:
+    path: /boot/loader.conf
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+  loop:
+    - { regexp: '^kern\.hz=', line: 'kern.hz=100' }
+    - { regexp: '^virtio_load=', line: 'virtio_load="YES"' }
+
+- name: Limit ZFS ARC
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    line: "vfs.zfs.arc_max=2147483648"
+    regexp: '^vfs\.zfs\.arc_max='
+
+- name: Load PF module
+  ansible.builtin.command: kldload pf
+  register: kldload_pf
+  failed_when: >
+    kldload_pf.rc != 0 and
+    'already loaded' not in (kldload_pf.stderr | default(''))
+  changed_when: kldload_pf.rc == 0
+
+- name: Ensure PF anchor directory exists
+  ansible.builtin.file:
+    path: /etc/pf.anchors
+    state: directory
+    owner: root
+    group: wheel
+    mode: "0755"
+
+- name: Ensure jrun PF anchor file exists
+  ansible.builtin.copy:
+    dest: /etc/pf.anchors/jrun
+    content: ""
+    owner: root
+    group: wheel
+    mode: "0644"
+    force: false
+
+- name: Install managed PF config
+  ansible.builtin.template:
+    src: pf.conf.j2
+    dest: /etc/pf.conf
+    owner: root
+    group: wheel
+    mode: "0644"
+  notify: reload pf rules
+
+- name: Enable PF at boot
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf
+    regexp: '^pf_enable='
+    line: 'pf_enable="YES"'
+
+- name: Validate PF configuration
+  ansible.builtin.command: pfctl -nf /etc/pf.conf
+  changed_when: false
+
+- name: Check PF status
+  ansible.builtin.command: pfctl -s info
+  register: pf_status
+  changed_when: false
+  failed_when: false
+
+- name: Enable PF
+  ansible.builtin.command: pfctl -ef /etc/pf.conf
+  when: pf_status.rc != 0
+  async: 1
+  poll: 0
+
+- name: Wait for SSH to return
+  wait_for_connection:
+    delay: 5
+    timeout: 60
+  when: pf_status.rc != 0
+
+- name: Check whether {{ jrun_bridge_name }} exists
+  ansible.builtin.command: ifconfig {{ jrun_bridge_name }}
+  register: jrun_bridge_check
+  failed_when: false
+  changed_when: false
+
+- name: Create {{ jrun_bridge_name }} if missing
+  ansible.builtin.command: ifconfig {{ jrun_bridge_name }} create
+  when: jrun_bridge_check.rc != 0
+  changed_when: true
+
+- name: Assign {{ jrun_bridge_name }} address now
+  ansible.builtin.command: ifconfig {{ jrun_bridge_name }} inet {{ jrun_bridge_cidr }}
+  register: bridge_addr
+  failed_when: >
+    bridge_addr.rc != 0 and
+    'File exists' not in (bridge_addr.stderr | default(''))
+  changed_when: bridge_addr.rc == 0
+
+- name: Persist {{ jrun_bridge_name }} as a cloned interface at boot
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf
+    regexp: '^cloned_interfaces='
+    line: 'cloned_interfaces="{{ jrun_bridge_name }}"'
+
+- name: Persist {{ jrun_bridge_name }} address at boot
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf
+    regexp: '^ifconfig_{{ jrun_bridge_name }}='
+    line: 'ifconfig_{{ jrun_bridge_name }}="inet {{ jrun_bridge_cidr }}"'
+
+- name: Enable routing at boot
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf
+    regexp: '^gateway_enable='
+    line: 'gateway_enable="YES"'
+
+- name: Enable routing now
+  ansible.builtin.command: sysctl net.inet.ip.forwarding=1
+  register: fwd_result
+  changed_when: "'0 -> 1' in fwd_result.stdout"
+
+- name: Configure ntpd
+  ansible.builtin.lineinfile:
+    path: /etc/ntp.conf
+    line: "tinker panic 0"
+    regexp: '^tinker'
+    insertbefore: BOF
+  notify: restart ntpd
+
+- name: Enable ntpd at boot
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf
+    regexp: '^ntpd_enable='
+    line: 'ntpd_enable="YES"'
+
+- name: Start ntpd
+  ansible.builtin.service:
+    name: ntpd
+    state: started
+
+- name: Detect machine architecture
+  ansible.builtin.command: sysctl -n hw.machine_arch
+  register: hw_arch
+  changed_when: false
+
+- name: Detect machine type
+  ansible.builtin.command: sysctl -n hw.machine
+  register: hw_machine
+  changed_when: false
+
+- name: Create base dataset
+  ansible.builtin.command: >-
+    zfs create -o mountpoint={{ jrun_base_dir }}
+    {{ jrun_zpool }}/{{ jrun_zfs_prefix }}
+  register: create_base_dataset
+  failed_when: >
+    create_base_dataset.rc != 0 and
+    'dataset already exists' not in (create_base_dataset.stderr | default(''))
+  changed_when: create_base_dataset.rc == 0
+
+- name: Create child datasets
+  ansible.builtin.command: >-
+    zfs create {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/{{ item }}
+  loop:
+    - jails
+    - releases
+  register: create_child_datasets
+  failed_when: >
+    create_child_datasets.rc != 0 and
+    'dataset already exists' not in (create_child_datasets.stderr | default(''))
+  changed_when: create_child_datasets.rc == 0
+
+- name: Ensure log directory exists
+  ansible.builtin.file:
+    path: "{{ jrun_logs_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Create release dataset
+  ansible.builtin.command: >-
+    zfs create {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/releases/{{ bsd_release }}
+  register: create_release_dataset
+  failed_when: >
+    create_release_dataset.rc != 0 and
+    'dataset already exists' not in (create_release_dataset.stderr | default(''))
+  changed_when: create_release_dataset.rc == 0
+
+- name: Check if release is already bootstrapped
+  ansible.builtin.stat:
+    path: "{{ jrun_releases_dir }}/{{ bsd_release }}/COPYRIGHT"
+  register: release_bootstrapped
+
+- name: Set upstream URL
+  ansible.builtin.set_fact:
+    upstream_url: "{{ bsd_mirror }}/{{ hw_machine.stdout }}/{{ hw_arch.stdout }}/{{ bsd_release }}"
+  when: not release_bootstrapped.stat.exists
+
+- name: Fetch manifest
+  ansible.builtin.get_url:
+    url: "{{ upstream_url }}/MANIFEST"
+    dest: "{{ jrun_releases_dir }}/{{ bsd_release }}/MANIFEST"
+    mode: "0644"
+  when: not release_bootstrapped.stat.exists
+  retries: 3
+  delay: 10
+
+- name: Fetch base system (might take some time)
+  ansible.builtin.get_url:
+    url: "{{ upstream_url }}/base.txz"
+    dest: "{{ jrun_releases_dir }}/{{ bsd_release }}/base.txz"
+    mode: "0644"
+  when: not release_bootstrapped.stat.exists
+  retries: 3
+  delay: 10
+
+- name: Get expected checksum
+  ansible.builtin.command: >-
+    awk '/^base.txz/ {print $2}' {{ jrun_releases_dir }}/{{ bsd_release }}/MANIFEST
+  register: expected_checksum
+  changed_when: false
+  when: not release_bootstrapped.stat.exists
+
+- name: Get actual checksum
+  ansible.builtin.stat:
+    path: "{{ jrun_releases_dir }}/{{ bsd_release }}/base.txz"
+    checksum_algorithm: sha256
+  register: archive_stat
+  when: not release_bootstrapped.stat.exists
+
+- name: Validate checksum
+  ansible.builtin.assert:
+    that: archive_stat.stat.checksum == expected_checksum.stdout | trim
+    fail_msg: >-
+      Checksum mismatch for base.txz:
+      expected={{ expected_checksum.stdout | trim }}
+      actual={{ archive_stat.stat.checksum }}
+  when: not release_bootstrapped.stat.exists
+
+- name: Extract base system
+  ansible.builtin.command: >-
+    tar -xf {{ jrun_releases_dir }}/{{ bsd_release }}/base.txz
+    -C {{ jrun_releases_dir }}/{{ bsd_release }}
+  when: not release_bootstrapped.stat.exists
+  changed_when: true
+
+- name: Cleanup base archive
+  ansible.builtin.file:
+    path: "{{ jrun_releases_dir }}/{{ bsd_release }}/base.txz"
+    state: absent
+  when: not release_bootstrapped.stat.exists
+
+- name: Cleanup manifest
+  ansible.builtin.file:
+    path: "{{ jrun_releases_dir }}/{{ bsd_release }}/MANIFEST"
+    state: absent
+  when: not release_bootstrapped.stat.exists
+
+- name: Silence motd at jail login
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: touch
+    mode: "0644"
+  loop:
+    - "{{ jrun_releases_dir }}/{{ bsd_release }}/root/.hushlogin"
+    - "{{ jrun_releases_dir }}/{{ bsd_release }}/usr/share/skel/dot.hushlogin"
+  when: not release_bootstrapped.stat.exists
+
+- name: Snapshot release for cloning
+  ansible.builtin.command: >-
+    zfs snapshot {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/releases/{{ bsd_release }}@base
+  register: snap_release
+  failed_when: >
+    snap_release.rc != 0 and
+    'dataset already exists' not in (snap_release.stderr | default(''))
+  changed_when: snap_release.rc == 0
+
+- name: Ensure custom devfs ruleset exists
+  ansible.builtin.blockinfile:
+    path: /etc/devfs.rules
+    marker: "# {mark} JRUN DEVFS"
+    create: true
+    mode: "0644"
+    block: |
+      [devfsrules_jail_jrun=10]
+      add include $devfsrules_jail_vnet
+      add path 'tun*' unhide
+
+- name: Reload devfs rules
+  ansible.builtin.command: service devfs restart
+  changed_when: true
+
+- name: Ensure jail.conf.d exists
+  ansible.builtin.file:
+    path: /etc/jail.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Create /etc/jail.conf
+  ansible.builtin.copy:
+    dest: /etc/jail.conf
+    mode: "0644"
+    force: false
+    content: |
+      .include "/etc/jail.conf.d/*.conf";
+
+- name: Enable jail service at boot
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf
+    regexp: '^jail_enable='
+    line: 'jail_enable="YES"'
+
+- name: Bootstrap complete
+  ansible.builtin.debug:
+    msg: >-
+      Jailrun base setup complete.
+      Release {{ bsd_release }} ({{ hw_arch.stdout }}) bootstrapped at {{ jrun_releases_dir }}/{{ bsd_release }},
+      snapshot {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/releases/{{ bsd_release }}@base is ready.

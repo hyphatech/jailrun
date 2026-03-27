@@ -144,17 +144,9 @@ def _pair_create(state: State, settings: Settings) -> None:
 def _apply_peers(state: State, settings: Settings) -> None:
     peers_data = [p.model_dump() for p in state.peers]
 
-    info("Updating DNS records…")
+    info("Updating peers setup…")
     run_playbook(
-        "jail-dns-peers.yml",
-        extra_vars={"peers": peers_data},
-        settings=settings,
-        state=state,
-    )
-
-    info("Updating pf firewall rules…")
-    run_playbook(
-        "jail-pf-peers.yml",
+        "jail-peers.yml",
         extra_vars={"peers": peers_data},
         settings=settings,
         state=state,

@@ -89,7 +89,7 @@ The state tracks:
           },
           "execs": {
             "uvicorn": {
-              "cmd": "python3.14 -m uvicorn app:app --reload",
+              "cmd": "python3.14 -m uvicorn app:app --reload --host 0.0.0.0",
               "dir": "/srv/app",
               "env": {},
               "healthcheck": {

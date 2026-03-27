@@ -1,6 +1,7 @@
 import contextlib
 import json
-from pathlib import Path
+import re
+from pathlib import Path, PurePosixPath
 
 from jailrun.cmd.status.monit import parse_monit_status
 from jailrun.cmd.status.types import (
@@ -16,6 +17,11 @@ from jailrun.schemas import State
 from jailrun.serializers import loads
 from jailrun.settings import Settings
 
+RE_IPV4 = re.compile(r"^\s+inet (\d+\.\d+\.\d+\.\d+)", re.MULTILINE)
+RE_IPV6 = re.compile(r"^\s+inet6 ([0-9a-f:]+)", re.MULTILINE)
+SKIP_V4 = {"127.0.0.1"}
+SKIP_V6_PREFIX = ("::1", "fe80:")
+
 
 def short_path(p: str) -> str:
     parts = Path(p).parts
@@ -24,24 +30,50 @@ def short_path(p: str) -> str:
     return p
 
 
-def get_bastille_jails(ssh_kw: SSHKwargs) -> list[RawJail]:
-    raw_jails: list[dict[str, str]] = []
+def get_jail_ips(name: str, ssh_kw: SSHKwargs) -> tuple[list[str], list[str]]:
+    ipv4 = ipv6 = []
+    raw = ssh_exec(cmd=f"jexec {name} ifconfig", ssh_kw=ssh_kw)
+    if raw:
+        ipv4 = [m for m in RE_IPV4.findall(raw) if m not in SKIP_V4]
+        ipv6 = [m for m in RE_IPV6.findall(raw) if not m.startswith(SKIP_V6_PREFIX)]
 
-    bastille_list = ssh_exec(cmd="bastille list -j", ssh_kw=ssh_kw)
-    if not bastille_list or bastille_list == "[]":
+    return ipv4, ipv6
+
+
+def get_raw_jails(ssh_kw: SSHKwargs, *, state: State) -> list[RawJail]:
+    running: set[str] = set()
+    raw = ssh_exec(cmd="jls -N --libxo json", ssh_kw=ssh_kw)
+    with contextlib.suppress(json.JSONDecodeError, TypeError):
+        for j in loads(raw).get("jail-information", {}).get("jail", []):
+            running.add(j["name"])
+
+    datasets = ssh_exec(
+        cmd="zfs list -H -o name -d 1 zroot/jailrun/jails",
+        ssh_kw=ssh_kw,
+    )
+
+    if not datasets:
         return []
 
-    with contextlib.suppress(json.JSONDecodeError, TypeError):
-        raw_jails = loads(bastille_list)
+    state_by_private = {str(j.private_name): j for j in state.jails.values()}
+    names = [PurePosixPath(line).name for line in datasets.strip().splitlines()]
+    results: list[RawJail] = []
 
-    return [
-        RawJail(
-            private_name=j.get("Name", "?"),
-            state=j.get("State", "?"),
-            ip=" | ".join(j.get("IP Address", "-").split(",", 1)),
-        )
-        for j in sorted(raw_jails, key=lambda x: x.get("Name", ""))
-    ]
+    for name in names:
+        if name == "jails":
+            continue
+
+        is_up = name in running
+
+        if is_up:
+            ipv4, ipv6 = get_jail_ips(name, ssh_kw)
+        else:
+            ipv4 = [state_by_private[name].ip or "-" if name in state_by_private else "-"]
+            ipv6 = ["-"]
+
+        results.append(RawJail(private_name=name, state="Up" if is_up else "Down", ipv4=ipv4, ipv6=ipv6))
+
+    return results
 
 
 def get_disk_stats(ssh_kw: SSHKwargs) -> DiskStats:
@@ -70,21 +102,24 @@ def get_mem_stats(ssh_kw: SSHKwargs) -> MemStats:
 
 
 def _fetch_monit_for_jails(
-    bastille_jails: list[RawJail],
+    jails: list[RawJail],
     public_by_private: dict[str, str],
     ssh_kw: SSHKwargs,
 ) -> dict[str, MonitJailStatus]:
     monit_by_jail: dict[str, MonitJailStatus] = {}
-    running = [j for j in bastille_jails if j["state"].lower() == "up" and j["ip"] and j["ip"] != "-"]
+    running_jails = [j for j in jails if j["state"].lower() == "up"]
 
-    for j in running:
-        jail_ip = j["ip"].split("|")[0].strip()
+    for jail in running_jails:
+        jail_ip = " ".join(jail["ipv4"])
+        if not jail_ip:
+            continue
+
         raw = jail_ssh_exec(cmd="monit status 2>/dev/null", jail_ip=jail_ip, ssh_kw=ssh_kw, timeout=10)
         if not raw:
             continue
 
         parsed = parse_monit_status(raw)
-        private_name = j["private_name"]
+        private_name = jail["private_name"]
         public_name = public_by_private.get(private_name, private_name)
 
         for monit_jail_name, monit_data in parsed.items():
@@ -110,16 +145,16 @@ def collect_info(settings: Settings, state: State, pid: int) -> StatusInfo:
     uptime = ssh_exec(cmd="uptime", ssh_kw=ssh_kw)
     disk_stats = get_disk_stats(ssh_kw)
     mem_stats = get_mem_stats(ssh_kw)
-    bastille_jails = get_bastille_jails(ssh_kw)
+    raw_jails = get_raw_jails(ssh_kw, state=state)
 
     managed_names = set(state.jails.keys())
     public_by_private = {str(j.private_name): name for name, j in state.jails.items()}
     private_by_public = {name: str(j.private_name) for name, j in state.jails.items()}
 
-    monit_by_jail = _fetch_monit_for_jails(bastille_jails, public_by_private, ssh_kw)
+    monit_by_jail = _fetch_monit_for_jails(raw_jails, public_by_private, ssh_kw)
 
     jail_rows: list[JailRow] = []
-    for j in bastille_jails:
+    for j in raw_jails:
         private_name = j["private_name"]
         public_name = public_by_private.get(private_name, private_name)
         managed = private_name in public_by_private
@@ -132,10 +167,13 @@ def collect_info(settings: Settings, state: State, pid: int) -> StatusInfo:
             ports = []
             mounts = []
 
+        ipv4 = [ip for ip in j["ipv4"] if ip != "-"]
+        ipv6 = [ip for ip in j["ipv6"] if ip != "-"]
+
         row = JailRow(
             name=public_name,
             state=j["state"],
-            ips=[ip.strip() for ip in j["ip"].split("|") if ip.strip() and ip.strip() != "-"],
+            ips=[*ipv4, *ipv6],
             managed=managed,
             ports=ports,
             mounts=mounts,
@@ -145,10 +183,10 @@ def collect_info(settings: Settings, state: State, pid: int) -> StatusInfo:
 
         jail_rows.append(row)
 
-    bastille_private_names = {j["private_name"] for j in bastille_jails}
+    jail_private_names = {j["private_name"] for j in raw_jails}
     for public_name in sorted(managed_names):
         private_name = private_by_public[public_name]
-        if private_name in bastille_private_names:
+        if private_name in jail_private_names:
             continue
 
         jail = state.jails[public_name]

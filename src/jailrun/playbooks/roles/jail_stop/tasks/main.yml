@@ -1,0 +1,25 @@
+- name: Build list of jails with executables
+  ansible.builtin.set_fact:
+    exec_jail_private_names: "{{ execs | default([]) | map(attribute='jail_private_name') | unique | list }}"
+
+- name: Stop monit services in jails with executables
+  ansible.builtin.command: "jexec {{ item }} monit -g jrun stop all"
+  loop: "{{ exec_jail_private_names | default([]) }}"
+  failed_when: false
+  changed_when: false
+
+- name: Stop monit in jails
+  ansible.builtin.command: "jexec {{ item.private_name }} service monit stop"
+  loop: "{{ jails | default([]) }}"
+  failed_when: false
+  changed_when: false
+
+- name: Stop jails
+  ansible.builtin.command: "jail -r -f {{ jrun_jails_dir }}/{{ item.private_name }}/jail.conf {{ item.private_name }}"
+  loop: "{{ jails | default([]) }}"
+  register: result
+  failed_when: >
+    result.rc != 0 and
+    'not running' not in (result.stderr | default('')) and
+    'not found' not in (result.stderr | default(''))
+  changed_when: result.rc == 0

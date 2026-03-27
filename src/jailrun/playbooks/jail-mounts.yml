@@ -1,27 +1,8 @@
-- name: Wire jail nullfs volumes
+- name: Wire volumes
   hosts: localhost
   gather_facts: false
   become: true
   become_method: doas
 
-  vars:
-    bastille_jails_root: /usr/local/bastille/jails
-
-  tasks:
-    - name: Update jrun fstab entries in jails
-      ansible.builtin.blockinfile:
-        path: "{{ bastille_jails_root }}/{{ item.private_name }}/fstab"
-        marker: "# {mark} JRUN MOUNTS"
-        create: true
-        block: |
-          {% for m in jail_mounts | default([]) if m.jail == item.name %}
-          {{ m.target_path }} {{ bastille_jails_root }}/{{ item.private_name }}/root{{ m.jail_path }} nullfs rw 0 0
-          {% endfor %}
-      loop: "{{ jails | default([]) }}"
-
-    - name: Ensure jail nullfs mountpoints exist in jail root
-      ansible.builtin.file:
-        path: "{{ bastille_jails_root }}/{{ item.jail_private_name }}/root{{ item.jail_path }}"
-        state: directory
-        mode: "0755"
-      loop: "{{ jail_mounts | default([]) }}"
+  roles:
+    - role: jail_mounts

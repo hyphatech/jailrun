@@ -17,7 +17,7 @@ from rich.table import Table
 from rich.text import Text
 
 from jailrun import cmd, ucl
-from jailrun.cmd.status.collect import get_bastille_jails
+from jailrun.cmd.status.collect import get_raw_jails
 from jailrun.cmd.status.types import ALL_SCOPES, RawJail
 from jailrun.network import get_ssh_kw
 from jailrun.qemu import QemuMode, vm_is_running
@@ -142,7 +142,7 @@ def print_help() -> None:
 def _fetch_live_jails(state: State, settings: Settings) -> list[RawJail]:
     try:
         ssh_kw = get_ssh_kw(state=state, settings=settings)
-        return get_bastille_jails(ssh_kw)
+        return get_raw_jails(ssh_kw, state=state)
     except Exception:  # noqa: BLE001
         return []
 
@@ -217,7 +217,6 @@ def pick_existing_jail(
                 {
                     "name": public_name,
                     "state": raw_jail["state"],
-                    "ip": raw_jail["ip"],
                 }
             )
 
@@ -263,7 +262,6 @@ def pick_existing_jails(
             {
                 "name": public_name,
                 "state": raw_jail["state"],
-                "ip": raw_jail["ip"],
             }
         )
 

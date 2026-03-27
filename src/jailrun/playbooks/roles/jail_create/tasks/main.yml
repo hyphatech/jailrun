@@ -1,0 +1,194 @@
+- name: Find existing datasets
+  ansible.builtin.command: >-
+    zfs list -H -o name -d 1 {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/jails
+  register: existing_datasets_raw
+  changed_when: false
+  failed_when: false
+
+- name: Parse existing names
+  ansible.builtin.set_fact:
+    existing_jail_names: >-
+      {{ existing_datasets_raw.stdout_lines | default([])
+          | map('basename') | list }}
+
+- name: Create parent datasets
+  ansible.builtin.command: >-
+    zfs create {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/jails/{{ item.private_name }}
+  loop: "{{ jails | default([]) }}"
+  when:
+    - item.private_name not in existing_jail_names
+    - item.base is not defined or item.base is none
+  register: create_standalone_result
+  failed_when: >
+    create_standalone_result.rc != 0 and
+    'dataset already exists' not in (create_standalone_result.stderr | default(''))
+  changed_when: create_standalone_result.rc == 0
+
+- name: Clone root from release snapshot
+  ansible.builtin.command: >-
+    zfs clone
+    {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/releases/{{ item.item.release }}@base
+    {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/jails/{{ item.item.private_name }}/root
+  loop: "{{ create_standalone_result.results | default([]) }}"
+  when:
+    - item is not skipped
+    - item.changed | default(false)
+  register: clone_release_result
+  failed_when: >
+    clone_release_result.rc != 0 and
+    'dataset already exists' not in (clone_release_result.stderr | default(''))
+  changed_when: clone_release_result.rc == 0
+
+- name: Snapshot base jail for copy
+  ansible.builtin.command: >-
+    zfs snapshot -r
+    {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/jails/{{ item.base.private_name }}@tmp
+  loop: "{{ jails | default([]) }}"
+  when:
+    - item.private_name not in existing_jail_names
+    - item.base is defined and item.base is not none
+    - item.base.type == "jail"
+  register: snap_result
+  failed_when: >
+    snap_result.rc != 0 and
+    'dataset already exists' not in (snap_result.stderr | default(''))
+  changed_when: snap_result.rc == 0
+
+- name: Copy base jail
+  ansible.builtin.shell: >-
+    zfs send -R {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/jails/{{ item.base.private_name }}@tmp |
+    zfs receive {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/jails/{{ item.private_name }}
+  loop: "{{ jails | default([]) }}"
+  when:
+    - item.private_name not in existing_jail_names
+    - item.base is defined and item.base is not none
+    - item.base.type == "jail"
+  register: copy_result
+  failed_when: copy_result.rc != 0
+  changed_when: copy_result.rc == 0
+
+- name: Remove temporary snapshot from base
+  ansible.builtin.command: >-
+    zfs destroy -r {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/jails/{{ item.base.private_name }}@tmp
+  loop: "{{ jails | default([]) }}"
+  when:
+    - item.base is defined and item.base is not none
+    - item.base.type == "jail"
+  failed_when: false
+
+- name: Remove received snapshot from copy
+  ansible.builtin.command: >-
+    zfs destroy -r {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/jails/{{ item.private_name }}@tmp
+  loop: "{{ jails | default([]) }}"
+  when:
+    - item.private_name not in existing_jail_names
+    - item.base is defined and item.base is not none
+    - item.base.type == "jail"
+  failed_when: false
+
+- name: Drop Yggdrasil identity
+  ansible.builtin.file:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/usr/local/etc/yggdrasil.key"
+    state: absent
+  loop: "{{ jails | default([]) }}"
+  when:
+    - item.base is defined and item.base is not none
+    - item.base.type == "jail"
+    - item.private_name not in existing_jail_names
+
+- name: Find SSH keys in copied jails
+  ansible.builtin.find:
+    paths: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/ssh"
+    patterns: "ssh_host_*"
+  loop: "{{ jails | default([]) }}"
+  when:
+    - item.base is defined and item.base is not none
+    - item.base.type == "jail"
+    - item.private_name not in existing_jail_names
+  register: ssh_keys_found
+
+- name: Remove SSH keys from copied jails
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ ssh_keys_found.results | default([]) | map(attribute='files', default=[]) | flatten }}"
+
+- name: Generate jail.conf
+  ansible.builtin.template:
+    src: jail.conf.j2
+    dest: "{{ jrun_jails_dir }}/{{ item.private_name }}/jail.conf"
+    mode: "0644"
+  loop: "{{ jails | default([]) }}"
+
+- name: Symlink jail config
+  ansible.builtin.file:
+    src: "{{ jrun_jails_dir }}/{{ item.private_name }}/jail.conf"
+    dest: "/etc/jail.conf.d/{{ item.private_name }}.conf"
+    state: link
+  loop: "{{ jails | default([]) }}"
+
+- name: Generate fstab
+  ansible.builtin.copy:
+    dest: "{{ jrun_jails_dir }}/{{ item.private_name }}/fstab"
+    mode: "0644"
+    content: ""
+  loop: "{{ jails | default([]) }}"
+
+- name: Set permissions
+  ansible.builtin.file:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}"
+    mode: "0700"
+  loop: "{{ jails | default([]) }}"
+
+- name: Rename epair interface
+  ansible.builtin.lineinfile:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/rc.conf"
+    regexp: '^ifconfig_epair.*_name='
+    line: 'ifconfig_epair{{ item.ip.split(".")[-1] }}b_name="vnet0"'
+    create: true
+    mode: "0644"
+  loop: "{{ jails | default([]) }}"
+
+- name: Configure IP address
+  ansible.builtin.lineinfile:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/rc.conf"
+    regexp: '^ifconfig_vnet0='
+    line: 'ifconfig_vnet0="inet {{ item.ip }}/{{ jrun_prefixlen }}"'
+  loop: "{{ jails | default([]) }}"
+
+- name: Configure default router
+  ansible.builtin.lineinfile:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/rc.conf"
+    regexp: '^defaultrouter='
+    line: 'defaultrouter="{{ jrun_bridge_ip }}"'
+  loop: "{{ jails | default([]) }}"
+
+- name: Configure syslogd flags
+  ansible.builtin.lineinfile:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/rc.conf"
+    regexp: '^syslogd_flags='
+    line: 'syslogd_flags="-ss"'
+  loop: "{{ jails | default([]) }}"
+
+- name: Disable sendmail
+  ansible.builtin.lineinfile:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/rc.conf"
+    regexp: '^sendmail_enable='
+    line: 'sendmail_enable="NONE"'
+  loop: "{{ jails | default([]) }}"
+
+- name: Configure cron flags
+  ansible.builtin.lineinfile:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/rc.conf"
+    regexp: '^cron_flags='
+    line: 'cron_flags="-J 60"'
+  loop: "{{ jails | default([]) }}"
+
+- name: Configure DNS resolver
+  ansible.builtin.copy:
+    dest: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/resolv.conf"
+    mode: "0644"
+    content: |
+      search local.{{ jrun_domain }}
+      nameserver {{ jrun_dns_ip }}
+  loop: "{{ jails | default([]) }}"

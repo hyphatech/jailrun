@@ -1,0 +1,8 @@
+- name: reload pf rules
+  ansible.builtin.command: pfctl -f /etc/pf.conf
+  changed_when: false
+
+- name: restart ntpd
+  ansible.builtin.service:
+    name: ntpd
+    state: restarted

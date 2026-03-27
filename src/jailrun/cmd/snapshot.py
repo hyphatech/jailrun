@@ -18,7 +18,7 @@ def snapshot_exists(ssh_kw: SSHKwargs, private_name: str, name: str) -> bool:
     raw = ssh_exec(
         cmd=(
             f"doas zfs list -t snapshot -H -o name "
-            f"$(doas zfs list -H -o name /usr/local/bastille/jails/{private_name})@{name}"
+            f"$(doas zfs list -H -o name /usr/local/jailrun/jails/{private_name})@{name}"
         ),
         ssh_kw=ssh_kw,
     )
@@ -80,7 +80,7 @@ def snapshot_list(
     raw = ssh_exec(
         cmd=(
             f"doas zfs list -t snapshot -H -o name,used,creation "
-            f"$(doas zfs list -H -o name /usr/local/bastille/jails/{private_name})"
+            f"$(doas zfs list -H -o name /usr/local/jailrun/jails/{private_name})"
         ),
         ssh_kw=ssh_kw,
     )

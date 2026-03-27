@@ -1,0 +1,5 @@
+ygg_conf_file: /usr/local/etc/yggdrasil.conf
+ygg_key_file: /usr/local/etc/yggdrasil.key
+
+ygg_host_port: 19001
+ygg_host_peer_uri: "tcp://{{ jrun_bridge_ip }}:{{ ygg_host_port }}"

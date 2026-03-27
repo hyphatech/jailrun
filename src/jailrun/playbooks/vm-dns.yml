@@ -1,0 +1,8 @@
+- name: Bootstrap DNS
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  roles:
+    - role: vm_unbound

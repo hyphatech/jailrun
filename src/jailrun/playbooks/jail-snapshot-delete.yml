@@ -1,16 +1,13 @@
-- name: Delete jail snapshot
+- name: Delete snapshot
   hosts: localhost
   gather_facts: false
   become: true
   become_method: doas
 
-  vars:
-    bastille_jails_root: /usr/local/bastille/jails
-
   tasks:
     - name: Resolve ZFS dataset for jail
       ansible.builtin.command: >-
-        zfs list -H -o name {{ bastille_jails_root }}/{{ snapshot_jail }}
+        zfs list -H -o name {{ jrun_jails_dir }}/{{ snapshot_jail }}
       register: zfs_dataset
       changed_when: false
       failed_when: zfs_dataset.rc != 0

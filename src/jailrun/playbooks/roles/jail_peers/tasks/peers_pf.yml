@@ -1,0 +1,32 @@
+- name: Get running jails
+  ansible.builtin.command: jls -N --libxo json
+  register: jls_raw
+  changed_when: false
+  failed_when: false
+
+- name: Parse running jail names
+  ansible.builtin.set_fact:
+    running_jails: >-
+      {{ ((jls_raw.stdout | from_json).jail_information.jail | default([]))
+          | map(attribute='name') | list }}
+  when: jls_raw.rc == 0 and jls_raw.stdout | trim | length > 2
+
+- name: Fallback to empty list
+  ansible.builtin.set_fact:
+    running_jails: []
+  when: running_jails is not defined
+
+- name: Write PF config
+  ansible.builtin.template:
+    src: pf_jail.conf.j2
+    dest: "{{ jrun_jails_dir }}/{{ item }}/root/etc/pf.conf"
+    owner: root
+    group: wheel
+    mode: "0644"
+  loop: "{{ running_jails }}"
+  register: pf_written
+
+- name: Reload PF
+  ansible.builtin.command: "jexec {{ item.item }} pfctl -f /etc/pf.conf"
+  loop: "{{ pf_written.results | default([]) }}"
+  when: item.changed | default(false)

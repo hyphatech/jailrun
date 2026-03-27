@@ -53,7 +53,6 @@ def _build_live_layout(
     layout = Table.grid(padding=0)
     layout.add_column()
 
-    layout.add_row("")
     layout.add_row(jail_header(j))
     layout.add_row("")
     layout.add_row(Padding(build_jail_info(j), pad=(0, 0, 0, 2)))
@@ -123,6 +122,5 @@ def render_jail_live(
                 history.ingest_jail(j)
                 live.update(_build_live_layout(j, history=history, interval=interval, tree=tree))
     except KeyboardInterrupt:
-        c.print()
         c.print(Text("  Stopped.", style="dim white"))
         c.print()

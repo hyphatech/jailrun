@@ -1,0 +1,45 @@
+- name: Write jrun zone data
+  ansible.builtin.copy:
+    dest: /var/unbound/conf.d/jrun.conf
+    owner: unbound
+    group: unbound
+    mode: "0644"
+    content: |
+      server:
+          interface: 127.0.0.1
+          interface: {{ jrun_dns_ip }}
+          access-control: 127.0.0.0/8 allow
+          access-control: {{ jrun_jail_subnet }} allow
+          local-zone: "{{ jrun_domain }}." static
+      {% for j in jails | default([]) %}
+      {% if j.ip %}
+          local-data: "{{ j.name }}.local.{{ jrun_domain }}. IN A {{ j.ip }}"
+      {% endif %}
+      {% endfor %}
+
+      forward-zone:
+          name: "."
+          forward-addr: {{ upstream_dns }}
+  register: zone_changed
+
+- name: Update peers block
+  ansible.builtin.blockinfile:
+    path: /var/unbound/conf.d/jrun.conf
+    marker: "# {mark} JRUN PEERS"
+    insertbefore: "^forward-zone:$"
+    block: |
+      {% for peer in peers | default([]) %}
+      {% for j in peer.jails %}
+          local-data: "{{ j.name }}.{{ peer.alias }}.{{ jrun_domain }}. IN AAAA {{ j.ygg_address }}"
+      {% endfor %}
+      {% endfor %}
+  register: peers_changed
+
+- name: Validate unbound config
+  ansible.builtin.command: local-unbound-checkconf
+  changed_when: false
+  when: zone_changed.changed or peers_changed.changed
+
+- name: Reload unbound
+  ansible.builtin.command: service local_unbound reload
+  when: zone_changed.changed or peers_changed.changed

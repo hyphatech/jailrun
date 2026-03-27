@@ -1,4 +1,0 @@
-# managed by jailrun
-{% for item in jail_rdrs | default([]) %}
-rdr pass on {{ ext_if }} inet proto {{ item.proto }} from any to ({{ ext_if }}) port {{ item.target_port }} -> {{ jail_ip_map[item.jail] }} port {{ item.jail_port }}
-{% endfor %}

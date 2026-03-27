@@ -1,0 +1,106 @@
+- name: Get running jails
+  ansible.builtin.command: jls -N --libxo json
+  register: jls_raw
+  changed_when: false
+  failed_when: false
+
+- name: Parse running jail names
+  ansible.builtin.set_fact:
+    running_jail_names: >-
+      {{ ((jls_raw.stdout | from_json)['jail-information'].jail | default([]))
+          | map(attribute='name') | list }}
+  when: jls_raw.rc == 0 and jls_raw.stdout | trim | length > 2
+
+- name: Default to empty list
+  ansible.builtin.set_fact:
+    running_jail_names: []
+  when: running_jail_names is not defined
+
+- name: Start jails
+  ansible.builtin.command: >-
+    jail -c -f {{ jrun_jails_dir }}/{{ item.private_name }}/jail.conf
+  loop: "{{ jails | default([]) }}"
+  when: item.private_name not in running_jail_names
+  changed_when: true
+
+- name: Verify jails are running
+  ansible.builtin.command: jls -N --libxo json
+  register: verify_raw
+  changed_when: false
+
+- name: Parse verified jail names
+  ansible.builtin.set_fact:
+    verified_jail_names: >-
+      {{ ((verify_raw.stdout | from_json)['jail-information'].jail | default([]))
+        | map(attribute='name') | list }}
+
+- name: Fail if any jail is not running
+  ansible.builtin.fail:
+    msg: "Jail {{ item.name }} ({{ item.private_name }}) failed to start"
+  loop: "{{ jails | default([]) }}"
+  when: item.private_name not in verified_jail_names
+
+- name: Install base packages
+  ansible.builtin.command: >-
+    jexec {{ item.private_name }} pkg install -y {{ jail_base_packages }}
+  loop: "{{ jails | default([]) }}"
+  register: pkg_install
+  changed_when: false
+  failed_when: pkg_install.rc != 0
+
+- name: Enable SSH
+  ansible.builtin.lineinfile:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/rc.conf"
+    regexp: '^sshd_enable='
+    line: 'sshd_enable="YES"'
+  loop: "{{ jails | default([]) }}"
+
+- name: Ensure SSH directory
+  ansible.builtin.file:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/root/.ssh"
+    state: directory
+    mode: "0700"
+  loop: "{{ jails | default([]) }}"
+
+- name: Inject SSH keys
+  ansible.builtin.copy:
+    src: "/home/admin/.ssh/authorized_keys"
+    dest: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/root/.ssh/authorized_keys"
+    remote_src: true
+    mode: "0600"
+  loop: "{{ jails | default([]) }}"
+
+- name: Enable root login
+  ansible.builtin.lineinfile:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/ssh/sshd_config"
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin prohibit-password"
+  loop: "{{ jails | default([]) }}"
+
+- name: Check SSH status
+  ansible.builtin.command: "jexec {{ item.private_name }} service sshd status"
+  loop: "{{ jails | default([]) }}"
+  register: sshd_status
+  failed_when: false
+  changed_when: false
+
+- name: Start SSH
+  ansible.builtin.command: "jexec {{ item.item.private_name }} service sshd start"
+  loop: "{{ sshd_status.results }}"
+  when: item.rc != 0
+  changed_when: true
+
+- name: Restart SSH
+  ansible.builtin.command: "jexec {{ item.item.private_name }} service sshd restart"
+  loop: "{{ sshd_status.results }}"
+  when: item.rc == 0
+  changed_when: true
+
+- name: Wait for SSH
+  ansible.builtin.command: "jexec {{ item.private_name }} sockstat -4l -p 22 -q"
+  loop: "{{ jails | default([]) }}"
+  register: sshd_check
+  retries: 5
+  delay: 2
+  until: sshd_check.stdout | default('') | length > 0
+  failed_when: sshd_check.stdout | default('') | length == 0
