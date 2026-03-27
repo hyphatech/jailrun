@@ -1,0 +1,23 @@
+jrun_zpool: zroot
+jrun_zfs_prefix: jailrun
+jrun_base_dir: /usr/local/jailrun
+jrun_jails_dir: /usr/local/jailrun/jails
+jrun_releases_dir: /usr/local/jailrun/releases
+jrun_logs_dir: /var/log/jailrun
+jrun_bridge_name: bridge0
+jrun_bridge_ip: 10.17.89.1
+
+jrun_prefixlen: "24"
+jrun_bridge_cidr: "{{ jrun_bridge_ip }}/{{ jrun_prefixlen }}"
+jrun_jail_subnet: "10.17.89.0/{{ jrun_prefixlen }}"
+jrun_ext_if: vtnet0
+
+jrun_pf_anchor_file: /etc/pf.anchors/jrun-forwards.conf
+
+jrun_dns_ip: "10.17.89.1"
+jrun_domain: jrun
+
+upstream_dns: "10.0.2.3"
+
+bsd_release: "{{ bsd_version }}-{{ bsd_release_tag }}"
+bsd_mirror: "https://download.FreeBSD.org/releases"

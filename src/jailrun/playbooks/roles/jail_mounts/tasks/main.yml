@@ -1,0 +1,17 @@
+- name: Ensure mountpoints exist
+  ansible.builtin.file:
+    path: "{{ jrun_jails_dir }}/{{ item.jail_private_name }}/root{{ item.jail_path }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ jail_mounts | default([]) }}"
+
+- name: Update fstab entries
+  ansible.builtin.blockinfile:
+    path: "{{ jrun_jails_dir }}/{{ item.private_name }}/fstab"
+    marker: "# {mark} JRUN MOUNTS"
+    create: true
+    block: |
+      {% for m in jail_mounts | default([]) if m.jail == item.name %}
+      {{ m.target_path }} {{ jrun_jails_dir }}/{{ item.private_name }}/root{{ m.jail_path }} nullfs rw 0 0
+      {% endfor %}
+  loop: "{{ jails | default([]) }}"

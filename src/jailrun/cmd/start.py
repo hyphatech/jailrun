@@ -16,7 +16,7 @@ from jailrun.misc import lock
 from jailrun.network import get_ssh_kw, resolve_ssh_port, wait_for_ssh
 from jailrun.qemu import QemuMode, launch_vm, prepare_disk, vm_is_running
 from jailrun.remote import fetch_remote_playbook
-from jailrun.schemas import BaseState, LocalSetupStep, RemoteSetupStep, State
+from jailrun.schemas import LocalSetupStep, RemoteSetupStep, State
 from jailrun.settings import Settings
 from jailrun.ui import err, info, warn
 
@@ -62,9 +62,6 @@ def _start_vm(
 
     new_state = state.model_copy(deep=True)
 
-    if base_config is None and new_state.base.is_empty():
-        new_state.base = BaseState()
-
     if base_config and not base_config.exists():
         err(f"Base config not found: {base_config}")
         raise typer.Exit(1)
@@ -74,11 +71,15 @@ def _start_vm(
         if parsed.base:
             info(f"Loaded base config from {base_config.name}")
             config_base = base_config.parent.resolve()
-            state.base = resolve_base(parsed.base, config_base)
+            new_state.base = resolve_base(parsed.base, config_base)
 
     new_state.ssh_port = resolve_ssh_port(state=new_state, settings=settings)
     new_state.launched_fwds = derive_qemu_fwds(new_state)
     new_state.launched_shares = derive_qemu_shares(new_state)
+
+    if mode != QemuMode.SERVER and not provision:
+        launch_vm(state=new_state, mode=mode, settings=settings)
+        return  # foreground process
 
     launch_vm(state=new_state, mode=QemuMode.SERVER, settings=settings)
     save_state(state=new_state, state_file=settings.state_file)
@@ -88,7 +89,7 @@ def _start_vm(
 
     if needs_base or provision:
         run_playbook("base.yml", settings=settings, state=new_state)
-        run_playbook("vm-dns-bootstrap.yml", settings=settings, state=new_state)
+        run_playbook("vm-dns.yml", settings=settings, state=new_state)
         if settings.mesh_network:
             run_playbook(
                 "vm-yggdrasil.yml",

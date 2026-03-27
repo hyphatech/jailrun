@@ -4,8 +4,8 @@ set idfile /var/db/monit.id
 set pidfile /var/run/monit.pid
 set statefile /var/db/monit.state
 set httpd port 2812 and
-    use address {{ item.ip }}
-    allow {{ item.ip }}
+    use address 127.0.0.1
+    allow 127.0.0.1
 
 check system {{ item.name }}-system
     if loadavg(5min) > 6 for 5 cycles then alert

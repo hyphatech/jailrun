@@ -2,7 +2,7 @@
   "Peers": [{% if relay_peer_uri %}"tcp://{{ relay_peer_uri }}:{{ relay_peer_port }}"{% endif %}],
   "InterfacePeers": {},
   "Listen": [
-    "{{ ygg_listen_uri }}"
+    "{{ ygg_host_peer_uri }}"
   ],
   "MulticastInterfaces": [],
   "AllowedPublicKeys": [],

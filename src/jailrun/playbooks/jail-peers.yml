@@ -1,0 +1,8 @@
+- name: Peers setup
+  hosts: localhost
+  gather_facts: false
+  become: true
+  become_method: doas
+
+  roles:
+    - role: jail_peers

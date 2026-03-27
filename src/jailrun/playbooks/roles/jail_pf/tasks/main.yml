@@ -1,0 +1,30 @@
+- name: Install PF config
+  ansible.builtin.template:
+    src: pf_jail.conf.j2
+    dest: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/pf.conf"
+    owner: root
+    group: wheel
+    mode: "0644"
+  loop: "{{ jails | default([]) }}"
+
+- name: Enable PF at boot
+  ansible.builtin.command: "jexec {{ item.private_name }} sysrc pf_enable=YES"
+  loop: "{{ jails | default([]) }}"
+  changed_when: false
+
+- name: Check PF status
+  ansible.builtin.command: "jexec {{ item.private_name }} service pf status"
+  loop: "{{ jails | default([]) }}"
+  register: pf_status
+  failed_when: false
+  changed_when: false
+
+- name: Start PF
+  ansible.builtin.command: "jexec {{ item.item.private_name }} service pf start"
+  loop: "{{ pf_status.results }}"
+  when: item.rc != 0
+
+- name: Reload PF rules
+  ansible.builtin.command: "jexec {{ item.item.private_name }} pfctl -f /etc/pf.conf"
+  loop: "{{ pf_status.results }}"
+  when: item.rc == 0

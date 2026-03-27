@@ -8,7 +8,8 @@ DEFAULT_SCOPES: frozenset[Scope] = frozenset()
 class RawJail(TypedDict):
     private_name: str
     state: str
-    ip: str
+    ipv4: list[str]
+    ipv6: list[str]
 
 
 class DiskStats(TypedDict):

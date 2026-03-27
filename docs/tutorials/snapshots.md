@@ -32,7 +32,7 @@ You can also automate it. A cron job that runs `jrun snapshot create mydb` daily
 
 ## What gets captured
 
-Each Bastille jail lives on two ZFS datasets: one for jail configuration (IP, mounts, permissions) and one for the jail's root filesystem (everything inside `/`). When jrun creates a snapshot, it captures both. Rollback restores both.
+Each jail lives on two ZFS datasets: one for jail configuration (IP, mounts, permissions) and one for the jail's root filesystem (everything inside `/`). When jrun creates a snapshot, it captures both. Rollback restores both.
 
 This means a rollback doesn't just restore your files — it restores the jail to its exact prior state, including system configs, installed packages, and service state on disk.
 

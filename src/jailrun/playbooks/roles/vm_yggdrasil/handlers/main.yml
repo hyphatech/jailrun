@@ -1,0 +1,12 @@
+- name: stop yggdrasil
+  ansible.builtin.command: service yggdrasil stop
+  register: ygg_stop
+  failed_when: false
+  changed_when: true
+  listen: restart yggdrasil
+
+- name: start yggdrasil
+  ansible.builtin.command: service yggdrasil start
+  register: ygg_start
+  failed_when: ygg_start.rc != 0
+  listen: restart yggdrasil

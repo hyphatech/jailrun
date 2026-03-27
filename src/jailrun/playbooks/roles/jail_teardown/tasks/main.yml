@@ -1,0 +1,27 @@
+- name: Remove symlink
+  ansible.builtin.file:
+    path: "/etc/jail.conf.d/{{ item.private_name }}.conf"
+    state: absent
+  loop: "{{ stale_jails | default([]) }}"
+
+- name: Stop stale jails
+  ansible.builtin.command: "jail -r -f {{ jrun_jails_dir }}/{{ item.private_name }}/jail.conf {{ item.private_name }}"
+  loop: "{{ stale_jails | default([]) }}"
+  failed_when: false
+  changed_when: false
+
+- name: Unmount leftover filesystems
+  ansible.builtin.shell: |
+    umount -a -F {{ jrun_jails_dir }}/{{ item.private_name }}/fstab 2>/dev/null || true
+    umount {{ jrun_jails_dir }}/{{ item.private_name }}/root/dev 2>/dev/null || true
+  loop: "{{ stale_jails | default([]) }}"
+  failed_when: false
+  changed_when: false
+
+- name: Destroy stale jail datasets
+  ansible.builtin.command: "zfs destroy -rf {{ jrun_zpool }}/{{ jrun_zfs_prefix }}/jails/{{ item.private_name }}"
+  loop: "{{ stale_jails | default([]) }}"
+  register: destroy_result
+  failed_when: >
+    destroy_result.rc != 0 and 'does not exist' not in (destroy_result.stderr | default(''))
+  changed_when: destroy_result.rc == 0

@@ -1,0 +1,33 @@
+{{ item.private_name }} {
+
+  exec.start      = "/bin/sh /etc/rc";
+  exec.stop        = "/bin/sh /etc/rc.shutdown";
+  exec.clean;
+  exec.consolelog  = "{{ jrun_logs_dir }}/{{ item.private_name }}.log";
+
+  path             = "{{ jrun_jails_dir }}/{{ item.private_name }}/root";
+  mount.devfs;
+  mount.fstab      = "{{ jrun_jails_dir }}/{{ item.private_name }}/fstab";
+  devfs_ruleset    = 10;
+  host.hostname    = "{{ item.private_name }}";
+  persist;
+
+  allow.raw_sockets;
+  allow.chflags;
+  allow.sysvipc    = 1;
+
+  vnet;
+  vnet.interface   = "${epair}b";
+
+  $id              = "{{ item.ip.split('.')[-1] }}";
+  $epair           = "epair${id}";
+  $bridge          = "{{ jrun_bridge_name }}";
+
+  exec.prestart    = "/sbin/ifconfig ${epair}a destroy 2>/dev/null || true";
+  exec.prestart   += "/sbin/ifconfig ${epair} create up";
+  exec.prestart   += "/sbin/ifconfig ${epair}a up descr vnet:{{ item.private_name }}";
+  exec.prestart   += "/sbin/ifconfig ${bridge} addm ${epair}a up";
+
+  exec.poststop    = "/sbin/ifconfig ${bridge} deletem ${epair}a";
+  exec.poststop   += "/sbin/ifconfig ${epair}a destroy";
+}

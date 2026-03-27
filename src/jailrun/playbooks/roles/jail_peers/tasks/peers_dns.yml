@@ -1,0 +1,21 @@
+- name: Update unbound config
+  ansible.builtin.blockinfile:
+    path: /var/unbound/conf.d/jrun.conf
+    marker: "# {mark} JRUN PEERS"
+    insertbefore: "^forward-zone:$"
+    block: |
+      {% for peer in peers | default([]) %}
+      {% for j in peer.jails %}
+          local-data: "{{ j.name }}.{{ peer.alias }}.{{ jrun_domain }}. IN AAAA {{ j.ygg_address }}"
+      {% endfor %}
+      {% endfor %}
+  register: peers_changed
+
+- name: Validate unbound config
+  ansible.builtin.command: local-unbound-checkconf
+  changed_when: false
+  when: peers_changed.changed
+
+- name: Reload unbound
+  ansible.builtin.command: service local_unbound reload
+  when: peers_changed.changed

@@ -1,0 +1,5 @@
+- name: Peers DNS setup
+  include_tasks: peers_dns.yml
+
+- name: Peers PF setup
+  include_tasks: peers_pf.yml

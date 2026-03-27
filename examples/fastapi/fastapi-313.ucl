@@ -10,7 +10,7 @@ jail "fastapi-313" {
   }
   exec {
     server {
-      cmd = "python3.13 -m uvicorn app:app --reload";
+      cmd = "python3.13 -m uvicorn app:app --reload --host 0.0.0.0";
       dir = "/srv/app";
     }
   }

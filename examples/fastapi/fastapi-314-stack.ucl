@@ -29,7 +29,7 @@ jail "fastapi-314" {
   }
   exec {
     uvicorn {
-      cmd = "python3.14 -m uvicorn app:app --reload";
+      cmd = "python3.14 -m uvicorn app:app --reload --host 0.0.0.0";
       dir = "/srv/app";
       healthcheck {
         test = "fetch -qo /dev/null http://127.0.0.1:8000";

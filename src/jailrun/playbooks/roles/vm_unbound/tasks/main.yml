@@ -1,0 +1,109 @@
+- name: Verify DNS bridge interface exists
+  ansible.builtin.command: ifconfig {{ jrun_bridge_name }}
+  register: jrun_iface_check
+  changed_when: false
+  failed_when: >
+    jrun_iface_check.rc != 0 or
+    jrun_dns_ip not in (jrun_iface_check.stdout | default(''))
+
+- name: Enable unbound at boot
+  ansible.builtin.command: sysrc local_unbound_enable="YES"
+  register: local_unbound_enable_rc
+  changed_when: false
+
+- name: Disable resolv service management
+  ansible.builtin.command: sysrc resolv_enable="NO"
+  register: resolv_enable_rc
+  changed_when: false
+
+- name: Ensure unbound config directory exists
+  ansible.builtin.file:
+    path: /var/unbound/conf.d
+    state: directory
+    owner: unbound
+    group: unbound
+    mode: "0755"
+
+- name: Write unbound main config
+  ansible.builtin.copy:
+    dest: /var/unbound/unbound.conf
+    owner: unbound
+    group: unbound
+    mode: "0644"
+    backup: true
+    content: |
+      server:
+          username: unbound
+          directory: /var/unbound
+          chroot: ""
+          pidfile: /var/run/local_unbound.pid
+
+      remote-control:
+          control-enable: yes
+          control-interface: /var/run/local_unbound.ctl
+
+      include: /var/unbound/conf.d/jrun.conf
+  register: conf_written
+
+- name: Write bootstrap DNS forwarding config
+  ansible.builtin.copy:
+    dest: /var/unbound/conf.d/jrun.conf
+    owner: unbound
+    group: unbound
+    mode: "0644"
+    force: false
+    content: |
+      server:
+          interface: 127.0.0.1
+          interface: {{ jrun_dns_ip }}
+          access-control: 127.0.0.0/8 allow
+          access-control: {{ jrun_jail_subnet }} allow
+
+      forward-zone:
+          name: "."
+          forward-addr: {{ upstream_dns }}
+  register: bootstrap_written
+
+- name: Validate unbound config
+  ansible.builtin.command: local-unbound-checkconf
+  changed_when: false
+  when: conf_written.changed or bootstrap_written.changed
+
+- name: Check unbound status
+  ansible.builtin.command: service local_unbound status
+  register: unbound_status
+  failed_when: false
+  changed_when: false
+
+- name: Start unbound if stopped
+  ansible.builtin.command: service local_unbound start
+  when: unbound_status.rc != 0
+
+- name: Restart unbound if config changed
+  ansible.builtin.command: service local_unbound restart
+  when:
+    - unbound_status.rc == 0
+    - conf_written.changed or bootstrap_written.changed
+
+- name: Force DHCP client to use unbound
+  ansible.builtin.copy:
+    dest: /etc/dhclient.conf
+    mode: "0644"
+    content: |
+      interface "vtnet0" {
+          supersede domain-name-servers 127.0.0.1;
+          prepend domain-search "local.{{ jrun_domain }}";
+      }
+
+- name: Stop resolv service for current boot
+  ansible.builtin.command: service resolv stop
+  failed_when: false
+  changed_when: false
+
+- name: Point resolver to unbound
+  ansible.builtin.copy:
+    dest: /etc/resolv.conf
+    mode: "0644"
+    content: |
+      search local.{{ jrun_domain }}
+      nameserver 127.0.0.1

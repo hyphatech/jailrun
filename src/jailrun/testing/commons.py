@@ -5,7 +5,7 @@ from typing import Self
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_fixed
 
 from jailrun.cmd import up
-from jailrun.cmd.status.collect import get_bastille_jails
+from jailrun.cmd.status.collect import get_raw_jails
 from jailrun.config import load_state
 from jailrun.network import get_ssh_kw, wait_for_ssh
 from jailrun.qemu import vm_is_running
@@ -48,13 +48,13 @@ class Jail:
 
         jail_state = state.jails.get(jail)
 
-        bastille_jails = get_bastille_jails(ssh_kw)
-        bastille_by_private = {j["private_name"]: j for j in bastille_jails}
+        raw_jails = get_raw_jails(ssh_kw, state=state)
+        jail_private_names = {j["private_name"]: j for j in raw_jails}
 
-        bastille_private_name = str(jail_state.private_name) if jail_state else None
-        bastille_jail = bastille_by_private.get(bastille_private_name) if bastille_private_name else None
+        private_name = str(jail_state.private_name) if jail_state else None
+        raw_jail = jail_private_names.get(private_name) if private_name else None
 
-        if (jail not in state.jails) or (bastille_jail is None) or (bastille_jail["state"].upper() != "UP"):
+        if (jail not in state.jails) or (raw_jail is None) or (raw_jail["state"].upper() != "UP"):
             up(
                 config=self._jail_config,
                 state=state,
