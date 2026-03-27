@@ -59,14 +59,6 @@
   loop: "{{ monit_status.results }}"
   when: item.rc == 0
 
-- name: Restart executables whose monit config changed
-  ansible.builtin.command: >-
-    jexec {{ item.item.jail_private_name }}
-    monit restart {{ item.item.jail }}-{{ item.item.name }}
-  loop: "{{ exec_monitrc.results | default([]) }}"
-  when: item.changed
-  failed_when: false
-
 - name: Re-enable monitoring for all jrun services
   ansible.builtin.command: "jexec {{ item.private_name }} monit -g jrun monitor all"
   loop: "{{ jails | default([]) }}"
@@ -75,4 +67,12 @@
 - name: Start all jrun-managed services via monit
   ansible.builtin.command: "jexec {{ item.private_name }} monit -g jrun start all"
   loop: "{{ jails | default([]) }}"
+  failed_when: false
+
+- name: Restart executables whose monit config changed
+  ansible.builtin.command: >-
+    jexec {{ item.item.jail_private_name }}
+    monit restart {{ item.item.jail }}-{{ item.item.name }}
+  loop: "{{ exec_monitrc.results | default([]) }}"
+  when: item.changed
   failed_when: false
