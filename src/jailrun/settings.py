@@ -5,7 +5,6 @@ from typing import Literal
 from pydantic import Field, HttpUrl, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from jailrun import ROOT_DIR
 from jailrun.misc import current_arch
 
 STATE_DIR = Path.home() / ".jrun"
@@ -62,7 +61,7 @@ class Settings(BaseSettings):
         return HttpUrl(f"{BASE_URL}/{self.bsd_version}-{self.bsd_release_tag}/{self.bsd_arch}/Latest/CHECKSUM.SHA512")
 
     model_config = SettingsConfigDict(
-        env_file=os.getenv("JRUN_ENV_FILE", ROOT_DIR / ".env"),
+        env_file=os.getenv("JRUN_ENV_FILE", STATE_DIR / ".env"),
         env_file_encoding="utf-8",
         env_prefix="JRUN_",
         env_nested_delimiter="__",
