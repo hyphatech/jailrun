@@ -60,7 +60,7 @@
 
 - name: Ensure jrun PF anchor file exists
   ansible.builtin.copy:
-    dest: /etc/pf.anchors/jrun
+    dest: "{{ jrun_pf_anchor_file }}"
     content: ""
     owner: root
     group: wheel
