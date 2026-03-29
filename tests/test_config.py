@@ -131,7 +131,7 @@ def test_resolve_jail_dependencies_single_no_deps() -> None:
         "app": schemas.JailConfig(name="app", release="15.0"),
     }
     result = config.resolve_jail_dependencies({"app"}, jails)
-    assert result == {"app"}
+    assert result == ["app"]
 
 
 def test_resolve_jail_dependencies_includes_base() -> None:
@@ -140,7 +140,7 @@ def test_resolve_jail_dependencies_includes_base() -> None:
         "app": schemas.JailConfig(name="app", release="15.0", base=schemas.JailBaseConfig(name="python")),
     }
     result = config.resolve_jail_dependencies({"app"}, jails)
-    assert result == {"python", "app"}
+    assert result == ["python", "app"]
 
 
 def test_resolve_jail_dependencies_includes_depends() -> None:
@@ -149,7 +149,7 @@ def test_resolve_jail_dependencies_includes_depends() -> None:
         "app": schemas.JailConfig(name="app", release="15.0", depends=["db"]),
     }
     result = config.resolve_jail_dependencies({"app"}, jails)
-    assert result == {"db", "app"}
+    assert result == ["db", "app"]
 
 
 def test_resolve_jail_dependencies_transitive() -> None:
@@ -159,7 +159,8 @@ def test_resolve_jail_dependencies_transitive() -> None:
         "app": schemas.JailConfig(name="app", release="15.0", depends=["db"]),
     }
     result = config.resolve_jail_dependencies({"app"}, jails)
-    assert result == {"base", "db", "app"}
+    assert result.index("base") < result.index("db") < result.index("app")
+    assert set(result) == {"base", "db", "app"}
 
 
 def test_resolve_jail_dependencies_ignores_unknown() -> None:
@@ -167,7 +168,7 @@ def test_resolve_jail_dependencies_ignores_unknown() -> None:
         "app": schemas.JailConfig(name="app", release="15.0", depends=["missing"]),
     }
     result = config.resolve_jail_dependencies({"app"}, jails)
-    assert result == {"app"}
+    assert result == ["app"]
 
 
 def test_resolve_jail_dependencies_no_duplicates() -> None:
@@ -177,7 +178,10 @@ def test_resolve_jail_dependencies_no_duplicates() -> None:
         "b": schemas.JailConfig(name="b", release="15.0", depends=["shared"]),
     }
     result = config.resolve_jail_dependencies({"a", "b"}, jails)
-    assert result == {"shared", "a", "b"}
+    assert result.count("shared") == 1
+    assert set(result) == {"shared", "a", "b"}
+    assert result.index("shared") < result.index("a")
+    assert result.index("shared") < result.index("b")
 
 
 def test_resolve_jail_dependencies_diamond() -> None:
@@ -188,7 +192,99 @@ def test_resolve_jail_dependencies_diamond() -> None:
         "top": schemas.JailConfig(name="top", release="15.0", depends=["left", "right"]),
     }
     result = config.resolve_jail_dependencies({"top"}, jails)
-    assert result == {"base", "left", "right", "top"}
+    assert set(result) == {"base", "left", "right", "top"}
+    assert result.index("base") < result.index("left")
+    assert result.index("base") < result.index("right")
+    assert result.index("left") < result.index("top")
+    assert result.index("right") < result.index("top")
+
+
+def test_resolve_jail_dependents_no_dependents() -> None:
+    jails = {
+        "base": schemas.JailConfig(name="base", release="15.0"),
+        "app": schemas.JailConfig(name="app", release="15.0"),
+    }
+    result = config.resolve_jail_dependents({"app"}, jails)
+    assert result == ["app"]
+
+
+def test_resolve_jail_dependents_includes_child() -> None:
+    jails = {
+        "base": schemas.JailConfig(name="base", release="15.0"),
+        "app": schemas.JailConfig(name="app", release="15.0", base=schemas.JailBaseConfig(name="base")),
+    }
+    result = config.resolve_jail_dependents({"base"}, jails)
+    assert result == ["app", "base"]
+
+
+def test_resolve_jail_dependents_includes_depends_reverse() -> None:
+    jails = {
+        "db": schemas.JailConfig(name="db", release="15.0"),
+        "app": schemas.JailConfig(name="app", release="15.0", depends=["db"]),
+    }
+    result = config.resolve_jail_dependents({"db"}, jails)
+    assert result == ["app", "db"]
+
+
+def test_resolve_jail_dependents_transitive_chain() -> None:
+    jails = {
+        "base": schemas.JailConfig(name="base", release="15.0"),
+        "mid": schemas.JailConfig(name="mid", release="15.0", base=schemas.JailBaseConfig(name="base")),
+        "top": schemas.JailConfig(name="top", release="15.0", base=schemas.JailBaseConfig(name="mid")),
+    }
+    result = config.resolve_jail_dependents({"base"}, jails)
+    assert result == ["top", "mid", "base"]
+
+
+def test_resolve_jail_dependents_does_not_include_parents() -> None:
+    jails = {
+        "base": schemas.JailConfig(name="base", release="15.0"),
+        "mid": schemas.JailConfig(name="mid", release="15.0", base=schemas.JailBaseConfig(name="base")),
+        "top": schemas.JailConfig(name="top", release="15.0", base=schemas.JailBaseConfig(name="mid")),
+    }
+    result = config.resolve_jail_dependents({"top"}, jails)
+    assert result == ["top"]
+
+
+def test_resolve_jail_dependents_fan_out() -> None:
+    jails = {
+        "base": schemas.JailConfig(name="base", release="15.0"),
+        "a": schemas.JailConfig(name="a", release="15.0", base=schemas.JailBaseConfig(name="base")),
+        "b": schemas.JailConfig(name="b", release="15.0", base=schemas.JailBaseConfig(name="base")),
+        "c": schemas.JailConfig(name="c", release="15.0", base=schemas.JailBaseConfig(name="base")),
+    }
+    result = config.resolve_jail_dependents({"base"}, jails)
+    assert set(result) == {"base", "a", "b", "c"}
+    assert result.index("a") < result.index("base")
+    assert result.index("b") < result.index("base")
+    assert result.index("c") < result.index("base")
+
+
+def test_resolve_jail_dependents_mixed_base_and_depends() -> None:
+    jails = {
+        "db": schemas.JailConfig(name="db", release="15.0"),
+        "python": schemas.JailConfig(name="python", release="15.0"),
+        "app": schemas.JailConfig(
+            name="app",
+            release="15.0",
+            base=schemas.JailBaseConfig(name="python"),
+            depends=["db"],
+        ),
+    }
+    result = config.resolve_jail_dependents({"db"}, jails)
+    assert set(result) == {"db", "app"}
+    assert result.index("app") < result.index("db")
+
+
+def test_resolve_jail_dependents_subset_target() -> None:
+    jails = {
+        "base": schemas.JailConfig(name="base", release="15.0"),
+        "a": schemas.JailConfig(name="a", release="15.0", base=schemas.JailBaseConfig(name="base")),
+        "b": schemas.JailConfig(name="b", release="15.0"),
+    }
+    result = config.resolve_jail_dependents({"base"}, jails)
+    assert set(result) == {"base", "a"}
+    assert "b" not in result
 
 
 def _write_ucl(tmp_path: Path, content: str) -> Path:

@@ -163,17 +163,18 @@ def resolve_jail(jail_config: JailConfig, config_base: Path, *, default_release:
         setup=jail_config.setup,
     )
 
-
-def resolve_jail_dependencies(names: set[str], jails: dict[str, JailConfig]) -> set[str]:
-    result = set()
+def resolve_jail_dependencies(names: set[str], jails: dict[str, JailConfig]) -> list[str]:
+    needed: set[str] = set()
     queue = list(names)
+
     while queue:
         name = queue.pop()
-        if name in result or name not in jails:
+        if name in needed or name not in jails:
             continue
 
-        result.add(name)
+        needed.add(name)
         cfg = jails[name]
+
         if cfg.base and cfg.base.name in jails:
             queue.append(cfg.base.name)
 
@@ -181,11 +182,11 @@ def resolve_jail_dependencies(names: set[str], jails: dict[str, JailConfig]) -> 
             if dep in jails:
                 queue.append(dep)
 
-    return result
+    return [n for n in sort_jails(jails) if n in needed]
 
 
-def resolve_jail_dependents(names: set[str], jails: dict[str, JailConfig]) -> set[str]:
-    result = set()
+def resolve_jail_dependents(names: set[str], jails: dict[str, JailConfig]) -> list[str]:
+    result: set[str] = set()
     queue = list(names)
 
     while queue:
@@ -201,11 +202,10 @@ def resolve_jail_dependents(names: set[str], jails: dict[str, JailConfig]) -> se
 
             is_base_dependent = cfg.base is not None and cfg.base.name == name
             is_dep_dependent = name in cfg.depends
-
             if is_base_dependent or is_dep_dependent:
                 queue.append(other_name)
 
-    return result
+    return [n for n in reversed(sort_jails(jails)) if n in result]
 
 
 def derive_qemu_fwds(state: State) -> list[QemuFwd]:

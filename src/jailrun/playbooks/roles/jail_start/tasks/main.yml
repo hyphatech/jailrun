@@ -70,7 +70,7 @@
     mode: "0600"
   loop: "{{ jails | default([]) }}"
 
-- name: Enable root login
+- name: Permit root login
   ansible.builtin.lineinfile:
     path: "{{ jrun_jails_dir }}/{{ item.private_name }}/root/etc/ssh/sshd_config"
     regexp: "^#?PermitRootLogin"
