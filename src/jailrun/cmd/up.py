@@ -13,7 +13,6 @@ from jailrun.config import (
     resolve_jail,
     resolve_jail_dependencies,
     save_state,
-    sort_jails,
 )
 from jailrun.misc import lock
 from jailrun.network import get_ssh_kw, resolve_jail_ips, resolve_ssh_port, wait_for_ssh
@@ -65,10 +64,9 @@ def _up(
         err(f"Not in config: {', '.join(sorted(unknown))}")
         raise typer.Exit(1)
 
-    targets = resolve_jail_dependencies(targets, cfg.jail)
-    ordered_jails = [n for n in sort_jails(cfg.jail) if n in targets]
-
     new_state = state.model_copy(deep=True)
+
+    ordered_jails = resolve_jail_dependencies(targets, cfg.jail)
 
     for name in ordered_jails:
         new_state.jails[name] = resolve_jail(
