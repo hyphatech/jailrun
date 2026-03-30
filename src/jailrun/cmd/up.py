@@ -181,7 +181,7 @@ def _up(
 
     plan = derive_plan(state, new_state)
 
-    run_playbook("jail-teardown.yml", plan=plan, settings=settings, state=new_state)
+    run_playbook("jail-stale.yml", plan=plan, settings=settings, state=new_state)
     run_playbook("vm-mounts.yml", plan=plan, settings=settings, state=new_state)
 
     peers_data = [p.model_dump() for p in new_state.peers]

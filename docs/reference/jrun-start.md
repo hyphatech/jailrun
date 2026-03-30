@@ -22,13 +22,13 @@ Base configs define VM-level provisioning, mounts, and port forwards. See [Base 
 
 ### `--provision` { #provision }
 
-Re-run base provisioning on an already-booted VM:
+Re-run complete base provisioning regardless of current VM state:
 
 ```bash
 jrun start --provision
 ```
 
-Useful after editing your base config or its playbooks without restarting the VM.
+Useful after editing the base config or its playbooks.
 
 ### `--mode` { #mode }
 

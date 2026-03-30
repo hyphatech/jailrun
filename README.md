@@ -329,36 +329,37 @@ Full documentation is available at [jail.run](https://jail.run/).
 
 ## Commands
 
-| Command                                                             | Description                                                 |
-|---------------------------------------------------------------------|-------------------------------------------------------------|
-| `jrun`                                                              | Interactive shell                                           |
-| `jrun start`                                                        | Boot the VM (downloads FreeBSD on first run)                |
-| `jrun start --base <config>`                                        | Boot the VM with a base config applied                      |
-| `jrun start --provision`                                            | Re-run base provisioning on an already-booted VM            |
-| `jrun start --mode graphic`                                         | Boot the VM with a graphical QEMU display                   |
-| `jrun stop`                                                         | Shut down the VM gracefully                                 |
-| `jrun ssh`                                                          | SSH into the VM                                             |
-| `jrun ssh <n>`                                                      | SSH directly into a jail                                    |
-| `jrun cmd`                                                          | Run a command inside a jail                                 |
-| `jrun up`                                                           | Create or update all jails in a config                      |
-| `jrun up <config> <name...>`                                        | Deploy specific jails (dependencies included automatically) |
-| `jrun down`                                                         | Interactively select existing jails to destroy              |
-| `jrun down <name...>`                                               | Destroy specific jails                                      |
-| `jrun status`                                                       | Show VM and jail status                                     |
-| `jrun status --show <col>`                                          | Add extra columns: `ip`, `services`, `all`                  |
-| `jrun status --tree`                                                | Render status as a tree                                     |
-| `jrun status <jail>`                                                | Full detail view for a single jail                          |
-| `jrun status <jail> --live`                                         | Live service monitor with sparklines                        |
-| `jrun snapshot create <jail>`                                       | Create a snapshot with auto-generated name                  |
-| `jrun snapshot create <jail> <name>`                                | Create a named snapshot                                     |
-| `jrun snapshot list <jail>`                                         | List snapshots for a jail                                   |
-| `jrun snapshot rollback <jail> <name>`                              | Rollback a jail to a snapshot                               |
-| `jrun snapshot delete <jail> <name>`                                | Delete a snapshot                                           |
-| `jrun pair`                                                         | Create a mesh pairing and get a code                        |
-| `jrun pair <code>`                                                  | Join a pairing using a peer's code                          |
-| `jrun pair --list`                                                  | List current pairings                                       |
-| `jrun pair --drop <code>`                                           | Remove a pairing and revoke access                          |
-| `jrun purge`                                                        | Stop and destroy the VM with all jails                      |
+| Command                                   | Description                                                 |
+|-------------------------------------------|-------------------------------------------------------------|
+| `jrun`                                    | Interactive shell                                           |
+| `jrun start`                              | Boot the VM (downloads FreeBSD on first run)                |
+| `jrun start --base <config>`              | Boot the VM with a base config applied                      |
+| `jrun start --provision`                  | Re-run base provisioning on an already-booted VM            |
+| `jrun start --mode graphic`               | Boot the VM with a graphical QEMU display                   |
+| `jrun stop`                               | Shut down the VM gracefully                                 |
+| `jrun ssh`                                | SSH into the VM                                             |
+| `jrun ssh <n>`                            | SSH directly into a jail                                    |
+| `jrun cmd`                                | Run a command inside a jail                                 |
+| `jrun up`                                 | Create or update all jails in a config                      |
+| `jrun up --provision`                     | Run complete jail provisioning                              |
+| `jrun up <config> <name...>`              | Deploy specific jails (dependencies included automatically) |
+| `jrun down`                               | Interactively select existing jails to destroy              |
+| `jrun down <name...>`                     | Destroy specific jails                                      |
+| `jrun status`                             | Show VM and jail status                                     |
+| `jrun status --show <col>`                | Add extra columns: `ip`, `services`, `all`                  |
+| `jrun status --tree`                      | Render status as a tree                                     |
+| `jrun status <jail>`                      | Full detail view for a single jail                          |
+| `jrun status <jail> --live`               | Live service monitor with sparklines                        |
+| `jrun snapshot create <jail>`             | Create a snapshot with auto-generated name                  |
+| `jrun snapshot create <jail> <name>`      | Create a named snapshot                                     |
+| `jrun snapshot list <jail>`               | List snapshots for a jail                                   |
+| `jrun snapshot rollback <jail> <name>`    | Rollback a jail to a snapshot                               |
+| `jrun snapshot delete <jail> <name>`      | Delete a snapshot                                           |
+| `jrun pair`                               | Create a mesh pairing and get a code                        |
+| `jrun pair <code>`                        | Join a pairing using a peer's code                          |
+| `jrun pair --list`                        | List current pairings                                       |
+| `jrun pair --drop <code>`                 | Remove a pairing and revoke access                          |
+| `jrun purge`                              | Stop and destroy the VM with all jails                      |
 
 ## Config reference
 

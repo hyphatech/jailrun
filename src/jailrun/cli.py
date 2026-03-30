@@ -101,7 +101,7 @@ def _confirm_destructive(action: str, target: str, *, yes: bool) -> None:
 def start(
     base: Path | None = typer.Option(None, "--base", "-b", help="Path to base.ucl"),
     mode: QemuMode = typer.Option(QemuMode.SERVER, "--mode", "-m", help="VM mode"),
-    provision: bool = typer.Option(False, "--provision", help="Run base provision"),
+    provision: bool = typer.Option(False, "--provision", help="Run base provisioning"),
 ) -> None:
     """Boot the VM, applying base config if provided."""
     state = load_state(settings.state_file)
@@ -141,7 +141,7 @@ def run_cmd(
 def up(
     config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
-    provision: bool = typer.Option(False, "--provision", help="Run full provision"),
+    provision: bool = typer.Option(False, "--provision", help="Run complete jail provisioning"),
 ) -> None:
     """Create or update jails from a config file."""
     if config is None:

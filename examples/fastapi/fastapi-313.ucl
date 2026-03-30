@@ -15,7 +15,3 @@ jail "fastapi-313" {
     }
   }
 }
-
-jail "fastapi-313-clone" {
-  base { type = "jail"; name = "fastapi-313"; }
-}

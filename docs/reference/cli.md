@@ -18,6 +18,7 @@ icon: material/console
 | [`jrun ssh <n>`](jrun-ssh.md#jail)                                  | SSH directly into a jail                                    |
 | [`jrun cmd`](jrun-cmd.md)                                           | Run a command inside a jail                                 |
 | [`jrun up`](jrun-up.md)                                             | Create or update all jails in a config                      |
+| [`jrun up --provision`](jrun-up.md#provisioning)                    | Run complete jail provisioning                              |
 | [`jrun up <config> <name...>`](jrun-up.md#specific)                 | Deploy specific jails (dependencies included automatically) |
 | [`jrun down`](jrun-down.md)                                         | Interactively select existing jails to destroy              |
 | [`jrun down <name...>`](jrun-down.md#specific)                      | Destroy specific jails                                      |
@@ -34,5 +35,5 @@ icon: material/console
 | [`jrun pair`](jrun-pair.md)                                         | Create a pairing and get a code                             |
 | [`jrun pair <code>`](jrun-pair.md#join)                             | Join a pairing using a peer's code                          |
 | [`jrun pair --list`](jrun-pair.md#list)                             | List current pairings                                       |
-| [`jrun pair --drop <code>`](jrun-pair.md#drop)                     | Remove a pairing and revoke access                          |
+| [`jrun pair --drop <code>`](jrun-pair.md#drop)                      | Remove a pairing and revoke access                          |
 | [`jrun purge`](jrun-purge.md)                                       | Stop and destroy the VM with all jails                      |

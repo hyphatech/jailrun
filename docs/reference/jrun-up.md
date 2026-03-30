@@ -21,3 +21,19 @@ jrun up stack.ucl fastapi-314
 ```
 
 This redeploys `fastapi-314` and any jails it depends on.
+
+## Provisioning { #provisioning }
+
+Re-run complete provisioning regardless of current state:
+
+```bash
+jrun up <config> --provision
+```
+
+For specific jails:
+
+```bash
+jrun up <config> <name...> --provision
+```
+
+This forces provisioning playbooks to run again even if the target jail is already provisioned.

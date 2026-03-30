@@ -79,8 +79,7 @@ def _down(state: State, *, settings: Settings, names: list[str] | None = None) -
             state=state,
         )
 
-    run_playbook("jail-teardown.yml", plan=plan, settings=settings, state=new_state)
-
+    run_playbook("jail-stale.yml", plan=plan, settings=settings, state=new_state)
     run_playbook("vm-mounts.yml", plan=plan, settings=settings, state=new_state)
 
     save_state(state=new_state, state_file=settings.state_file)
