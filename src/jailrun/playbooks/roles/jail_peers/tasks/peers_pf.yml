@@ -9,7 +9,7 @@
     running_jails: >-
       {{ ((jls_raw.stdout | from_json).jail_information.jail | default([]))
           | map(attribute='name') | list }}
-  when: jls_raw.rc == 0 and jls_raw.stdout | trim | length > 2
+  when: jls_raw.rc == 0
 
 - name: Fallback to empty list
   ansible.builtin.set_fact:

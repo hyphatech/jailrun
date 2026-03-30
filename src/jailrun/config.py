@@ -7,9 +7,11 @@ from pydantic import ValidationError
 
 from jailrun import ucl
 from jailrun.schemas import (
+    ALL_FLAGS,
     BaseConfig,
     BaseMountConfig,
     BaseState,
+    ChangeFlag,
     Config,
     ExecPlan,
     JailConfig,
@@ -74,12 +76,12 @@ def _all_target_mounts(state: State) -> dict[str, MountPlan]:
     return entries
 
 
-def _all_nullfs(state: State) -> dict[tuple[str, str], NullfsPlan]:
-    entries: dict[tuple[str, str], NullfsPlan] = {}
+def _all_nullfs(state: State) -> dict[tuple[str, str, str], NullfsPlan]:
+    entries: dict[tuple[str, str, str], NullfsPlan] = {}
     for name, jail in state.jails.items():
         for mnt in jail.mounts.values():
             vp = _jail_target_path(mnt.host)
-            entries[(name, vp)] = NullfsPlan(jail=name, target_path=vp, jail_path=mnt.jail)
+            entries[(name, vp, mnt.jail)] = NullfsPlan(jail=name, target_path=vp, jail_path=mnt.jail)
     return entries
 
 
@@ -162,6 +164,7 @@ def resolve_jail(jail_config: JailConfig, config_base: Path, *, default_release:
         execs=jail_config.exec,
         setup=jail_config.setup,
     )
+
 
 def resolve_jail_dependencies(names: set[str], jails: dict[str, JailConfig]) -> list[str]:
     needed: set[str] = set()
@@ -304,7 +307,8 @@ def derive_plan(old_state: State, new_state: State) -> Plan:
 
     old_nullfs = _all_nullfs(old_state)
     stale_jail_mounts = [
-        StaleNullfsPlan(jail=jail, target_path=vp) for (jail, vp) in sorted(set(old_nullfs) - set(new_nullfs))
+        StaleNullfsPlan(jail=jail, target_path=vp, jail_path=jp)
+        for (jail, vp, jp) in sorted(set(old_nullfs) - set(new_nullfs))
     ]
 
     return Plan(
@@ -333,3 +337,23 @@ def save_state(state: State, state_file: Path) -> None:
     tmp = state_file.with_suffix(".tmp")
     tmp.write_text(state.model_dump_json(indent=2))
     tmp.replace(state_file)
+
+
+def diff_jail(old: JailState | None, new: JailState) -> set[ChangeFlag]:
+    if old is None:
+        return set(ALL_FLAGS)
+
+    if old.ip != new.ip or old.release != new.release or old.base != new.base:
+        return set(ALL_FLAGS)
+
+    flags: set[ChangeFlag] = set()
+    if old.mounts != new.mounts:
+        flags.add(ChangeFlag.MOUNTS)
+    if old.forwards != new.forwards:
+        flags.add(ChangeFlag.FORWARDS)
+    if old.execs != new.execs:
+        flags.add(ChangeFlag.EXECS)
+    if old.setup != new.setup:
+        flags.add(ChangeFlag.SETUP)
+
+    return flags

@@ -60,6 +60,7 @@ class Jail:
                 state=state,
                 settings=self._settings,
                 names=[jail],
+                provision=True,
             )
             state = load_state(self._settings.state_file)
 

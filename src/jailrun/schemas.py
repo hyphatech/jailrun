@@ -1,7 +1,25 @@
 import hashlib
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field, field_validator
+
+
+class ChangeFlag(StrEnum):
+    CREATE = "create"
+    MOUNTS = "mounts"
+    FORWARDS = "forwards"
+    EXECS = "execs"
+    SETUP = "setup"
+
+
+ALL_FLAGS = frozenset(ChangeFlag)
+
+
+class Capability(StrEnum):
+    PEERS = "peers"
+    MESH = "mesh"
+    EXECS = "execs"
 
 
 def private_jail_name(name: str) -> str:

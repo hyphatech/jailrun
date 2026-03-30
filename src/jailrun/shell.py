@@ -389,6 +389,8 @@ def _preflight_up(
     if names:
         result.extend(names)
 
+    result.extend(args)
+
     return result
 
 

@@ -141,6 +141,7 @@ def run_cmd(
 def up(
     config: Path | None = typer.Argument(None, help="Path to jail config (.ucl)"),
     names: list[str] | None = typer.Argument(None, help="Jail names (default: all)"),
+    provision: bool = typer.Option(False, "--provision", help="Run full provision"),
 ) -> None:
     """Create or update jails from a config file."""
     if config is None:
@@ -148,7 +149,7 @@ def up(
         raise typer.Exit(1)
 
     state = load_state(settings.state_file)
-    cmd.up(config=config, state=state, settings=settings, names=names)
+    cmd.up(config=config, state=state, settings=settings, names=names, provision=provision)
 
 
 @app.command()
