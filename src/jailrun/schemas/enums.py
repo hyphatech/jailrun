@@ -13,6 +13,5 @@ ALL_FLAGS = frozenset(ChangeFlag)
 
 
 class Capability(StrEnum):
-    PEERS = "peers"
     MESH = "mesh"
     EXECS = "execs"

@@ -42,7 +42,6 @@ JAIL_RULES: tuple[PlaybookRule, ...] = (
         playbook="jail-dns.yml",
         plan="cumulative",
         triggers=frozenset({ChangeFlag.FORWARDS}),
-        requires=frozenset({Capability.PEERS}),
     ),
     PlaybookRule(playbook="jail-forwards.yml", plan="cumulative", triggers=frozenset({ChangeFlag.FORWARDS})),
     PlaybookRule(
@@ -55,7 +54,7 @@ JAIL_RULES: tuple[PlaybookRule, ...] = (
         playbook="jail-pf.yml",
         plan="single",
         triggers=frozenset({ChangeFlag.CREATE}),
-        requires=frozenset({Capability.MESH, Capability.PEERS}),
+        requires=frozenset({Capability.MESH}),
     ),
     PlaybookRule(
         playbook="jail-monit.yml",
@@ -202,14 +201,14 @@ def _up(
             provisioned_names.add(name)
             continue
 
+        provisioned_names.add(name)
+
         single_plan = plan.for_jail(name)
         cumulative_plan = plan.for_jails(provisioned_names)
 
         plans = {"single": single_plan, "cumulative": cumulative_plan}
 
-        provisioned_names.add(name)
-
-        capabilities: set[Capability] = {Capability.PEERS}
+        capabilities: set[Capability] = set()
         if settings.mesh_network:
             capabilities.add(Capability.MESH)
         if single_plan.execs:
@@ -219,12 +218,14 @@ def _up(
             if not should_run(rule, flags=changes, capabilities=capabilities):
                 continue
 
-            extra = {"peers": peers_data} if Capability.PEERS in rule.requires else None
+            extra_vars = {}
+            if Capability.MESH in rule.requires:
+                extra_vars.update({"peers": peers_data})
 
             run_playbook(
                 rule.playbook,
                 plan=plans[rule.plan],
-                extra_vars=extra,
+                extra_vars=extra_vars,
                 settings=settings,
                 state=new_state,
             )
