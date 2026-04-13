@@ -160,7 +160,7 @@ per gigabyte out, and it adds up faster than most teams expect.
 
 The equivalent on two bare-metal servers runs to £100–200 per month, with
 unmetered traffic included as standard. For companies with significant egress
-— video, file storage, data-heavy APIs — the bandwidth saving alone often
+(video, file storage, data-heavy APIs) the bandwidth saving alone often
 exceeds the entire server bill.
 
 If you're currently paying £2,000 per month, a migration typically reduces
