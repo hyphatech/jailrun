@@ -147,8 +147,6 @@ If any of this describes your situation, the conversation is worth having.
 
 </div>
 
-[Full details on services and pricing →](services.md)
-
 ---
 
 ## The numbers
