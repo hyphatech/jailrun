@@ -44,11 +44,6 @@ nav = [
     { "Posts" = "resources/posts.md" },
     { "Videos" = "resources/videos.md" },
   ]},
-  { "Commercial" = [
-    { "Leave the Cloud" = "commercial/cloud.md" },
-    { "The Offer" = "commercial/offer.md" },
-    { "FAQ" = "commercial/faq.md" },
-  ]},
 ]
 
 repo_url = "https://github.com/hyphatech/jailrun"
